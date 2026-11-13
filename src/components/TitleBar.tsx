@@ -56,7 +56,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
       <div
         className="win-brand"
         onClick={onSelectHome}
-        title="Inicio de PDF-LEF Studio Pro"
+        title="Inicio de PDF-LEF"
         id="titlebar-brand-home"
       >
         <img src="/brand/logo-mark.svg" alt="PDF-LEF" className="win-brand-icon" />

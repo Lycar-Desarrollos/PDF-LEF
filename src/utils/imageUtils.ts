@@ -136,8 +136,8 @@ export async function convertImagesToPdfBytes(
   marginPt = 28
 ): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
-  pdfDoc.setCreator('PDF-LEF Studio Pro');
-  pdfDoc.setProducer('PDF-LEF Engine');
+  pdfDoc.setCreator('PDF-LEF');
+  pdfDoc.setProducer('PDF-LEF Native Engine');
 
   for (const file of files) {
     const dataUrl = await fileToDataUrl(file);

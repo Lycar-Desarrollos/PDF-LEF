@@ -13,6 +13,7 @@ import {
   Pencil,
   RotateCcw,
   Trash2,
+  Wand2,
 } from 'lucide-react';
 import type {
   FontFamilyChoice,
@@ -20,6 +21,7 @@ import type {
   PdfOverlayElement,
   PdfTabDocument,
 } from '../types/pdf';
+import { removeSignatureBackground } from '../utils/imageUtils';
 
 interface ObjectInspectorProps {
   tab: PdfTabDocument;
@@ -42,14 +44,34 @@ interface ObjectInspectorProps {
 
 const SWATCH_COLORS = [
   '#111318',
-  '#C81E32',
-  '#1D4ED8',
+  '#2563EB',
   '#0D7A5F',
+  '#DC2626',
   '#B45309',
   '#525866',
   '#FACC15',
   '#FFFFFF',
 ];
+
+const ELEMENT_KIND_LABELS: Record<PdfOverlayElement['kind'], string> = {
+  text: 'Texto',
+  image: 'Imagen',
+  signature: 'Firma',
+  stamp: 'Sello',
+  highlight: 'Resaltado',
+  underline: 'Subrayado',
+  strikeout: 'Tachado',
+  redact: 'Censura',
+  rect: 'Recuadro',
+  ellipse: 'Círculo',
+  arrow: 'Flecha',
+  ink: 'Trazo libre',
+  note: 'Nota',
+  dimension: 'Medida',
+  area: 'Área',
+  callout: 'Marcador',
+  tickmark: 'Verificación',
+};
 
 export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
   tab,
@@ -294,7 +316,7 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
       <aside className="right-inspector">
         <div className="inspector-section">
           <div className="inspector-title">
-            <span>Propiedades · {el.kind.toUpperCase()}</span>
+            <span>Propiedades · {ELEMENT_KIND_LABELS[el.kind] || 'Objeto'}</span>
           </div>
 
           {(el.kind === 'text' ||
@@ -325,13 +347,13 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
             el.kind === 'area') && (
             <div>
               <div className="prop-label" style={{ marginBottom: 4 }}>
-                Subtítulo / Escala / Fecha
+                Subtítulo / Fecha
               </div>
               <input
                 type="text"
                 className="prop-input"
                 style={{ width: '100%' }}
-                placeholder="Ej. Escala 1:100 · Firmado"
+                placeholder="Ej. Aprobado · Dirección General"
                 value={el.subText || ''}
                 onChange={(e) =>
                   onUpdateElement(el.id, { subText: e.target.value }, true)
@@ -342,6 +364,21 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
 
           {el.kind === 'image' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+              {el.dataUrl && (
+                <button
+                  type="button"
+                  className="btn btn-subtle"
+                  style={{ width: '100%', color: 'var(--accent)', fontWeight: 600 }}
+                  onClick={async () => {
+                    if (!el.dataUrl) return;
+                    const cleaned = await removeSignatureBackground(el.dataUrl, undefined, 232);
+                    onUpdateElement(el.id, { dataUrl: cleaned }, true);
+                  }}
+                >
+                  <Wand2 size={14} />
+                  <span>Quitar fondo blanco</span>
+                </button>
+              )}
               <button
                 type="button"
                 className="btn btn-subtle"
@@ -525,7 +562,7 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
               ))}
               <input
                 type="color"
-                value={el.color || '#C81E32'}
+                value={el.color || '#2563EB'}
                 onChange={(e) => onUpdateElement(el.id, { color: e.target.value }, true)}
                 style={{ width: 24, height: 24, border: 'none', padding: 0, cursor: 'pointer' }}
               />

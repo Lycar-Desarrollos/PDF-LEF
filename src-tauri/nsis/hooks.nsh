@@ -2,10 +2,13 @@
   ; Register custom ProgID PDFLEF.Document with the exclusive PDF-LEF sheet icon
   WriteRegStr HKCU "Software\Classes\PDFLEF.Document" "" "Documento PDF (PDF-LEF)"
   WriteRegStr HKCU "Software\Classes\PDFLEF.Document" "FriendlyTypeName" "Documento PDF (PDF-LEF)"
-  WriteRegStr HKCU "Software\Classes\PDFLEF.Document\DefaultIcon" "" "$INSTDIR\icons\pdf-document.ico,0"
+  IfFileExists "$INSTDIR\icons\pdf-document.ico" 0 +3
+    WriteRegStr HKCU "Software\Classes\PDFLEF.Document\DefaultIcon" "" "$INSTDIR\icons\pdf-document.ico,0"
+    Goto +2
+    WriteRegStr HKCU "Software\Classes\PDFLEF.Document\DefaultIcon" "" "$INSTDIR\${MAINBINARYNAME}.exe,0"
   WriteRegStr HKCU "Software\Classes\PDFLEF.Document\shell\open" "" "Abrir con PDF-LEF"
-  WriteRegStr HKCU "Software\Classes\PDFLEF.Document\shell\open" "Icon" "$INSTDIR\PDF-LEF.exe,0"
-  WriteRegStr HKCU "Software\Classes\PDFLEF.Document\shell\open\command" "" '"$INSTDIR\PDF-LEF.exe" "%1"'
+  WriteRegStr HKCU "Software\Classes\PDFLEF.Document\shell\open" "Icon" "$INSTDIR\${MAINBINARYNAME}.exe,0"
+  WriteRegStr HKCU "Software\Classes\PDFLEF.Document\shell\open\command" "" '"$INSTDIR\${MAINBINARYNAME}.exe" "%1"'
 
   ; Register PDFLEF.Document as an official .pdf handler in Windows 10/11
   WriteRegStr HKCU "Software\Classes\.pdf\OpenWithProgids" "PDFLEF.Document" ""

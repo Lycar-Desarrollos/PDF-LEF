@@ -74,7 +74,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       >
         <div className="modal-header">
           <div className="modal-title">
-            <span>Configuración y Preferencias — PDF-LEF Studio Pro</span>
+            <span>Configuración y Preferencias — PDF-LEF</span>
           </div>
           <button type="button" className="btn icon-only" onClick={onClose}>
             <X size={16} />
@@ -132,7 +132,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div>
                     <div className="setting-card-title">Tema Visual de la Aplicación</div>
                     <div className="setting-card-desc">
-                      Elige Blanco Puro Editorial, Oscuro Grafito o sincronizar con Windows 11.
+                      Elige Blanco Puro Editorial, Oscuro Obsidiana o sincronizar con Windows 11.
                     </div>
                   </div>
                   <select
@@ -141,24 +141,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     onChange={(e) => update('theme', e.target.value as ThemePreference)}
                   >
                     <option value="light">Claro Editorial (Blanco Puro)</option>
-                    <option value="dark">Oscuro Grafito Pro</option>
+                    <option value="dark">Oscuro Obsidiana</option>
                     <option value="system">Automático según Windows</option>
                   </select>
                 </div>
 
                 <div className="setting-card">
                   <div>
-                    <div className="setting-card-title">Color de Acento de Marca</div>
+                    <div className="setting-card-title">Color de Acento</div>
                     <div className="setting-card-desc">
-                      Personaliza el color de controles activos, guías de alineación y pestañas.
+                      Personaliza el color de controles activos, guías magnéticas y pestañas.
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     {(
                       [
-                        { id: 'ruby', hex: '#C81E32', label: 'Rubí LEF' },
-                        { id: 'cobalt', hex: '#1D4ED8', label: 'Cobalto' },
+                        { id: 'cobalt', hex: '#2563EB', label: 'Zafiro PDF-LEF' },
                         { id: 'emerald', hex: '#0F766E', label: 'Esmeralda' },
+                        { id: 'ruby', hex: '#C81E32', label: 'Rubí' },
                         { id: 'graphite', hex: '#1F232B', label: 'Monocromo' },
                       ] as Array<{ id: AccentTheme; hex: string; label: string }>
                     ).map((ac) => (
@@ -216,7 +216,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div>
                     <div className="setting-card-title">Mostrar Barra de Estado Inferior</div>
                     <div className="setting-card-desc">
-                      Muestra dimensiones de página, estado offline y conteo de cambios.
+                      Muestra dimensiones de página, estado offline y conteo de páginas.
                     </div>
                   </div>
                   <button
@@ -258,7 +258,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   >
                     <option value="0.9">90%</option>
                     <option value="1">100%</option>
-                    <option value="1.15">115% (Recomendado)</option>
+                    <option value="1.05">105% (Recomendado)</option>
+                    <option value="1.15">115%</option>
                     <option value="1.25">125%</option>
                     <option value="1.5">150%</option>
                   </select>
@@ -298,11 +299,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       update('defaultPaperFilter', e.target.value as PaperFilter)
                     }
                   >
-                    <option value="original">Original del PDF</option>
+                    <option value="original">Papel Original</option>
                     <option value="night">Lectura Nocturna</option>
-                    <option value="sepia">Sepia Editorial</option>
+                    <option value="sepia">Sepia Cálido</option>
                     <option value="contrast">Alto Contraste</option>
-                    <option value="blueprint">Plano Ingeniería (Blueprint Azul)</option>
                   </select>
                 </div>
 
@@ -326,9 +326,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div>
                 <div className="setting-card">
                   <div>
-                    <div className="setting-card-title">Empresa / Despacho para Cajetines y Sellos</div>
+                    <div className="setting-card-title">Organización o Empresa (Opcional)</div>
                     <div className="setting-card-desc">
-                      Aparece automáticamente en Cajetines de Ingeniería y Acuses de Administración.
+                      Se utiliza como referencia opcional en sellos rápidos y propiedades del PDF.
                     </div>
                   </div>
                   <input
@@ -344,7 +344,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div>
                     <div className="setting-card-title">Nombre de Autor en Notas y Firmas</div>
                     <div className="setting-card-desc">
-                      Se incluye en comentarios de revisión y sellos firmados.
+                      Se incluye en comentarios de revisión y notas rápidas.
                     </div>
                   </div>
                   <input
@@ -354,37 +354,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     value={settings.authorName}
                     onChange={(e) => update('authorName', e.target.value)}
                   />
-                </div>
-
-                <div className="setting-card">
-                  <div>
-                    <div className="setting-card-title">Parámetros Contables (IVA % y Moneda)</div>
-                    <div className="setting-card-desc">
-                      Usados por defecto en la Calculadora de Cinta e inserción de cédulas fiscales.
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <input
-                      type="text"
-                      className="prop-input"
-                      style={{ width: 58, textAlign: 'center' }}
-                      value={settings.currencySymbol}
-                      onChange={(e) => update('currencySymbol', e.target.value || '$')}
-                      title="Símbolo de moneda"
-                    />
-                    <input
-                      type="number"
-                      min={0}
-                      max={50}
-                      className="prop-input"
-                      style={{ width: 78 }}
-                      value={settings.defaultTaxRatePct}
-                      onChange={(e) =>
-                        update('defaultTaxRatePct', Number(e.target.value) || 0)
-                      }
-                      title="Tasa de IVA %"
-                    />
-                  </div>
                 </div>
 
                 <div className="setting-card">
@@ -424,7 +393,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div>
                     <div className="setting-card-title">Guías Magnéticas de Alineación</div>
                     <div className="setting-card-desc">
-                      Ajusta automáticamente imágenes y textos al centro exacto de la página al arrastrarlos.
+                      Alinea automáticamente columnas, renglones y centro de página al mover textos o imágenes para que nada se desempareje.
                     </div>
                   </div>
                   <button
@@ -438,7 +407,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div>
                     <div className="setting-card-title">Incluir Fecha Automática al Firmar y Sellar</div>
                     <div className="setting-card-desc">
-                      Agrega fecha verificable debajo de cada firma o sello comercial estampado.
+                      Agrega fecha verificable debajo de cada firma o sello estampado.
                     </div>
                   </div>
                   <button
@@ -475,7 +444,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   >
                     <option value={150}>150 DPI</option>
                     <option value={300}>300 DPI (Impresión)</option>
-                    <option value={600}>600 DPI (Archivo Maestro)</option>
+                    <option value={600}>600 DPI (Alta Definición)</option>
                   </select>
                 </div>
 
@@ -483,7 +452,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div>
                     <div className="setting-card-title">Limpiar Metadatos Ocultos Automáticamente al Guardar</div>
                     <div className="setting-card-desc">
-                      Elimina rastros de autor anterior al exportar documentos para clientes.
+                      Elimina rastros de autor anterior al exportar documentos para terceros.
                     </div>
                   </div>
                   <button
@@ -521,11 +490,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   }}
                 >
                   <strong style={{ color: 'var(--text-primary)' }}>
-                    Integración Nativa con Windows 10 / 11:
+                    App PDF Predeterminada en Windows 10 / 11:
                   </strong>{' '}
-                  El instalador oficial <code>PDF-LEF-Setup.exe</code> registra automáticamente la
-                  asociación de archivos <code>.pdf</code> en el Explorador de Windows para abrir
-                  cualquier documento con doble clic sin conexión a internet.
+                  El instalador oficial <code>PDF-LEF_1.0.0_x64-setup.exe</code> registra{' '}
+                  <code>PDFLEF.Document</code> con el icono de documento oficial PDF-LEF para abrir
+                  cualquier archivo <code>.pdf</code> con doble clic 100% sin conexión.
                 </div>
               </div>
             )}
@@ -535,12 +504,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div style={{ marginBottom: 16 }}>
                   {[
                     ['Abrir archivo PDF', 'Ctrl + O'],
-                    ['Guardar / Exportar PDF editado', 'Ctrl + S'],
+                    ['Guardar PDF editado', 'Ctrl + S'],
+                    ['Imprimir documento', 'Ctrl + P'],
+                    ['Acercar / Alejar / 100% Zoom', 'Ctrl + Rueda / Ctrl + 0'],
                     ['Paleta rápida de comandos', 'Ctrl + K'],
                     ['Deshacer / Rehacer edición', 'Ctrl + Z / Ctrl + Y'],
-                    ['Duplicar texto o imagen seleccionada', 'Ctrl + D'],
+                    ['Mover elemento con precisión', 'Flechas / Shift + Flechas'],
+                    ['Duplicar objeto seleccionado', 'Ctrl + D'],
                     ['Eliminar elemento seleccionado', 'Supr / Backspace'],
-                    ['Abrir Configuración Pro', 'Ctrl + ,'],
                   ].map(([label, keys]) => (
                     <div
                       key={label}

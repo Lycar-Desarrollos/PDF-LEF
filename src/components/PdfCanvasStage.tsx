@@ -55,6 +55,7 @@ interface PdfCanvasStageProps {
   onReorderElementLayer: (id: string, dir: 'front' | 'back') => void;
   onDeleteOverlayElement: (id: string) => void;
   onSwitchToSelectTool: () => void;
+  onChangeZoom?: (zoom: number) => void;
 }
 
 function cssFontForChoice(choice?: FontFamilyChoice): string {
@@ -339,9 +340,26 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
     window.addEventListener('mouseup', onUp);
   };
 
-  // Dragging / Moving an Existing Native PDF Text Block!
-  const startMoveNativeText = (e: React.MouseEvent, item: NativePdfTextItem) => {
+  // Combine extracted native text items with edited versions
+  const baseExtracted = tab.extractedPageTexts[pageDesc.id] || [];
+  const mergedNativeItems: NativePdfTextItem[] =
+    activeTool === 'edit-pdf-text' && isEditableMode
+      ? baseExtracted.map((base) => tab.nativeTextEdits[base.id] || base)
+      : Object.values(tab.nativeTextEdits).filter(
+          (nt) => nt.pageId === pageDesc.id && (nt.modified || nt.deleted)
+        );
+
+  // Dragging / Moving an Existing Native PDF Text Block with Magnetic Row/Column Snap!
+  const startMoveNativeText = (
+    e: React.MouseEvent,
+    item: NativePdfTextItem,
+    focusTarget?: HTMLTextAreaElement | null
+  ) => {
+    if (activeTool === 'pan') return;
     e.stopPropagation();
+    if (focusTarget) {
+      e.preventDefault();
+    }
     onSelectNativeText(item.id);
     onSelectElement(null);
 
@@ -354,14 +372,58 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
     let moved = false;
     let latest = { ...item };
 
+    const peers = mergedNativeItems.filter((p) => !p.deleted && p.id !== item.id);
+
     const onMove = (ev: MouseEvent) => {
       const dx = (ev.clientX - startClientX) / rect.width;
       const dy = (ev.clientY - startClientY) / rect.height;
-      if (Math.abs(dx) > 0.0015 || Math.abs(dy) > 0.0015) moved = true;
+      if (Math.abs(dx) > 0.002 || Math.abs(dy) > 0.002) moved = true;
       if (!moved) return;
 
-      const nx = Math.max(0, Math.min(1 - item.width, ox + dx));
-      const ny = Math.max(0, Math.min(1 - item.height, oy + dy));
+      let nx = Math.max(0.015, Math.min(0.95 - Math.min(0.45, item.width), ox + dx));
+      let ny = Math.max(0.01, Math.min(0.985 - item.height, oy + dy));
+
+      if (settings.snapGuides) {
+        let matchedV: number | null = null;
+        let matchedH: number | null = null;
+
+        // 1. Snap left edge to original X or peer column X
+        if (Math.abs(nx - item.origX) < 0.007) {
+          nx = item.origX;
+          matchedV = nx;
+        } else {
+          for (const peer of peers) {
+            if (Math.abs(nx - peer.x) < 0.007) {
+              nx = peer.x;
+              matchedV = peer.x;
+              break;
+            }
+          }
+        }
+        // Or snap center of page
+        if (matchedV === null && Math.abs(nx + item.width / 2 - 0.5) < 0.01) {
+          nx = Math.max(0.015, 0.5 - item.width / 2);
+          matchedV = 0.5;
+        }
+
+        // 2. Snap baseline/top row to original Y or peer row Y
+        if (Math.abs(ny - item.origY) < 0.006) {
+          ny = item.origY;
+          matchedH = ny;
+        } else {
+          for (const peer of peers) {
+            if (Math.abs(ny - peer.y) < 0.006) {
+              ny = peer.y;
+              matchedH = peer.y;
+              break;
+            }
+          }
+        }
+
+        setSnapV(matchedV);
+        setSnapH(matchedH);
+      }
+
       latest = {
         ...latest,
         x: nx,
@@ -374,8 +436,12 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
     const onUp = () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
+      setSnapV(null);
+      setSnapH(null);
       if (moved) {
         onUpdateNativeTextItem(latest, true);
+      } else if (focusTarget) {
+        focusTarget.focus();
       }
     };
 
@@ -385,6 +451,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
 
   // Page Background Click / Drag-to-Create Tool Handler
   const handleStageMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (activeTool === 'pan') return;
     if (e.target !== overlayRef.current) return;
     onSelectElement(null);
     onSelectNativeText(null);
@@ -445,7 +512,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
       return;
     }
 
-    // Engineering Auto-Numbered Callout Pin
+    // Auto-Numbered Callout Pin
     if (activeTool === 'callout') {
       const num = tab.nextCalloutNumber || 1;
       const newId = `cal_${Date.now()}`;
@@ -461,8 +528,8 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
         opacity: 1,
         zIndex: tab.elements.length + 1,
         calloutNumber: num,
-        text: `Detalle Ing. #${num}`,
-        color: '#C81E32',
+        text: `Nota #${num}`,
+        color: '#2563EB',
       });
       onIncrementCalloutNumber();
       onSelectElement(newId);
@@ -764,15 +831,6 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
     }
   };
 
-  // Combine extracted native text items with edited versions
-  const baseExtracted = tab.extractedPageTexts[pageDesc.id] || [];
-  const mergedNativeItems: NativePdfTextItem[] =
-    activeTool === 'edit-pdf-text' && isEditableMode
-      ? baseExtracted.map((base) => tab.nativeTextEdits[base.id] || base)
-      : Object.values(tab.nativeTextEdits).filter(
-          (nt) => nt.pageId === pageDesc.id && (nt.modified || nt.deleted)
-        );
-
   const pageOverlays = tab.elements
     .filter((el) => el.pageId === pageDesc.id)
     .sort((a, b) => a.zIndex - b.zIndex);
@@ -846,8 +904,29 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
           .filter((nt) => !nt.deleted)
           .map((nt) => {
             const isSelected = selectedNativeTextId === nt.id;
-            const interactive = isEditableMode && activeTool === 'edit-pdf-text';
+            const interactive =
+              isEditableMode && activeTool === 'edit-pdf-text';
             const scaledFontPx = Math.max(8, nt.fontSizePt * tab.zoom);
+            const maxAvailPx = Math.max(48, (0.972 - nt.x) * boxSize.w);
+            const desiredPx = Math.max(
+              nt.text.length * scaledFontPx * 0.56 + 16,
+              nt.width * boxSize.w
+            );
+            const finalWidthPx = Math.min(maxAvailPx, desiredPx);
+            const approxCharsPerLine = Math.max(
+              8,
+              Math.floor(finalWidthPx / Math.max(4.5, scaledFontPx * 0.53))
+            );
+            const visualRows = Math.max(
+              1,
+              nt.text
+                .split('\n')
+                .reduce(
+                  (sum, seg) =>
+                    sum + Math.max(1, Math.ceil(seg.length / approxCharsPerLine)),
+                  0
+                )
+            );
 
             return (
               <div
@@ -858,7 +937,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                 style={{
                   left: `${nt.x * 100}%`,
                   top: `${nt.y * 100}%`,
-                  maxWidth: `${Math.max(5, (0.975 - nt.x) * 100)}%`,
+                  maxWidth: `${Math.max(5, (0.972 - nt.x) * 100)}%`,
                   minHeight: `${nt.height * 100}%`,
                 }}
                 onMouseDown={(e) => {
@@ -912,8 +991,8 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                 )}
 
                 {interactive ? (
-                  <input
-                    type="text"
+                  <textarea
+                    rows={visualRows}
                     className="native-text-editor"
                     value={nt.text}
                     onFocus={() => {
@@ -922,7 +1001,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                     }}
                     onMouseDown={(e) => {
                       if (!isSelected) {
-                        startMoveNativeText(e, nt);
+                        startMoveNativeText(e, nt, e.currentTarget);
                       }
                     }}
                     onChange={(e) =>
@@ -941,10 +1020,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                       fontWeight: nt.fontWeight,
                       fontStyle: nt.fontStyle,
                       color: nt.color,
-                      width: `${Math.min(
-                        Math.max(48, (0.972 - nt.x) * boxSize.w),
-                        Math.max(nt.text.length * scaledFontPx * 0.56 + 14, nt.width * boxSize.w)
-                      )}px`,
+                      width: `${finalWidthPx}px`,
                     }}
                   />
                 ) : (
@@ -956,7 +1032,10 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                       fontStyle: nt.fontStyle,
                       color: nt.color,
                       whiteSpace: 'pre-wrap',
-                      lineHeight: 1.15,
+                      overflowWrap: 'break-word',
+                      display: 'inline-block',
+                      maxWidth: `${maxAvailPx}px`,
+                      lineHeight: 1.18,
                     }}
                   >
                     {nt.text}
@@ -1156,10 +1235,10 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                   style={{
                     width: '100%',
                     height: '100%',
-                    border: `2.5px solid ${el.color || '#C81E32'}`,
+                    border: `2.5px solid ${el.color || '#2563EB'}`,
                     borderRadius: 6,
-                    backgroundColor: `${el.color || '#C81E32'}14`,
-                    color: el.color || '#C81E32',
+                    backgroundColor: `${el.color || '#2563EB'}14`,
+                    color: el.color || '#2563EB',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
@@ -1209,7 +1288,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                     width: '100%',
                     height: '100%',
                     borderBottom: `${Math.max(2, (el.strokeWidth || 2) * tab.zoom)}px solid ${
-                      el.color || '#C81E32'
+                      el.color || '#2563EB'
                     }`,
                   }}
                 />
@@ -1221,7 +1300,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                     width: '100%',
                     height: '50%',
                     borderBottom: `${Math.max(2, (el.strokeWidth || 2) * tab.zoom)}px solid ${
-                      el.color || '#C81E32'
+                      el.color || '#2563EB'
                     }`,
                   }}
                 />
@@ -1252,7 +1331,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                     width: '100%',
                     height: '100%',
                     border: `${Math.max(1.5, (el.strokeWidth || 2) * tab.zoom)}px solid ${
-                      el.color || '#C81E32'
+                      el.color || '#2563EB'
                     }`,
                     backgroundColor:
                       el.backgroundColor && el.backgroundColor !== 'transparent'
@@ -1269,7 +1348,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                     height: '100%',
                     borderRadius: '50%',
                     border: `${Math.max(1.5, (el.strokeWidth || 2) * tab.zoom)}px solid ${
-                      el.color || '#C81E32'
+                      el.color || '#2563EB'
                     }`,
                   }}
                 />
@@ -1288,13 +1367,13 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                     y1="98"
                     x2="96"
                     y2="4"
-                    stroke={el.color || '#C81E32'}
+                    stroke={el.color || '#2563EB'}
                     strokeWidth={Math.max(2, el.strokeWidth || 2.5)}
                   />
                   <polyline
                     points="78,4 97,3 96,22"
                     fill="none"
-                    stroke={el.color || '#C81E32'}
+                    stroke={el.color || '#2563EB'}
                     strokeWidth={Math.max(2, el.strokeWidth || 2.5)}
                   />
                 </svg>
@@ -1334,7 +1413,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                 >
                   <polyline
                     fill="none"
-                    stroke={el.color || '#C81E32'}
+                    stroke={el.color || '#2563EB'}
                     strokeWidth={(el.strokeWidth || 2.5) * 2.2}
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -1471,7 +1550,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                       width: Math.max(20, 20 * tab.zoom),
                       height: Math.max(20, 20 * tab.zoom),
                       borderRadius: '50%',
-                      backgroundColor: el.color || '#C81E32',
+                      backgroundColor: el.color || '#2563EB',
                       color: '#ffffff',
                       fontWeight: 800,
                       fontSize: `${Math.max(9.5, 10 * tab.zoom)}px`,
@@ -1488,7 +1567,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                     <div
                       style={{
                         background: 'rgba(255,255,255,0.95)',
-                        border: `1.2px solid ${el.color || '#C81E32'}`,
+                        border: `1.2px solid ${el.color || '#2563EB'}`,
                         color: '#111318',
                         borderRadius: 4,
                         padding: '2px 6px',
@@ -1694,14 +1773,18 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
 };
 
 export const PdfCanvasStage: React.FC<PdfCanvasStageProps> = (props) => {
-  const { tab, compareTab, workspaceMode } = props;
+  const { tab, compareTab, workspaceMode, onChangeZoom } = props;
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const lastScrolledPageRef = useRef<number>(tab.currentPageIndex);
   const isEditableMode = workspaceMode === 'edit';
 
   // Scroll into view when currentPageIndex changes via toolbar/sidebar
   useEffect(() => {
     const container = scrollRef.current;
     if (!container || tab.viewLayout === 'single') return;
+    if (lastScrolledPageRef.current === tab.currentPageIndex) return;
+    lastScrolledPageRef.current = tab.currentPageIndex;
+
     const pageNode = container.querySelector(
       `[data-page-index="${tab.currentPageIndex}"]`
     ) as HTMLElement | null;
@@ -1713,6 +1796,81 @@ export const PdfCanvasStage: React.FC<PdfCanvasStageProps> = (props) => {
       }
     }
   }, [tab.currentPageIndex, tab.viewLayout]);
+
+  // Ctrl + MouseWheel Smooth Zoom
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container || !onChangeZoom) return;
+
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 0.08 : -0.08;
+      const next = Math.max(0.4, Math.min(3.0, Math.round((tab.zoom + delta) * 100) / 100));
+      if (next !== tab.zoom) {
+        onChangeZoom(next);
+      }
+    };
+
+    container.addEventListener('wheel', onWheel, { passive: false });
+    return () => container.removeEventListener('wheel', onWheel);
+  }, [tab.zoom, onChangeZoom]);
+
+  const handleViewportScroll = () => {
+    const container = scrollRef.current;
+    if (!container || tab.viewLayout === 'single') return;
+    const cRect = container.getBoundingClientRect();
+    const midY = cRect.top + cRect.height * 0.35;
+    const nodes = container.querySelectorAll('[data-page-index]');
+    let bestIdx = tab.currentPageIndex;
+    let bestDist = Infinity;
+
+    nodes.forEach((node) => {
+      const idx = Number(node.getAttribute('data-page-index'));
+      if (Number.isNaN(idx)) return;
+      const r = node.getBoundingClientRect();
+      if (r.top <= midY && r.bottom >= midY) {
+        bestIdx = idx;
+        bestDist = 0;
+      } else {
+        const dist = Math.min(Math.abs(r.top - midY), Math.abs(r.bottom - midY));
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestIdx = idx;
+        }
+      }
+    });
+
+    if (bestIdx !== tab.currentPageIndex) {
+      lastScrolledPageRef.current = bestIdx;
+      props.onCurrentPageVisible(bestIdx);
+    }
+  };
+
+  const handleViewportPanStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (props.activeTool !== 'pan' && e.button !== 1) return;
+    const container = scrollRef.current;
+    if (!container) return;
+    e.preventDefault();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const origLeft = container.scrollLeft;
+    const origTop = container.scrollTop;
+    container.style.cursor = 'grabbing';
+
+    const onMove = (ev: MouseEvent) => {
+      container.scrollLeft = origLeft - (ev.clientX - startX);
+      container.scrollTop = origTop - (ev.clientY - startY);
+    };
+    const onUp = () => {
+      container.style.cursor = '';
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
 
   const visiblePages =
     tab.viewLayout === 'single'
@@ -1734,6 +1892,9 @@ export const PdfCanvasStage: React.FC<PdfCanvasStageProps> = (props) => {
       <div
         ref={scrollRef}
         className={`canvas-viewport ${tab.viewLayout === 'dual' ? 'dual-grid' : ''}`}
+        style={props.activeTool === 'pan' ? { cursor: 'grab' } : undefined}
+        onScroll={handleViewportScroll}
+        onMouseDown={handleViewportPanStart}
       >
         {visiblePages.map(({ pageDesc, idx }) => (
           <InteractivePageCard

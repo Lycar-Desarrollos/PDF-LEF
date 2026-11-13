@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ArrowUpRight,
   BookOpen,
@@ -86,6 +86,8 @@ const QUICK_STAMPS = [
   { label: 'URGENTE', color: '#B45309' },
 ];
 
+const ZOOM_PRESETS = [50, 75, 90, 100, 105, 115, 125, 150, 175, 200, 250];
+
 export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
   tab,
   workspaceMode,
@@ -112,14 +114,45 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
 }) => {
   const [stampMenuOpen, setStampMenuOpen] = useState(false);
   const [proMenuOpen, setProMenuOpen] = useState(false);
+  const proMenuRef = useRef<HTMLDivElement | null>(null);
+  const stampMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!proMenuOpen && !stampMenuOpen) return;
+    const onPointerDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (proMenuOpen && proMenuRef.current && !proMenuRef.current.contains(target)) {
+        setProMenuOpen(false);
+      }
+      if (stampMenuOpen && stampMenuRef.current && !stampMenuRef.current.contains(target)) {
+        setStampMenuOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setProMenuOpen(false);
+        setStampMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [proMenuOpen, stampMenuOpen]);
 
   const totalPages = tab.pages.length;
   const currentNum = tab.currentPageIndex + 1;
+  const currentZoomPct = Math.round(tab.zoom * 100);
+  const zoomOptions = ZOOM_PRESETS.includes(currentZoomPct)
+    ? ZOOM_PRESETS
+    : [...ZOOM_PRESETS, currentZoomPct].sort((a, b) => a - b);
 
   return (
     <div className="studio-header">
       {/* Primary Minimalist Acrobat + Thunderbird Mode Bar */}
-      <div className="mode-bar" style={{ overflowX: 'auto' }}>
+      <div className="mode-bar">
         <div className="toolbar-group">
           <div className="mode-pills">
             <button
@@ -213,7 +246,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
               type="button"
               className="btn icon-only"
               onClick={() => onChangeZoom(Math.max(0.4, Math.round((tab.zoom - 0.1) * 100) / 100))}
-              title="Alejar zoom"
+              title="Alejar zoom (Ctrl+-)"
             >
               <ZoomOut size={15} />
             </button>
@@ -221,10 +254,10 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
               aria-label="Nivel de zoom"
               className="prop-select"
               style={{ height: 28, fontSize: 12, fontWeight: 600, padding: '0 6px' }}
-              value={String(Math.round(tab.zoom * 100))}
+              value={String(currentZoomPct)}
               onChange={(e) => onChangeZoom(Number(e.target.value) / 100)}
             >
-              {[50, 75, 90, 100, 105, 115, 125, 150, 175, 200, 250].map((pct) => (
+              {zoomOptions.map((pct) => (
                 <option key={pct} value={String(pct)}>
                   {pct}%
                 </option>
@@ -234,7 +267,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
               type="button"
               className="btn icon-only"
               onClick={() => onChangeZoom(Math.min(3.0, Math.round((tab.zoom + 0.1) * 100) / 100))}
-              title="Acercar zoom"
+              title="Acercar zoom (Ctrl++)"
             >
               <ZoomIn size={15} />
             </button>
@@ -242,7 +275,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
               type="button"
               className="btn icon-only"
               onClick={() => onChangeZoom(1.0)}
-              title="Ajustar al 100% limpio"
+              title="Ajustar al 100% limpio (Ctrl+0)"
             >
               <Maximize2 size={14} />
             </button>
@@ -303,11 +336,12 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
             <span>Firmar</span>
           </button>
 
-          <div style={{ position: 'relative' }}>
+          <div ref={proMenuRef} style={{ position: 'relative' }}>
             <button
               type="button"
               id="pro-tools-dropdown-btn"
-              className="btn btn-subtle"
+              aria-expanded={proMenuOpen}
+              className={`btn btn-subtle ${proMenuOpen ? 'active' : ''}`}
               onClick={() => {
                 setProMenuOpen((v) => !v);
                 setStampMenuOpen(false);
@@ -320,6 +354,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
 
             {proMenuOpen && (
               <div
+                role="menu"
                 style={{
                   position: 'absolute',
                   right: 0,
@@ -330,9 +365,8 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
                   borderRadius: 'var(--radius-md)',
                   boxShadow: 'var(--shadow-lg)',
                   padding: 6,
-                  zIndex: 120,
+                  zIndex: 220,
                 }}
-                onMouseLeave={() => setProMenuOpen(false)}
               >
                 {[
                   { kind: 'logos' as ToolModalKind, icon: <Building2 size={14} />, label: 'Mis Logos Guardados' },
@@ -349,6 +383,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
                   <button
                     key={item.kind}
                     type="button"
+                    role="menuitem"
                     className="btn"
                     style={{ width: '100%', justifyContent: 'flex-start', height: 32 }}
                     onClick={() => {
@@ -363,6 +398,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
                 <div style={{ height: 1, background: 'var(--border-subtle)', margin: '4px 0' }} />
                 <button
                   type="button"
+                  role="menuitem"
                   className="btn"
                   style={{
                     width: '100%',
@@ -408,7 +444,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
       {/* Unified General-Purpose Acrobat Pro Plus Edit Bar */}
       {workspaceMode === 'edit' && (
         <div className="edit-subbar">
-          <div className="toolbar-group">
+          <div className="toolbar-group" style={{ flexWrap: 'wrap' }}>
             <button
               type="button"
               className={`tool-chip ${activeTool === 'select' ? 'active' : ''}`}
@@ -558,10 +594,12 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
             </button>
 
             {/* Quick Stamps Dropdown */}
-            <div style={{ position: 'relative' }}>
+            <div ref={stampMenuRef} style={{ position: 'relative' }}>
               <button
                 type="button"
-                className="tool-chip"
+                id="quick-stamps-dropdown-btn"
+                aria-expanded={stampMenuOpen}
+                className={`tool-chip ${stampMenuOpen ? 'active' : ''}`}
                 onClick={() => {
                   setStampMenuOpen((v) => !v);
                   setProMenuOpen(false);
@@ -574,6 +612,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
 
               {stampMenuOpen && (
                 <div
+                  role="menu"
                   style={{
                     position: 'absolute',
                     left: 0,
@@ -584,14 +623,14 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
                     borderRadius: 'var(--radius-md)',
                     boxShadow: 'var(--shadow-lg)',
                     padding: 6,
-                    zIndex: 130,
+                    zIndex: 230,
                   }}
-                  onMouseLeave={() => setStampMenuOpen(false)}
                 >
                   {QUICK_STAMPS.map((st) => (
                     <button
                       key={st.label}
                       type="button"
+                      role="menuitem"
                       className="btn"
                       style={{
                         width: '100%',

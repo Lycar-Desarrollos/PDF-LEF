@@ -392,6 +392,29 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
 
                 {tab.elements.map((el) => {
                   const pIdx = tab.pages.findIndex((p) => p.id === el.pageId);
+                  const kindMap: Record<string, string> = {
+                    text: 'Texto',
+                    image: 'Imagen',
+                    signature: 'Firma',
+                    stamp: 'Sello',
+                    highlight: 'Resaltado',
+                    underline: 'Subrayado',
+                    strikeout: 'Tachado',
+                    redact: 'Censura',
+                    rect: 'Recuadro',
+                    ellipse: 'Círculo',
+                    arrow: 'Flecha',
+                    ink: 'Trazo libre',
+                    note: 'Nota',
+                  };
+                  const kindLabel = kindMap[el.kind] || 'Elemento';
+                  const previewLabel =
+                    el.kind === 'image'
+                      ? 'Imagen en página'
+                      : el.kind === 'signature'
+                      ? 'Firma sin fondo'
+                      : el.text || kindLabel;
+
                   return (
                     <div
                       key={el.id}
@@ -414,7 +437,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     >
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)' }}>
-                          {el.kind.toUpperCase()} · Pág. {pIdx + 1}
+                          {kindLabel} · Pág. {pIdx + 1}
                         </div>
                         <div
                           style={{
@@ -424,7 +447,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          {el.text || el.kind}
+                          {previewLabel}
                         </div>
                       </div>
                       <button

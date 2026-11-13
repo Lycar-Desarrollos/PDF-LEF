@@ -686,6 +686,32 @@ export const App: React.FC = () => {
         setLeftPanel('search');
         return;
       }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p' && activeTab) {
+        e.preventDefault();
+        handlePrintActiveTab();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+') && activeTab) {
+        e.preventDefault();
+        mutateActiveTab((t) => ({
+          ...t,
+          zoom: Math.min(3.0, Math.round((t.zoom + 0.1) * 100) / 100),
+        }));
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '-' && activeTab) {
+        e.preventDefault();
+        mutateActiveTab((t) => ({
+          ...t,
+          zoom: Math.max(0.4, Math.round((t.zoom - 0.1) * 100) / 100),
+        }));
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '0' && activeTab) {
+        e.preventDefault();
+        mutateActiveTab((t) => ({ ...t, zoom: 1.0 }));
+        return;
+      }
 
       if (isTyping) return;
 
@@ -761,6 +787,32 @@ export const App: React.FC = () => {
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElementId) {
         e.preventDefault();
         handleDeleteOverlayElement(selectedElementId);
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedNativeTextId) {
+        e.preventDefault();
+        mutateActiveTab((t) => {
+          let base = t.nativeTextEdits[selectedNativeTextId];
+          if (!base) {
+            for (const list of Object.values(t.extractedPageTexts)) {
+              const found = list.find((it) => it.id === selectedNativeTextId);
+              if (found) {
+                base = found;
+                break;
+              }
+            }
+          }
+          if (!base) return t;
+          const deletedItem: NativePdfTextItem = {
+            ...base,
+            deleted: true,
+            modified: true,
+          };
+          return {
+            ...t,
+            isModified: true,
+            nativeTextEdits: { ...t.nativeTextEdits, [deletedItem.id]: deletedItem },
+          };
+        }, true);
+        setSelectedNativeTextId(null);
       }
     };
 
@@ -773,6 +825,7 @@ export const App: React.FC = () => {
     mutateActiveTab,
     handleOpenPdfDialog,
     handleSaveExportPdf,
+    handlePrintActiveTab,
     handleUndo,
     handleRedo,
     handleDuplicateOverlayElement,
@@ -1258,6 +1311,7 @@ export const App: React.FC = () => {
                   }
                   onDeleteOverlayElement={handleDeleteOverlayElement}
                   onSwitchToSelectTool={() => setActiveTool('select')}
+                  onChangeZoom={(z) => mutateActiveTab((t) => ({ ...t, zoom: z }))}
                 />
 
                 {workspaceMode === 'edit' && (
@@ -1336,8 +1390,7 @@ export const App: React.FC = () => {
             {activeTab && workspaceMode !== 'home' && (
               <span>
                 {activeTab.fileName} · Página {activeTab.currentPageIndex + 1} de{' '}
-                {activeTab.pages.length} · Zoom {Math.round(activeTab.zoom * 100)}% · Escala{' '}
-                {activeTab.scaleCalibration.preset}
+                {activeTab.pages.length} · Zoom {Math.round(activeTab.zoom * 100)}%
               </span>
             )}
           </div>
@@ -1355,7 +1408,7 @@ export const App: React.FC = () => {
                 mm
               </span>
             )}
-            <span>PDF-LEF Studio Pro v1.0 · Windows Native Edition</span>
+            <span>PDF-LEF v1.0 · Edición Nativa Windows</span>
           </div>
         </footer>
       )}

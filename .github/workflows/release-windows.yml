@@ -49,12 +49,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'PDF-LEF Studio Pro ${{ github.ref_name }}'
+          releaseName: 'PDF-LEF ${{ github.ref_name }}'
           releaseBody: |
-            ## PDF-LEF Studio Pro para Windows 10 y Windows 11
+            ## PDF-LEF para Windows 10 y Windows 11
             Descarga el instalador oficial **`PDF-LEF_1.0.0_x64-setup.exe`** abajo e instálalo en segundos.
             - **100% Local Offline:** Tus documentos jamás salen de tu PC.
-            - **Edición directa:** Edita y mueve textos existentes del PDF, inserta imágenes, firma sin fondo blanco y organiza páginas.
+            - **Edición directa:** Edita y mueve textos existentes del PDF con guías magnéticas, inserta imágenes sin recuadros, firma sin fondo blanco y organiza páginas.
+            - **App predeterminada e icono PDF propio:** Registra `PDFLEF.Document` en Windows 10/11 con diseño exclusivo para todos tus archivos `.pdf`.
           releaseDraft: false
           prerelease: false
           args: --target x86_64-pc-windows-msvc
@@ -70,5 +71,6 @@ jobs:
           path: |
             src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
             src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+            src-tauri/target/x86_64-pc-windows-msvc/release/PDF-LEF.exe
             src-tauri/target/x86_64-pc-windows-msvc/release/pdf-lef.exe
           if-no-files-found: warn

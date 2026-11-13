@@ -56,6 +56,80 @@ function sanitizeWinAnsi(text: string): string {
   return out;
 }
 
+/**
+ * Wraps WinAnsi-sanitized text so neither edited native lines nor added text boxes
+ * ever overflow past maxWidthPt on the exported PDF page.
+ */
+export function wrapPdfTextToWidth(
+  text: string,
+  font: PDFFont,
+  fontSize: number,
+  maxWidthPt: number
+): string[] {
+  const safe = sanitizeWinAnsi(text);
+  if (!safe) return [];
+  const limit = Math.max(24, maxWidthPt);
+  const paragraphs = safe.replace(/\r\n/g, '\n').split('\n');
+  const wrapped: string[] = [];
+
+  for (const para of paragraphs) {
+    if (!para) {
+      wrapped.push('');
+      continue;
+    }
+    if (font.widthOfTextAtSize(para, fontSize) <= limit) {
+      wrapped.push(para);
+      continue;
+    }
+
+    const words = para.split(/\s+/).filter((w) => w.length > 0);
+    let current = '';
+
+    const pushLongWord = (word: string) => {
+      let chunk = '';
+      for (const ch of word) {
+        const candidate = chunk + ch;
+        if (chunk && font.widthOfTextAtSize(candidate, fontSize) > limit) {
+          wrapped.push(chunk);
+          chunk = ch;
+        } else {
+          chunk = candidate;
+        }
+      }
+      current = chunk;
+    };
+
+    for (const word of words) {
+      if (!current) {
+        if (font.widthOfTextAtSize(word, fontSize) <= limit) {
+          current = word;
+        } else {
+          pushLongWord(word);
+        }
+      } else {
+        const candidate = `${current} ${word}`;
+        if (font.widthOfTextAtSize(candidate, fontSize) <= limit) {
+          current = candidate;
+        } else {
+          wrapped.push(current);
+          if (font.widthOfTextAtSize(word, fontSize) <= limit) {
+            current = word;
+          } else {
+            current = '';
+            pushLongWord(word);
+          }
+        }
+      }
+    }
+
+    if (current) {
+      wrapped.push(current);
+    }
+  }
+
+  return wrapped;
+}
+
 interface EmbeddedStandardFontSet {
   sans: { normal: PDFFont; bold: PDFFont; italic: PDFFont; boldItalic: PDFFont };
   serif: { normal: PDFFont; bold: PDFFont; italic: PDFFont; boldItalic: PDFFont };
@@ -200,9 +274,11 @@ export async function compileTabToPdfBytes(
       if (!nt.deleted && nt.text.trim()) {
         const chosenFont = pickPdfFont(fonts, nt.fontFamily, nt.fontWeight, nt.fontStyle);
         const fSize = Math.max(6, nt.fontSizePt || 11);
-        const lines = sanitizeWinAnsi(nt.text).split('\n');
+        const maxNativeW = Math.max(40, (0.972 - nt.x) * pw);
+        const lines = wrapPdfTextToWidth(nt.text, chosenFont, fSize, maxNativeW);
         let lineY = ph - nt.y * ph - fSize * 0.88;
         for (const line of lines) {
+          if (lineY < 8) break;
           pdfPage.drawText(line, {
             x: nt.x * pw,
             y: lineY,
@@ -241,7 +317,7 @@ export async function compileTabToPdfBytes(
           start: { x: boxX, y: boxY + 2 },
           end: { x: boxX + boxW, y: boxY + 2 },
           thickness: Math.max(1.5, el.strokeWidth || 2),
-          color: hexToPdfRgb(el.color, '#C81E32'),
+          color: hexToPdfRgb(el.color, '#2563EB'),
           opacity,
         });
       } else if (el.kind === 'strikeout') {
@@ -249,7 +325,7 @@ export async function compileTabToPdfBytes(
           start: { x: boxX, y: boxY + boxH / 2 },
           end: { x: boxX + boxW, y: boxY + boxH / 2 },
           thickness: Math.max(1.5, el.strokeWidth || 2),
-          color: hexToPdfRgb(el.color, '#C81E32'),
+          color: hexToPdfRgb(el.color, '#DC2626'),
           opacity,
         });
       } else if (el.kind === 'redact') {
@@ -267,7 +343,7 @@ export async function compileTabToPdfBytes(
           y: boxY,
           width: boxW,
           height: boxH,
-          borderColor: hexToPdfRgb(el.color, '#C81E32'),
+          borderColor: hexToPdfRgb(el.color, '#2563EB'),
           borderWidth: el.strokeWidth || 2,
           color:
             el.backgroundColor && el.backgroundColor !== 'transparent'
@@ -283,7 +359,7 @@ export async function compileTabToPdfBytes(
           y: boxY + boxH / 2,
           xScale: boxW / 2,
           yScale: boxH / 2,
-          borderColor: hexToPdfRgb(el.color, '#C81E32'),
+          borderColor: hexToPdfRgb(el.color, '#2563EB'),
           borderWidth: el.strokeWidth || 2,
           borderOpacity: opacity,
         });
@@ -292,7 +368,7 @@ export async function compileTabToPdfBytes(
         const startY = boxY + boxH;
         const endX = boxX + boxW;
         const endY = boxY;
-        const strokeCol = hexToPdfRgb(el.color, '#C81E32');
+        const strokeCol = hexToPdfRgb(el.color, '#2563EB');
         const thick = el.strokeWidth || 2.2;
         pdfPage.drawLine({
           start: { x: startX, y: startY },
@@ -324,7 +400,7 @@ export async function compileTabToPdfBytes(
           opacity,
         });
       } else if (el.kind === 'ink' && el.points && el.points.length > 1) {
-        const strokeCol = hexToPdfRgb(el.color, '#C81E32');
+        const strokeCol = hexToPdfRgb(el.color, '#2563EB');
         const thick = el.strokeWidth || 2.2;
         for (let i = 1; i < el.points.length; i++) {
           const p0 = el.points[i - 1];
@@ -361,9 +437,10 @@ export async function compileTabToPdfBytes(
         }
         const font = pickPdfFont(fonts, el.fontFamily, el.fontWeight, el.fontStyle);
         const fSize = Math.max(6, el.fontSizePt || 12);
-        const lines = sanitizeWinAnsi(el.text || '').split('\n');
+        const lines = wrapPdfTextToWidth(el.text || '', font, fSize, Math.max(24, boxW - 8));
         let curY = boxY + boxH - fSize - 4;
         for (const line of lines) {
+          if (curY < 6) break;
           const lineW = font.widthOfTextAtSize(line, fSize);
           let drawX = boxX + 4;
           if (el.textAlign === 'center') drawX = boxX + (boxW - lineW) / 2;
@@ -379,7 +456,7 @@ export async function compileTabToPdfBytes(
           curY -= fSize * 1.24;
         }
       } else if (el.kind === 'stamp') {
-        const stampCol = hexToPdfRgb(el.color, '#C81E32');
+        const stampCol = hexToPdfRgb(el.color, '#2563EB');
         pdfPage.drawRectangle({
           x: boxX,
           y: boxY,
@@ -457,6 +534,30 @@ export async function compileTabToPdfBytes(
           font: fonts.sans.bold,
           color: rgb(1, 1, 1),
         });
+        const noteBody = sanitizeWinAnsi(el.text || '');
+        if (noteBody) {
+          const noteLines = wrapPdfTextToWidth(noteBody, fonts.sans.normal, 8.5, Math.max(80, pw - boxX - 36));
+          const firstLine = noteLines[0] || '';
+          const lw = fonts.sans.normal.widthOfTextAtSize(firstLine, 8.5);
+          pdfPage.drawRectangle({
+            x: boxX + 21,
+            y: boxY + 1,
+            width: lw + 10,
+            height: 16,
+            color: rgb(1, 0.99, 0.92),
+            borderColor: noteCol,
+            borderWidth: 0.9,
+            opacity: opacity * 0.96,
+          });
+          pdfPage.drawText(firstLine, {
+            x: boxX + 26,
+            y: boxY + 5,
+            size: 8.5,
+            font: fonts.sans.normal,
+            color: hexToPdfRgb('#1E293B'),
+            opacity,
+          });
+        }
       } else if (el.kind === 'dimension') {
         const p0 = el.points?.[0] || { x: el.x, y: el.y + el.height / 2 };
         const p1 = el.points?.[1] || { x: el.x + el.width, y: el.y + el.height / 2 };
@@ -522,7 +623,7 @@ export async function compileTabToPdfBytes(
           });
         }
       } else if (el.kind === 'callout') {
-        const cCol = hexToPdfRgb(el.color, '#C81E32');
+        const cCol = hexToPdfRgb(el.color, '#2563EB');
         const cx = boxX + 11;
         const cy = boxY + boxH - 11;
         pdfPage.drawCircle({ x: cx, y: cy, size: 10, color: cCol, opacity });
@@ -575,7 +676,7 @@ export async function compileTabToPdfBytes(
     if (tab.watermark.enabled && tab.watermark.text.trim()) {
       const wmText = sanitizeWinAnsi(tab.watermark.text.trim());
       const wmSize = tab.watermark.fontSizePt || 46;
-      const wmCol = hexToPdfRgb(tab.watermark.color, '#C81E32');
+      const wmCol = hexToPdfRgb(tab.watermark.color, '#2563EB');
       const wmOp = tab.watermark.opacity ?? 0.14;
       const wmRot = degrees(tab.watermark.rotation || -35);
 
@@ -669,7 +770,7 @@ export async function compileTabToPdfBytes(
     outDoc.setAuthor('');
     outDoc.setSubject('');
     outDoc.setKeywords([]);
-    outDoc.setCreator('PDF-LEF Studio Pro');
+    outDoc.setCreator('PDF-LEF');
     outDoc.setProducer('PDF-LEF Local Engine');
   } else {
     outDoc.setTitle(tab.metadata.title || '');
@@ -683,7 +784,7 @@ export async function compileTabToPdfBytes(
             .filter(Boolean)
         : []
     );
-    outDoc.setCreator(tab.metadata.creator || 'PDF-LEF Studio Pro');
+    outDoc.setCreator(tab.metadata.creator || 'PDF-LEF');
     outDoc.setProducer('PDF-LEF Native Engine');
   }
 
@@ -694,7 +795,7 @@ export async function mergeMultiplePdfBuffers(
   items: Array<{ fileName: string; bytes: Uint8Array }>
 ): Promise<Uint8Array> {
   const merged = await PDFDocument.create();
-  merged.setCreator('PDF-LEF Studio Pro');
+  merged.setCreator('PDF-LEF');
   for (const item of items) {
     const cloned = new Uint8Array(item.bytes.byteLength);
     cloned.set(item.bytes);

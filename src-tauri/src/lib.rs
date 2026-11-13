@@ -17,8 +17,9 @@ fn write_pdf_bytes(path: String, bytes: Vec<u8>) -> Result<(), String> {
 #[tauri::command]
 fn get_startup_pdf_path() -> Option<String> {
     for arg in std::env::args().skip(1) {
-        if arg.to_lowercase().ends_with(".pdf") && Path::new(&arg).exists() {
-            return Some(arg);
+        let cleaned = arg.trim_matches('"').trim_start_matches(r"\\?\").to_string();
+        if cleaned.to_lowercase().ends_with(".pdf") && Path::new(&cleaned).exists() {
+            return Some(cleaned);
         }
     }
     None
@@ -32,7 +33,8 @@ fn register_default_pdf_app(_app: tauri::AppHandle) -> Result<String, String> {
 
         let exe_path = std::env::current_exe()
             .map_err(|e| format!("No se pudo obtener la ruta del ejecutable: {}", e))?;
-        let exe_str = exe_path.to_string_lossy().to_string();
+        let exe_raw = exe_path.to_string_lossy();
+        let exe_str = exe_raw.trim_start_matches(r"\\?\").to_string();
 
         let doc_icon_str = _app
             .path()
@@ -40,14 +42,21 @@ fn register_default_pdf_app(_app: tauri::AppHandle) -> Result<String, String> {
             .ok()
             .map(|dir| dir.join("icons").join("pdf-document.ico"))
             .filter(|p| p.exists())
-            .map(|p| format!("{},0", p.to_string_lossy()))
+            .map(|p| {
+                let raw = p.to_string_lossy();
+                format!("{},0", raw.trim_start_matches(r"\\?\"))
+            })
             .unwrap_or_else(|| format!("{},0", exe_str));
 
         let open_cmd = format!("\"{}\" \"%1\"", exe_str);
+        let open_icon = format!("{},0", exe_str);
 
         let reg_commands: Vec<Vec<&str>> = vec![
             vec!["add", r"HKCU\Software\Classes\PDFLEF.Document", "/ve", "/d", "Documento PDF (PDF-LEF)", "/f"],
+            vec!["add", r"HKCU\Software\Classes\PDFLEF.Document", "/v", "FriendlyTypeName", "/d", "Documento PDF (PDF-LEF)", "/f"],
             vec!["add", r"HKCU\Software\Classes\PDFLEF.Document\DefaultIcon", "/ve", "/d", &doc_icon_str, "/f"],
+            vec!["add", r"HKCU\Software\Classes\PDFLEF.Document\shell\open", "/ve", "/d", "Abrir con PDF-LEF", "/f"],
+            vec!["add", r"HKCU\Software\Classes\PDFLEF.Document\shell\open", "/v", "Icon", "/d", &open_icon, "/f"],
             vec!["add", r"HKCU\Software\Classes\PDFLEF.Document\shell\open\command", "/ve", "/d", &open_cmd, "/f"],
             vec!["add", r"HKCU\Software\Classes\.pdf\OpenWithProgids", "/v", "PDFLEF.Document", "/t", "REG_NONE", "/f"],
             vec!["add", r"HKCU\Software\PDF-LEF\Capabilities", "/v", "ApplicationName", "/d", "PDF-LEF", "/f"],
@@ -59,6 +68,9 @@ fn register_default_pdf_app(_app: tauri::AppHandle) -> Result<String, String> {
         for args in reg_commands {
             let _ = Command::new("reg").args(&args).output();
         }
+
+        // Refresh Windows Explorer icon cache immediately
+        let _ = Command::new("ie4uinit.exe").arg("-show").spawn();
 
         // Open Windows 10/11 Default Apps panel directly so user confirms PDF-LEF in 1 click
         let _ = Command::new("cmd")

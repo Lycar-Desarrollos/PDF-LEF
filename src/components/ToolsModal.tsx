@@ -147,7 +147,7 @@ export const ToolsModal: React.FC<ToolsModalProps> = ({
       author: '',
       subject: '',
       keywords: '',
-      creator: 'PDF-LEF Studio Pro',
+      creator: 'PDF-LEF',
       producer: 'PDF-LEF Native Engine',
     }
   );
@@ -1262,7 +1262,7 @@ export const ToolsModal: React.FC<ToolsModalProps> = ({
                       author: '',
                       subject: '',
                       keywords: '',
-                      creator: 'PDF-LEF Studio Pro',
+                      creator: 'PDF-LEF',
                       producer: 'PDF-LEF Local Engine',
                     };
                     setMeta(cleaned);

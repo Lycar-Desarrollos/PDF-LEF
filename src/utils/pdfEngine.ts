@@ -1,5 +1,4 @@
-import * as pdfjsLib from 'pdfjs-dist';
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import type {
   AppSettings,
@@ -12,7 +11,10 @@ import type {
   ScaleCalibration,
 } from '../types/pdf';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  '../../node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs',
+  import.meta.url
+).toString();
 
 const docProxyCache = new Map<string, Promise<pdfjsLib.PDFDocumentProxy>>();
 
@@ -27,9 +29,18 @@ export function getPdfJsProxy(
   const cloned = new Uint8Array(bytes.byteLength);
   cloned.set(bytes);
 
+  const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
+  const nodeFontsPath = !isBrowser
+    ? new URL(/* @vite-ignore */ '.', import.meta.url).pathname.replace(
+        /\/src\/utils\/$/,
+        '/node_modules/pdfjs-dist/standard_fonts/'
+      )
+    : undefined;
   const loadingTask = pdfjsLib.getDocument({
     data: cloned,
-    useSystemFonts: true,
+    useSystemFonts: isBrowser,
+    disableFontFace: !isBrowser,
+    ...(nodeFontsPath ? { standardFontDataUrl: nodeFontsPath } : {}),
   });
   const promise = loadingTask.promise;
   docProxyCache.set(sourceId, promise);
@@ -44,7 +55,7 @@ export async function renderPageToCanvas(
   scale: number,
   hiDpi = true
 ): Promise<{ cssWidth: number; cssHeight: number }> {
-  const dpr = hiDpi ? Math.min(window.devicePixelRatio || 1, 2.25) : 1;
+  const dpr = hiDpi && typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2.25) : 1;
 
   if (pageDesc.sourceId === 'blank' || !sourceBytes) {
     const rot = ((pageDesc.rotation % 360) + 360) % 360;
@@ -126,17 +137,21 @@ export async function extractNativeEditableTexts(
   const viewport = page.getViewport({ scale: 1, rotation: totalRotation });
   const textContent = await page.getTextContent();
 
-  // Optional subtle background color sampling at 0.5x scale
-  const sampleCanvas = document.createElement('canvas');
+  // Optional subtle background color sampling at 0.5x scale when DOM canvas is available
   const sampleScale = 0.5;
-  const sampleVp = page.getViewport({ scale: sampleScale, rotation: totalRotation });
-  sampleCanvas.width = Math.max(1, Math.floor(sampleVp.width));
-  sampleCanvas.height = Math.max(1, Math.floor(sampleVp.height));
-  const sCtx = sampleCanvas.getContext('2d', { willReadFrequently: true });
-  if (sCtx) {
-    sCtx.fillStyle = '#ffffff';
-    sCtx.fillRect(0, 0, sampleCanvas.width, sampleCanvas.height);
-    await page.render({ canvasContext: sCtx, canvas: sampleCanvas, viewport: sampleVp }).promise;
+  let sampleCanvas: HTMLCanvasElement | null = null;
+  let sCtx: CanvasRenderingContext2D | null = null;
+  if (typeof document !== 'undefined') {
+    sampleCanvas = document.createElement('canvas');
+    const sampleVp = page.getViewport({ scale: sampleScale, rotation: totalRotation });
+    sampleCanvas.width = Math.max(1, Math.floor(sampleVp.width));
+    sampleCanvas.height = Math.max(1, Math.floor(sampleVp.height));
+    sCtx = sampleCanvas.getContext('2d', { willReadFrequently: true });
+    if (sCtx) {
+      sCtx.fillStyle = '#ffffff';
+      sCtx.fillRect(0, 0, sampleCanvas.width, sampleCanvas.height);
+      await page.render({ canvasContext: sCtx, canvas: sampleCanvas, viewport: sampleVp }).promise;
+    }
   }
 
   interface RawFragment {
@@ -209,7 +224,7 @@ export async function extractNativeEditableTexts(
 
     let bgPatchColor = '#ffffff';
     let textColor = '#14161a';
-    if (sCtx) {
+    if (sCtx && sampleCanvas) {
       // Sample corner pixel slightly outside glyph bounding box for exact paper tint
       const sx = Math.max(0, Math.min(sampleCanvas.width - 1, Math.floor((m.left - 2) * sampleScale)));
       const sy = Math.max(0, Math.min(sampleCanvas.height - 1, Math.floor((m.top - 2) * sampleScale)));
@@ -264,7 +279,7 @@ export async function loadPdfIntoTabDocument(
     author: '',
     subject: '',
     keywords: '',
-    creator: 'PDF-LEF Studio Pro',
+    creator: 'PDF-LEF',
     producer: 'PDF-LEF Native Engine',
   };
 
@@ -276,7 +291,7 @@ export async function loadPdfIntoTabDocument(
       author: info.Author || '',
       subject: info.Subject || '',
       keywords: info.Keywords || '',
-      creator: info.Creator || 'PDF-LEF Studio Pro',
+      creator: info.Creator || 'PDF-LEF',
       producer: info.Producer || 'PDF-LEF Native Engine',
     };
   } catch {
@@ -312,7 +327,7 @@ export async function loadPdfIntoTabDocument(
     watermark: {
       enabled: false,
       text: 'CONFIDENCIAL',
-      color: '#C81E32',
+      color: '#2563EB',
       opacity: 0.14,
       fontSizePt: 48,
       rotation: -35,
@@ -406,13 +421,32 @@ export async function searchInTabDocument(
     const pd = tab.pages[idx];
     let fullText = '';
 
-    if (pd.sourceId !== 'blank' && tab.sourceBuffers[pd.sourceId]) {
+    const extracted = tab.extractedPageTexts[pd.id];
+    const pageEdits = Object.values(tab.nativeTextEdits).filter(
+      (nt) => nt.pageId === pd.id && (nt.modified || nt.deleted)
+    );
+
+    if (extracted && extracted.length > 0) {
+      fullText = extracted
+        .map((base) => tab.nativeTextEdits[base.id] || base)
+        .filter((nt) => !nt.deleted && nt.text.trim())
+        .map((nt) => nt.text)
+        .join(' ');
+    } else if (pd.sourceId !== 'blank' && tab.sourceBuffers[pd.sourceId]) {
       const pdf = await getPdfJsProxy(pd.sourceId, tab.sourceBuffers[pd.sourceId]);
       const page = await pdf.getPage(pd.sourcePageIndex + 1);
       const tc = await page.getTextContent();
       fullText = tc.items
         .map((it) => ('str' in it ? it.str : ''))
         .join(' ');
+
+      for (const nt of pageEdits) {
+        if (nt.originalText) {
+          fullText = fullText.replace(nt.originalText, nt.deleted ? '' : nt.text);
+        } else if (!nt.deleted && nt.text) {
+          fullText = `${fullText} ${nt.text}`;
+        }
+      }
     }
 
     // Also include overlay texts on this page
@@ -504,21 +538,21 @@ export async function generateShowcaseSamplePdf(): Promise<Uint8Array> {
   });
 
   p1.drawRectangle({ x: 52, y: 638, width: 491, height: 74, color: lightBox });
-  p1.drawText('EDICION DIRECTA SIN DANAR EL DISENO:', {
+  p1.drawText('EDICIÓN DIRECTA SIN DAÑAR EL DISEÑO:', {
     x: 68,
     y: 690,
     size: 10,
     font: fontBold,
     color: sapphire,
   });
-  p1.drawText('Haz clic sobre cualquier linea de esta hoja para corregir su texto al instante,', {
+  p1.drawText('Haz clic sobre cualquier línea de esta hoja para corregir su texto al instante,', {
     x: 68,
     y: 672,
     size: 10,
     font: fontReg,
     color: dark,
   });
-  p1.drawText('o arrastrala con las guias magneticas para moverla sin que nada se desempareje.', {
+  p1.drawText('o arrástrala con las guías magnéticas para moverla sin que nada se desempareje.', {
     x: 68,
     y: 655,
     size: 10,
@@ -534,11 +568,11 @@ export async function generateShowcaseSamplePdf(): Promise<Uint8Array> {
     color: dark,
   });
   p1.drawText(
-    'Este documento presenta los terminos generales de entrega, soporte y confidencialidad.',
+    'Este documento presenta los términos generales de entrega, soporte y confidencialidad.',
     { x: 52, y: 574, size: 10.5, font: fontReg, color: muted }
   );
   p1.drawText(
-    'Puedes agregar imagenes limpias, logotipos sin fondo, firmas o sellos en cualquier seccion.',
+    'Puedes agregar imágenes limpias, logotipos sin fondo, firmas o sellos en cualquier sección.',
     { x: 52, y: 557, size: 10.5, font: fontReg, color: muted }
   );
 
@@ -551,8 +585,8 @@ export async function generateShowcaseSamplePdf(): Promise<Uint8Array> {
   });
 
   const rows = [
-    ['Descripcion del Servicio', 'Periodo', 'Importe USD'],
-    ['Implementacion y Configuracion Documental', 'Entrega unica', '$ 1,250.00'],
+    ['Descripción del Servicio', 'Período', 'Importe USD'],
+    ['Implementación y Configuración Documental', 'Entrega única', '$ 1,250.00'],
     ['Licencia Corporativa Local para Windows', 'Permanente', '$ 680.00'],
     ['Soporte Preferente y Actualizaciones', '12 meses', '$ 290.00'],
     ['TOTAL GENERAL', '', '$ 2,220.00'],
@@ -580,7 +614,7 @@ export async function generateShowcaseSamplePdf(): Promise<Uint8Array> {
     font: fontBold,
     color: dark,
   });
-  p1.drawText('Coloca aqui tu firma transparente o el logotipo oficial de tu organizacion:', {
+  p1.drawText('Coloca aquí tu firma transparente o el logotipo oficial de tu organización:', {
     x: 52,
     y: 268,
     size: 10,
@@ -612,7 +646,7 @@ export async function generateShowcaseSamplePdf(): Promise<Uint8Array> {
     borderColor: rgb(0.82, 0.85, 0.9),
     borderWidth: 1,
   });
-  p1.drawText('Autorizacion — Direccion General', {
+  p1.drawText('Autorización — Dirección General', {
     x: 331,
     y: 162,
     size: 9.5,
@@ -623,7 +657,7 @@ export async function generateShowcaseSamplePdf(): Promise<Uint8Array> {
   // PAGE 2: Clean Clauses & Notes Page
   const p2 = doc.addPage([595.28, 841.89]);
   p2.drawRectangle({ x: 52, y: 760, width: 5, height: 32, color: sapphire });
-  p2.drawText('Anexo — Terminos de Privacidad y Entrega Local', {
+  p2.drawText('Anexo — Términos de Privacidad y Entrega Local', {
     x: 68,
     y: 768,
     size: 16,
@@ -636,10 +670,10 @@ export async function generateShowcaseSamplePdf(): Promise<Uint8Array> {
   );
 
   const specs = [
-    '1. Edicion directa de textos existentes conservando la alineacion y limpieza de la pagina.',
-    '2. Insercion limpia de imagenes, fotografias y logotipos con eliminacion de fondo blanco.',
-    '3. Firmas manuscritas sin fondo, sellos rapidos, resaltado, notas y censura confidencial.',
-    '4. Organizacion visual de paginas: unir varios PDFs, dividir, rotar, numerar y exportar.',
+    '1. Edición directa de textos existentes conservando la alineación y limpieza de la página.',
+    '2. Inserción limpia de imágenes, fotografías y logotipos con eliminación de fondo blanco.',
+    '3. Firmas manuscritas sin fondo, sellos rápidos, resaltado, notas y censura confidencial.',
+    '4. Organización visual de páginas: unir varios PDFs, dividir, rotar, numerar y exportar.',
     '5. Icono oficial PDF-LEF para todos tus documentos .pdf al usarla como app predeterminada.',
   ];
   let sy = 690;
@@ -652,7 +686,7 @@ export async function generateShowcaseSamplePdf(): Promise<Uint8Array> {
 }
 
 /**
- * Converts normalized PDF page distance into calibrated real-world engineering measurement.
+ * Converts normalized PDF page distance into calibrated real-world measurement.
  * 1 PDF pt = 25.4 / 72 mm = 0.35277778 mm on paper.
  */
 export function formatEngineeringLength(
@@ -695,7 +729,8 @@ export function formatEngineeringArea(
 }
 
 /**
- * Extracts structured rows & columns from PDF pages into an Excel-ready UTF-8 BOM CSV string.
+ * Extracts structured rows & columns from PDF pages into an Excel-ready UTF-8 BOM CSV string,
+ * incorporating any direct native-text edits or deletions made by the user.
  */
 export async function extractTabTablesToCsv(
   tab: PdfTabDocument,
@@ -722,11 +757,36 @@ export async function extractTabTablesToCsv(
       text: string;
     }
 
+    const pageEdits = Object.values(tab.nativeTextEdits).filter(
+      (nt) => nt.pageId === pd.id && (nt.modified || nt.deleted)
+    );
+
     const tokens: CellToken[] = [];
     for (const item of tc.items) {
       if (!('str' in item) || !item.str.trim()) continue;
       const tx = pdfjsLib.Util.transform(vp.transform, item.transform);
-      tokens.push({ x: tx[4], y: tx[5], text: item.str.trim() });
+      const nx = tx[4] / Math.max(1, vp.width);
+      const ny = tx[5] / Math.max(1, vp.height);
+      const overridden = pageEdits.some(
+        (nt) =>
+          nx >= nt.origX - 0.008 &&
+          nx <= nt.origX + nt.origWidth + 0.008 &&
+          ny >= nt.origY - 0.008 &&
+          ny <= nt.origY + nt.origHeight + 0.018
+      );
+      if (!overridden) {
+        tokens.push({ x: tx[4], y: tx[5], text: item.str.trim() });
+      }
+    }
+
+    for (const nt of pageEdits) {
+      if (!nt.deleted && nt.text.trim()) {
+        tokens.push({
+          x: nt.x * vp.width,
+          y: nt.y * vp.height + (nt.fontSizePt || 10.5) * 0.86,
+          text: nt.text.trim(),
+        });
+      }
     }
 
     tokens.sort((a, b) => (Math.abs(a.y - b.y) > 4.5 ? a.y - b.y : a.x - b.x));
