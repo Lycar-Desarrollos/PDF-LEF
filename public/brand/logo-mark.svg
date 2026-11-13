@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="lefBg" x1="48" y1="32" x2="464" y2="480" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#18191C"/>
+      <stop offset="100%" stop-color="#0E0F12"/>
+    </linearGradient>
+    <linearGradient id="lefRuby" x1="120" y1="96" x2="396" y2="416" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#E1253C"/>
+      <stop offset="100%" stop-color="#B01528"/>
+    </linearGradient>
+    <linearGradient id="lefPaper" x1="136" y1="96" x2="352" y2="416" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#EAECEF"/>
+    </linearGradient>
+  </defs>
+  <!-- Windows 11 Squircle App Base -->
+  <rect x="24" y="24" width="464" height="464" rx="108" fill="url(#lefBg)"/>
+  <rect x="25.5" y="25.5" width="461" height="461" rx="106.5" stroke="#FFFFFF" stroke-opacity="0.1" stroke-width="3"/>
+
+  <!-- Subtle Ruby Back Sheet -->
+  <path d="M168 106C168 94.9543 176.954 86 188 86H338L392 140V382C392 393.046 383.046 402 372 402H188C176.954 402 168 393.046 168 382V106Z" fill="url(#lefRuby)" opacity="0.26"/>
+
+  <!-- Primary Crisp Document Sheet -->
+  <path d="M128 122C128 108.745 138.745 98 152 98H298L376 176V390C376 403.255 365.255 414 352 414H152C138.745 414 128 403.255 128 390V122Z" fill="url(#lefPaper)"/>
+
+  <!-- Precision Ruby Corner Fold -->
+  <path d="M298 98L376 176H320C307.85 176 298 166.15 298 154V98Z" fill="url(#lefRuby)"/>
+
+  <!-- Minimalist Editorial "LEF" Structural Typography / Text Edit Bars -->
+  <rect x="172" y="212" width="32" height="142" rx="8" fill="#141518"/>
+  <rect x="172" y="324" width="96" height="30" rx="8" fill="#141518"/>
+  <rect x="224" y="212" width="108" height="28" rx="7" fill="url(#lefRuby)"/>
+  <rect x="224" y="264" width="82" height="26" rx="7" fill="#141518" opacity="0.85"/>
+  <!-- Cursor / Precision Node Accent -->
+  <circle cx="326" cy="339" r="15" fill="url(#lefRuby)"/>
+</svg>

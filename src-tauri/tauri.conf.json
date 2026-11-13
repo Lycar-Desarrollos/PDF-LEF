@@ -1,0 +1,64 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "PDF-LEF",
+  "version": "1.0.0",
+  "identifier": "com.lycar.pdflef",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "PDF-LEF Studio Pro",
+        "width": 1360,
+        "height": 860,
+        "minWidth": 980,
+        "minHeight": 640,
+        "center": true,
+        "decorations": false,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "msi"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.png",
+      "icons/icon.ico"
+    ],
+    "publisher": "Lycar Desarrollos",
+    "shortDescription": "Suite PDF Nativa 100% Local para Windows",
+    "longDescription": "PDF-LEF Studio Pro: Visor ultrarrápido, edición directa y movimiento de textos existentes, imágenes, firmas sin fondo y organización de páginas 100% local en Windows.",
+    "fileAssociations": [
+      {
+        "ext": ["pdf"],
+        "name": "Documento PDF",
+        "description": "Documento PDF abierto con PDF-LEF Studio Pro",
+        "mimeType": "application/pdf"
+      }
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "headerImage": null,
+        "installMode": "both",
+        "languages": ["Spanish", "English"],
+        "displayLanguageSelector": false
+      }
+    }
+  }
+}

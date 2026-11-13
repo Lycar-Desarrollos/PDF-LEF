@@ -1,0 +1,74 @@
+name: Build & Release Windows (.exe)
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Compilar Instalador Nativo Windows (.exe)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 24 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Configurar Rust estable (MSVC x64)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Caché de compilación Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Instalar dependencias Frontend
+        run: npm ci
+
+      - name: Compilar Ejecutable e Instalador Windows (Tauri v2)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'PDF-LEF Studio Pro ${{ github.ref_name }}'
+          releaseBody: |
+            ## PDF-LEF Studio Pro para Windows 10 y Windows 11
+            Descarga el instalador oficial **`PDF-LEF_1.0.0_x64-setup.exe`** abajo e instálalo en segundos.
+            - **100% Local Offline:** Tus documentos jamás salen de tu PC.
+            - **Edición directa:** Edita y mueve textos existentes del PDF, inserta imágenes, firma sin fondo blanco y organiza páginas.
+          releaseDraft: false
+          prerelease: false
+          args: --target x86_64-pc-windows-msvc
+
+      - name: Compilar Instalador .exe (Push / Verificación Manual)
+        if: "!startsWith(github.ref, 'refs/tags/v')"
+        run: npx tauri build --target x86_64-pc-windows-msvc
+
+      - name: Subir Instalador .exe y .msi como Artefacto Descargable
+        uses: actions/upload-artifact@v4
+        with:
+          name: PDF-LEF-Windows-Installer-x64
+          path: |
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+            src-tauri/target/x86_64-pc-windows-msvc/release/pdf-lef.exe
+          if-no-files-found: warn
