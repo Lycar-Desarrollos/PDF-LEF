@@ -9,6 +9,7 @@ import type {
   OutlineNode,
   PageDescriptor,
   PdfTabDocument,
+  ScaleCalibration,
 } from '../types/pdf';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
@@ -329,6 +330,12 @@ export async function loadPdfIntoTabDocument(
       color: '#525866',
     },
     metadata,
+    scaleCalibration: {
+      preset: '1:100',
+      ratio: 100,
+      unit: 'm',
+    },
+    nextCalloutNumber: 1,
     currentPageIndex: 0,
     zoom: settings.defaultZoom,
     viewLayout: settings.defaultViewLayout,
@@ -636,9 +643,9 @@ export async function generateShowcaseSamplePdf(): Promise<Uint8Array> {
   const specs = [
     '- Motor binario nativo Tauri v2 (Rust) con instalador ligero .exe para Windows 10 y Windows 11.',
     '- Edicion directa sobre textos existentes del PDF: modificar palabras, mover bloques y cambiar estilo.',
-    '- Insercion libre de imagenes, logotipos, sellos comerciales, formas vectoriales y censura permanente.',
-    '- Mesa de Luz interactiva para reordenar, rotar, dividir, extraer y combinar multiples PDFs.',
-    '- Licencias de software 100% abiertas para explotacion comercial (MIT / Apache 2.0, cero AGPL).',
+    '- Suite Ingenieria: cotas de medicion calibradas por escala (1:100, 1:50), areas m2 y globos.',
+    '- Suite Contabilidad: calculadora de auditoria con IVA/ISR, marcas de conciliacion y exportar a Excel CSV.',
+    '- Suite Administracion: Boveda de Logos Empresariales, Firmas sin fondo, Sellos y folios Bates.',
   ];
   let sy = 678;
   for (const line of specs) {
@@ -646,5 +653,181 @@ export async function generateShowcaseSamplePdf(): Promise<Uint8Array> {
     sy -= 26;
   }
 
+  // PAGE 3: Engineering Plan & Accounting Conciliation Demo
+  const p3 = doc.addPage([595.28, 841.89]);
+  p3.drawText('Plano de Ingenieria (Escala 1:100) y Estado Contable', {
+    x: 48,
+    y: 780,
+    size: 16,
+    font: fontBold,
+    color: dark,
+  });
+  p3.drawText('Usa la pestana "Ingenieria" para medir muros/areas o "Contabilidad" para conciliar partidas:', {
+    x: 48,
+    y: 758,
+    size: 10.5,
+    font: fontReg,
+    color: muted,
+  });
+
+  // Sample Architectural / Structural Bay Rectangle (283.46 pt = 100 mm on paper = 10.00 m at 1:100!)
+  p3.drawRectangle({
+    x: 60,
+    y: 530,
+    width: 283.46,
+    height: 170.08,
+    borderColor: rgb(0.11, 0.3, 0.78),
+    borderWidth: 1.8,
+    color: rgb(0.95, 0.97, 1),
+  });
+  p3.drawText('NAVE INDUSTRIAL A-1 (10.00 m x 6.00 m = 60.00 m2)', {
+    x: 82,
+    y: 612,
+    size: 9.5,
+    font: fontBold,
+    color: rgb(0.11, 0.3, 0.78),
+  });
+
+  // Accounting Ledger Table for CSV Export & Audit Tickmarks
+  p3.drawText('Auxiliar de Polizas y Facturas para Conciliacion:', {
+    x: 48,
+    y: 480,
+    size: 13,
+    font: fontBold,
+    color: dark,
+  });
+  const ledger = [
+    ['Poliza', 'Proveedor / Concepto', 'Subtotal', 'IVA 16%', 'Total MXN'],
+    ['ING-101', 'Acero Estructural S.A.', '45000.00', '7200.00', '52200.00'],
+    ['EGR-102', 'Concretos del Sureste', '28500.00', '4560.00', '33060.00'],
+    ['EGR-103', 'Servicios Electricos LEF', '12000.00', '1920.00', '13920.00'],
+  ];
+  let ly = 450;
+  ledger.forEach((row, idx) => {
+    const f = idx === 0 ? fontBold : fontMono;
+    p3.drawText(row[0], { x: 54, y: ly, size: 9.5, font: f, color: dark });
+    p3.drawText(row[1], { x: 125, y: ly, size: 9.5, font: idx === 0 ? fontBold : fontReg, color: dark });
+    p3.drawText(row[2], { x: 315, y: ly, size: 9.5, font: f, color: dark });
+    p3.drawText(row[3], { x: 405, y: ly, size: 9.5, font: f, color: muted });
+    p3.drawText(row[4], { x: 482, y: ly, size: 9.5, font: f, color: idx === 0 ? ruby : dark });
+    ly -= 26;
+  });
+
   return doc.save();
+}
+
+/**
+ * Converts normalized PDF page distance into calibrated real-world engineering measurement.
+ * 1 PDF pt = 25.4 / 72 mm = 0.35277778 mm on paper.
+ */
+export function formatEngineeringLength(
+  widthPt: number,
+  heightPt: number,
+  p0: { x: number; y: number },
+  p1: { x: number; y: number },
+  cal: ScaleCalibration
+): string {
+  const dxPt = (p1.x - p0.x) * widthPt;
+  const dyPt = (p1.y - p0.y) * heightPt;
+  const distPt = Math.hypot(dxPt, dyPt);
+  const realMm = distPt * (25.4 / 72) * (cal.ratio || 100);
+
+  if (cal.unit === 'mm') return `${realMm.toFixed(1)} mm`;
+  if (cal.unit === 'cm') return `${(realMm / 10).toFixed(2)} cm`;
+  if (cal.unit === 'in') return `${(realMm / 25.4).toFixed(2)} in`;
+  if (cal.unit === 'ft') return `${(realMm / 304.8).toFixed(2)} ft`;
+  return `${(realMm / 1000).toFixed(2)} m`;
+}
+
+export function formatEngineeringArea(
+  widthPt: number,
+  heightPt: number,
+  normW: number,
+  normH: number,
+  cal: ScaleCalibration
+): string {
+  const wMm = normW * widthPt * (25.4 / 72) * (cal.ratio || 100);
+  const hMm = normH * heightPt * (25.4 / 72) * (cal.ratio || 100);
+  if (cal.unit === 'ft') {
+    const sqFt = (wMm / 304.8) * (hMm / 304.8);
+    return `${sqFt.toFixed(2)} ft²`;
+  }
+  if (cal.unit === 'cm') {
+    return `${((wMm / 10) * (hMm / 10)).toFixed(1)} cm²`;
+  }
+  const sqM = (wMm / 1000) * (hMm / 1000);
+  return `${sqM.toFixed(2)} m²`;
+}
+
+/**
+ * Extracts structured rows & columns from PDF pages into an Excel-ready UTF-8 BOM CSV string.
+ */
+export async function extractTabTablesToCsv(
+  tab: PdfTabDocument,
+  scope: 'current' | 'all' = 'all'
+): Promise<string> {
+  const targetIndices =
+    scope === 'current' ? [tab.currentPageIndex] : tab.pages.map((_, idx) => idx);
+  const csvLines: string[] = [];
+
+  for (const idx of targetIndices) {
+    const pd = tab.pages[idx];
+    if (!pd || pd.sourceId === 'blank') continue;
+    const bytes = tab.sourceBuffers[pd.sourceId];
+    if (!bytes) continue;
+
+    const pdf = await getPdfJsProxy(pd.sourceId, bytes);
+    const page = await pdf.getPage(pd.sourcePageIndex + 1);
+    const vp = page.getViewport({ scale: 1, rotation: (page.rotate + pd.rotation) % 360 });
+    const tc = await page.getTextContent();
+
+    interface CellToken {
+      x: number;
+      y: number;
+      text: string;
+    }
+
+    const tokens: CellToken[] = [];
+    for (const item of tc.items) {
+      if (!('str' in item) || !item.str.trim()) continue;
+      const tx = pdfjsLib.Util.transform(vp.transform, item.transform);
+      tokens.push({ x: tx[4], y: tx[5], text: item.str.trim() });
+    }
+
+    tokens.sort((a, b) => (Math.abs(a.y - b.y) > 4.5 ? a.y - b.y : a.x - b.x));
+
+    const rows: CellToken[][] = [];
+    for (const tok of tokens) {
+      const lastRow = rows[rows.length - 1];
+      if (lastRow && Math.abs(lastRow[0].y - tok.y) <= 4.5) {
+        lastRow.push(tok);
+      } else {
+        rows.push([tok]);
+      }
+    }
+
+    if (targetIndices.length > 1) {
+      csvLines.push(`"--- PÁGINA ${idx + 1} ---"`);
+    }
+
+    for (const row of rows) {
+      row.sort((a, b) => a.x - b.x);
+      // Merge tokens that belong to the same column (gap < 14 pt)
+      const cols: string[] = [];
+      let prevRight = -999;
+      for (const cell of row) {
+        if (cols.length > 0 && cell.x - prevRight < 14) {
+          cols[cols.length - 1] = `${cols[cols.length - 1]} ${cell.text}`;
+        } else {
+          cols.push(cell.text);
+        }
+        prevRight = cell.x + cell.text.length * 4.8;
+      }
+      csvLines.push(
+        cols.map((c) => `"${c.replace(/"/g, '""')}"`).join(',')
+      );
+    }
+  }
+
+  return `\uFEFF${csvLines.join('\r\n')}`;
 }

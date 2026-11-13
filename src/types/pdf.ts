@@ -1,5 +1,7 @@
 export type WorkspaceMode = 'home' | 'reader' | 'edit' | 'organize';
 
+export type StudioDepartment = 'general' | 'engineering' | 'accounting' | 'admin';
+
 export type ActiveTool =
   | 'select'
   | 'pan'
@@ -16,13 +18,27 @@ export type ActiveTool =
   | 'redact'
   | 'stamp'
   | 'signature'
-  | 'note';
+  | 'note'
+  | 'measure-line'
+  | 'measure-area'
+  | 'callout'
+  | 'tick-ok'
+  | 'tick-err'
+  | 'tick-warn';
 
 export type FontFamilyChoice = 'sans' | 'serif' | 'mono' | 'script';
 
-export type PaperFilter = 'original' | 'night' | 'sepia' | 'contrast';
+export type PaperFilter = 'original' | 'night' | 'sepia' | 'contrast' | 'blueprint';
 
 export type ViewLayout = 'continuous' | 'single' | 'dual';
+
+export interface ScaleCalibration {
+  /** Scale preset e.g. '1:1', '1:20', '1:50', '1:75', '1:100', '1:200', '1:500' */
+  preset: string;
+  /** Ratio multiplier (e.g. 100 means 1 cm on paper = 100 cm in real life) */
+  ratio: number;
+  unit: 'mm' | 'cm' | 'm' | 'in' | 'ft';
+}
 
 export interface NativePdfTextItem {
   id: string;
@@ -62,7 +78,11 @@ export type OverlayElementKind =
   | 'redact'
   | 'stamp'
   | 'note'
-  | 'ink';
+  | 'ink'
+  | 'dimension'
+  | 'area'
+  | 'callout'
+  | 'tickmark';
 
 export interface PdfOverlayElement {
   id: string;
@@ -91,14 +111,18 @@ export interface PdfOverlayElement {
   borderColor?: string;
   strokeWidth?: number;
 
-  // Image / Signature properties
+  // Image / Signature / Logo properties
   dataUrl?: string;
   naturalWidth?: number;
   naturalHeight?: number;
   preserveAspect?: boolean;
 
-  // Ink / Arrow normalized points inside the page (0..1)
+  // Ink / Dimension / Arrow normalized points inside the page (0..1)
   points?: Array<{ x: number; y: number }>;
+
+  // Engineering / Accounting extras
+  calloutNumber?: number;
+  tickVariant?: 'ok' | 'err' | 'warn';
 
   // Note metadata
   author?: string;
@@ -107,16 +131,11 @@ export interface PdfOverlayElement {
 
 export interface PageDescriptor {
   id: string;
-  /** Source buffer ID in tab.sourceBuffers (or 'blank' for inserted blank page) */
   sourceId: string;
-  /** 0-based page index inside that source PDF */
   sourcePageIndex: number;
-  /** Additional rotation in degrees (0, 90, 180, 270) */
   rotation: number;
-  /** Base unrotated width/height in PDF points */
   widthPt: number;
   heightPt: number;
-  /** Optional crop percentages (0..0.4) */
   crop?: {
     top: number;
     right: number;
@@ -171,17 +190,16 @@ export interface PdfTabDocument {
   fileSize: number;
   isModified: boolean;
   openedAt: number;
-  /** Map of sourceId -> raw PDF Uint8Array (supports merging external PDFs seamlessly!) */
   sourceBuffers: Record<string, Uint8Array>;
   pages: PageDescriptor[];
   elements: PdfOverlayElement[];
-  /** Extracted & modified native text blocks keyed by NativePdfTextItem.id */
   nativeTextEdits: Record<string, NativePdfTextItem>;
-  /** Cache of extracted native text items per pageId */
   extractedPageTexts: Record<string, NativePdfTextItem[]>;
   watermark: WatermarkConfig;
   headerFooter: HeaderFooterConfig;
   metadata: DocumentMetadata;
+  scaleCalibration: ScaleCalibration;
+  nextCalloutNumber: number;
   currentPageIndex: number;
   zoom: number;
   viewLayout: ViewLayout;
@@ -195,6 +213,15 @@ export interface SavedSignature {
   name: string;
   dataUrl: string;
   inkColor: string;
+  createdAt: string;
+}
+
+export interface SavedLogo {
+  id: string;
+  name: string;
+  dataUrl: string;
+  naturalWidth: number;
+  naturalHeight: number;
   createdAt: string;
 }
 
@@ -219,7 +246,6 @@ export type AccentTheme = 'ruby' | 'cobalt' | 'graphite' | 'emerald';
 export type UiDensity = 'compact' | 'standard' | 'comfortable';
 
 export interface AppSettings {
-  // Appearance & Style
   theme: ThemePreference;
   accent: AccentTheme;
   density: UiDensity;
@@ -227,15 +253,16 @@ export interface AppSettings {
   showStatusBar: boolean;
   smoothAnimations: boolean;
 
-  // Viewer Defaults
   defaultZoom: number;
   defaultViewLayout: ViewLayout;
   defaultPaperFilter: PaperFilter;
   defaultLeftPanel: 'thumbnails' | 'outline' | 'search' | 'layers' | 'closed';
   hiDpiRendering: boolean;
 
-  // Editing & Signatures
   authorName: string;
+  companyName: string;
+  defaultTaxRatePct: number;
+  currencySymbol: string;
   defaultFontFamily: FontFamilyChoice;
   defaultFontSizePt: number;
   defaultTextColor: string;
@@ -247,7 +274,6 @@ export interface AppSettings {
   includeDateOnSignature: boolean;
   includeDateOnStamps: boolean;
 
-  // Export & Privacy
   exportImageDpi: 150 | 300 | 600;
   autoCleanMetadataOnExport: boolean;
   confirmCloseUnsaved: boolean;
@@ -264,4 +290,7 @@ export type ToolModalKind =
   | 'pdf-to-images'
   | 'ocr'
   | 'optimize'
-  | 'metadata';
+  | 'metadata'
+  | 'logos'
+  | 'calculator'
+  | 'export-csv';

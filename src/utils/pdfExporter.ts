@@ -457,6 +457,117 @@ export async function compileTabToPdfBytes(
           font: fonts.sans.bold,
           color: rgb(1, 1, 1),
         });
+      } else if (el.kind === 'dimension') {
+        const p0 = el.points?.[0] || { x: el.x, y: el.y + el.height / 2 };
+        const p1 = el.points?.[1] || { x: el.x + el.width, y: el.y + el.height / 2 };
+        const sx = p0.x * pw;
+        const sy = ph - p0.y * ph;
+        const ex = p1.x * pw;
+        const ey = ph - p1.y * ph;
+        const dimCol = hexToPdfRgb(el.color, '#1D4ED8');
+        pdfPage.drawLine({
+          start: { x: sx, y: sy },
+          end: { x: ex, y: ey },
+          thickness: 1.8,
+          color: dimCol,
+          opacity,
+        });
+        // End ticks
+        pdfPage.drawCircle({ x: sx, y: sy, size: 2.5, color: dimCol });
+        pdfPage.drawCircle({ x: ex, y: ey, size: 2.5, color: dimCol });
+        const label = sanitizeWinAnsi(el.text || '');
+        if (label) {
+          const midX = (sx + ex) / 2;
+          const midY = (sy + ey) / 2;
+          const lw = fonts.mono.bold.widthOfTextAtSize(label, 8.5);
+          pdfPage.drawRectangle({
+            x: midX - lw / 2 - 4,
+            y: midY - 5,
+            width: lw + 8,
+            height: 13,
+            color: rgb(1, 1, 1),
+            borderColor: dimCol,
+            borderWidth: 0.8,
+          });
+          pdfPage.drawText(label, {
+            x: midX - lw / 2,
+            y: midY - 2,
+            size: 8.5,
+            font: fonts.mono.bold,
+            color: dimCol,
+          });
+        }
+      } else if (el.kind === 'area') {
+        const areaCol = hexToPdfRgb(el.color, '#1D4ED8');
+        pdfPage.drawRectangle({
+          x: boxX,
+          y: boxY,
+          width: boxW,
+          height: boxH,
+          color: areaCol,
+          opacity: 0.1 * opacity,
+          borderColor: areaCol,
+          borderWidth: 1.5,
+          borderOpacity: opacity,
+        });
+        const label = sanitizeWinAnsi(el.text || '');
+        if (label) {
+          const lw = fonts.mono.bold.widthOfTextAtSize(label, 9.5);
+          pdfPage.drawText(label, {
+            x: boxX + Math.max(4, (boxW - lw) / 2),
+            y: boxY + boxH / 2 - 4,
+            size: 9.5,
+            font: fonts.mono.bold,
+            color: areaCol,
+          });
+        }
+      } else if (el.kind === 'callout') {
+        const cCol = hexToPdfRgb(el.color, '#C81E32');
+        const cx = boxX + 11;
+        const cy = boxY + boxH - 11;
+        pdfPage.drawCircle({ x: cx, y: cy, size: 10, color: cCol, opacity });
+        const numStr = String(el.calloutNumber || 1);
+        const nw = fonts.sans.bold.widthOfTextAtSize(numStr, 9.5);
+        pdfPage.drawText(numStr, {
+          x: cx - nw / 2,
+          y: cy - 3.5,
+          size: 9.5,
+          font: fonts.sans.bold,
+          color: rgb(1, 1, 1),
+        });
+        if (el.text) {
+          pdfPage.drawText(sanitizeWinAnsi(el.text), {
+            x: cx + 14,
+            y: cy - 3.5,
+            size: 9,
+            font: fonts.sans.bold,
+            color: cCol,
+          });
+        }
+      } else if (el.kind === 'tickmark') {
+        const tCol =
+          el.tickVariant === 'err'
+            ? hexToPdfRgb('#C42B1C')
+            : el.tickVariant === 'warn'
+            ? hexToPdfRgb('#B45309')
+            : hexToPdfRgb('#0D7A5F');
+        const badge =
+          el.tickVariant === 'err' ? 'X' : el.tickVariant === 'warn' ? '!' : 'OK';
+        pdfPage.drawCircle({
+          x: boxX + 9,
+          y: boxY + 9,
+          size: 8.5,
+          color: tCol,
+          opacity,
+        });
+        const bw = fonts.sans.bold.widthOfTextAtSize(badge, 7.5);
+        pdfPage.drawText(badge, {
+          x: boxX + 9 - bw / 2,
+          y: boxY + 6.2,
+          size: 7.5,
+          font: fonts.sans.bold,
+          color: rgb(1, 1, 1),
+        });
       }
     }
 

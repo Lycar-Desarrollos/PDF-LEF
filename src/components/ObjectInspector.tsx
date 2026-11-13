@@ -297,10 +297,16 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
             <span>Propiedades · {el.kind.toUpperCase()}</span>
           </div>
 
-          {(el.kind === 'text' || el.kind === 'stamp' || el.kind === 'note') && (
+          {(el.kind === 'text' ||
+            el.kind === 'stamp' ||
+            el.kind === 'note' ||
+            el.kind === 'callout' ||
+            el.kind === 'dimension' ||
+            el.kind === 'area' ||
+            el.kind === 'tickmark') && (
             <div style={{ marginBottom: 10 }}>
               <div className="prop-label" style={{ marginBottom: 4 }}>
-                Contenido de texto
+                Contenido / Etiqueta
               </div>
               <textarea
                 className="prop-input"
@@ -313,16 +319,19 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
             </div>
           )}
 
-          {(el.kind === 'stamp' || el.kind === 'signature') && (
+          {(el.kind === 'stamp' ||
+            el.kind === 'signature' ||
+            el.kind === 'dimension' ||
+            el.kind === 'area') && (
             <div>
               <div className="prop-label" style={{ marginBottom: 4 }}>
-                Subtítulo / Fecha
+                Subtítulo / Escala / Fecha
               </div>
               <input
                 type="text"
                 className="prop-input"
                 style={{ width: '100%' }}
-                placeholder="Ej. 13/11/2026 · Firmado"
+                placeholder="Ej. Escala 1:100 · Firmado"
                 value={el.subText || ''}
                 onChange={(e) =>
                   onUpdateElement(el.id, { subText: e.target.value }, true)
@@ -332,15 +341,67 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
           )}
 
           {el.kind === 'image' && (
-            <button
-              type="button"
-              className="btn btn-subtle"
-              style={{ width: '100%', marginTop: 4 }}
-              onClick={() => onReplaceImage(el.id)}
-            >
-              <ImagePlus size={14} />
-              <span>Cambiar imagen por otra…</span>
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+              <button
+                type="button"
+                className="btn btn-subtle"
+                style={{ width: '100%' }}
+                onClick={() => onReplaceImage(el.id)}
+              >
+                <ImagePlus size={14} />
+                <span>Cambiar imagen / logo por otro…</span>
+              </button>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+                <button
+                  type="button"
+                  className="btn btn-subtle"
+                  style={{ fontSize: 11 }}
+                  onClick={() =>
+                    onUpdateElement(
+                      el.id,
+                      {
+                        width: Math.max(0.06, el.width * 0.75),
+                        height: Math.max(0.04, el.height * 0.75),
+                      },
+                      true
+                    )
+                  }
+                >
+                  − Tamaño
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-subtle"
+                  style={{ fontSize: 11 }}
+                  onClick={() =>
+                    onUpdateElement(
+                      el.id,
+                      {
+                        width: Math.min(0.92, el.width * 1.25),
+                        height: Math.min(0.92, el.height * 1.25),
+                      },
+                      true
+                    )
+                  }
+                >
+                  + Tamaño
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-subtle"
+                  style={{ fontSize: 11 }}
+                  onClick={() =>
+                    onUpdateElement(
+                      el.id,
+                      { x: Math.max(0, 0.5 - el.width / 2) },
+                      true
+                    )
+                  }
+                >
+                  Centrar X
+                </button>
+              </div>
+            </div>
           )}
         </div>
 

@@ -1,12 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ArrowDown,
   ArrowUp,
+  Building2,
+  Calculator,
   Check,
   Copy,
   Download,
   FilePlus,
+  FileSpreadsheet,
   ImagePlus,
+  Plus,
   ScanText,
   Scissors,
   ShieldCheck,
@@ -18,11 +22,17 @@ import type {
   DocumentMetadata,
   HeaderFooterConfig,
   PdfTabDocument,
+  SavedLogo,
   ToolModalKind,
   WatermarkConfig,
 } from '../types/pdf';
-import { convertImagesToPdfBytes } from '../utils/imageUtils';
-import { renderPageToCanvas } from '../utils/pdfEngine';
+import {
+  convertImagesToPdfBytes,
+  fileToDataUrl,
+  getImageDimensions,
+  removeSignatureBackground,
+} from '../utils/imageUtils';
+import { extractTabTablesToCsv, renderPageToCanvas } from '../utils/pdfEngine';
 import {
   exportTabPagesToImagesZip,
   extractSelectedPagesAsPdf,
@@ -35,6 +45,13 @@ interface ToolsModalProps {
   kind: Exclude<ToolModalKind, null>;
   activeTab: PdfTabDocument | null;
   defaultExportDpi: 150 | 300 | 600;
+  defaultTaxRatePct: number;
+  currencySymbol: string;
+  savedLogos: SavedLogo[];
+  onSaveLogo: (logo: SavedLogo) => void;
+  onDeleteLogo: (id: string) => void;
+  onPlaceLogoOnPage: (logo: SavedLogo) => void;
+  onInsertAccountingSummaryOnPage: (summaryText: string) => void;
   onOpenGeneratedPdfInTab: (fileName: string, bytes: Uint8Array) => void;
   onUpdateWatermark: (wm: WatermarkConfig) => void;
   onUpdateHeaderFooter: (hf: HeaderFooterConfig) => void;
@@ -47,6 +64,13 @@ export const ToolsModal: React.FC<ToolsModalProps> = ({
   kind,
   activeTab,
   defaultExportDpi,
+  defaultTaxRatePct,
+  currencySymbol,
+  savedLogos,
+  onSaveLogo,
+  onDeleteLogo,
+  onPlaceLogoOnPage,
+  onInsertAccountingSummaryOnPage,
   onOpenGeneratedPdfInTab,
   onUpdateWatermark,
   onUpdateHeaderFooter,
@@ -127,6 +151,113 @@ export const ToolsModal: React.FC<ToolsModalProps> = ({
       producer: 'PDF-LEF Native Engine',
     }
   );
+
+  // Company Logo Vault state
+  const [logoLabel, setLogoLabel] = useState('Logo Corporativo');
+  const [stripWhiteBg, setStripWhiteBg] = useState(false);
+
+  // Accounting Tape & Tax Calculator state
+  const [calcItems, setCalcItems] = useState<
+    Array<{ id: string; concept: string; amount: string }>
+  >([
+    { id: 'c1', concept: 'Partida / Servicio Principal', amount: '18500.00' },
+    { id: 'c2', concept: 'Suministro / Materiales', amount: '6450.00' },
+  ]);
+  const [taxRate, setTaxRate] = useState<number>(defaultTaxRatePct || 16);
+  const [applyRetentionIsr, setApplyRetentionIsr] = useState(false);
+
+  // PDF -> Excel CSV state
+  const [csvScope, setCsvScope] = useState<'current' | 'all'>('all');
+  const [csvPreview, setCsvPreview] = useState<string>('');
+  const [csvRowCount, setCsvRowCount] = useState<number>(0);
+
+  useEffect(() => {
+    if (kind !== 'export-csv' || !activeTab) return;
+    let cancelled = false;
+    extractTabTablesToCsv(activeTab, csvScope)
+      .then((csvText) => {
+        if (!cancelled) {
+          setCsvPreview(csvText.replace(/^\uFEFF/, ''));
+          setCsvRowCount(csvText.split(/\r?\n/).filter(Boolean).length);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [kind, activeTab, csvScope]);
+
+  const handleUploadNewLogo = async (file: File) => {
+    setBusy(true);
+    try {
+      let dataUrl = await fileToDataUrl(file);
+      if (stripWhiteBg) {
+        dataUrl = await removeSignatureBackground(dataUrl, undefined, 236);
+      }
+      const dims = await getImageDimensions(dataUrl);
+      const saved: SavedLogo = {
+        id: `logo_${Date.now()}`,
+        name: logoLabel.trim() || file.name.replace(/\.[^.]+$/, ''),
+        dataUrl,
+        naturalWidth: dims.width,
+        naturalHeight: dims.height,
+        createdAt: new Date().toLocaleDateString('es-ES'),
+      };
+      onSaveLogo(saved);
+      onNotify(`Logo "${saved.name}" guardado en tu Bóveda Local.`);
+    } catch {
+      onNotify('No se pudo procesar el archivo de imagen.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Accounting calculations
+  const subtotal = calcItems.reduce((acc, item) => {
+    const val = parseFloat(item.amount.replace(/,/g, '')) || 0;
+    return acc + val;
+  }, 0);
+  const ivaAmount = subtotal * (taxRate / 100);
+  const retIsr = applyRetentionIsr ? subtotal * 0.1 : 0;
+  const grandTotal = subtotal + ivaAmount - retIsr;
+
+  const formatMoney = (n: number) =>
+    `${currencySymbol}${n.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+
+  const buildAccountingStampSummary = () => {
+    const lines = [
+      'CEDULA DE REVISION CONTABLE · PDF-LEF',
+      '----------------------------------------',
+      ...calcItems.map(
+        (it) =>
+          `${it.concept.slice(0, 24).padEnd(25, ' ')} ${formatMoney(
+            parseFloat(it.amount.replace(/,/g, '')) || 0
+          )}`
+      ),
+      '----------------------------------------',
+      `SUBTOTAL:                 ${formatMoney(subtotal)}`,
+      `IVA (${taxRate}%):                 ${formatMoney(ivaAmount)}`,
+    ];
+    if (applyRetentionIsr) {
+      lines.push(`RET. ISR (10%):          -${formatMoney(retIsr)}`);
+    }
+    lines.push(`TOTAL VERIFICADO:         ${formatMoney(grandTotal)}`);
+    return lines.join('\n');
+  };
+
+  const handleDownloadCsv = () => {
+    if (!csvPreview || !activeTab) return;
+    // UTF-8 BOM ensures Microsoft Excel on Windows opens accents & columns cleanly
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + csvPreview], { type: 'text/csv;charset=utf-8;' });
+    const base = activeTab.fileName.replace(/\.pdf$/i, '');
+    downloadBlobInBrowser(blob, `${base}_Tablas_Excel.csv`);
+    onNotify(`Archivo Excel CSV exportado (${csvRowCount} filas detectadas).`);
+    onClose();
+  };
 
   const handleAddPdfsToMerge = async () => {
     const picked = await openPdfFilesWithDialog(true);
@@ -236,6 +367,9 @@ export const ToolsModal: React.FC<ToolsModalProps> = ({
   };
 
   const titles: Record<Exclude<ToolModalKind, null>, string> = {
+    logos: 'Bóveda Local de Logos Empresariales y Membretes',
+    calculator: 'Calculadora Contable de Cinta, IVA y Retenciones',
+    'export-csv': 'Extraer Tablas del PDF a Microsoft Excel (.csv)',
     merge: 'Unir y Combinar Archivos PDF',
     split: 'Dividir o Extraer Páginas por Rango',
     watermark: 'Estudio de Marca de Agua Comercial',
@@ -249,7 +383,7 @@ export const ToolsModal: React.FC<ToolsModalProps> = ({
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-window" style={{ maxWidth: 640 }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal-window" style={{ maxWidth: 680 }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">
             <Sparkles size={17} style={{ color: 'var(--accent)' }} />
@@ -261,6 +395,351 @@ export const ToolsModal: React.FC<ToolsModalProps> = ({
         </div>
 
         <div className="modal-body">
+          {/* COMPANY LOGO VAULT */}
+          {kind === 'logos' && (
+            <div>
+              <div
+                className="setting-card"
+                style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div className="setting-card-title">Subir nuevo logotipo institucional</div>
+                    <div className="setting-card-desc">
+                      Guarda el logo de tu empresa, constructora o despacho una sola vez y estámpalo en cualquier PDF en 1 clic.
+                    </div>
+                  </div>
+                  <Building2 size={20} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    className="prop-input"
+                    style={{ flex: 1, minWidth: 180 }}
+                    placeholder="Nombre del logo (ej. Lycar Desarrollos)"
+                    value={logoLabel}
+                    onChange={(e) => setLogoLabel(e.target.value)}
+                  />
+                  <label
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontSize: 12,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={stripWhiteBg}
+                      onChange={(e) => setStripWhiteBg(e.target.checked)}
+                    />
+                    <span>Quitar fondo blanco</span>
+                  </label>
+                  <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
+                    <ImagePlus size={14} />
+                    <span>Subir Logo (PNG/JPG/SVG)…</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        e.target.value = '';
+                        if (f) handleUploadNewLogo(f);
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: 'var(--text-muted)',
+                  margin: '14px 0 8px',
+                }}
+              >
+                Logos Guardados en este Equipo ({savedLogos.length})
+              </div>
+
+              {savedLogos.length === 0 ? (
+                <div
+                  style={{
+                    padding: 26,
+                    textAlign: 'center',
+                    border: '1.5px dashed var(--border-strong)',
+                    borderRadius: 'var(--radius-md)',
+                    color: 'var(--text-muted)',
+                    fontSize: 12.5,
+                  }}
+                >
+                  Aún no has guardado logos empresariales. Sube tu logotipo arriba para tenerlo siempre disponible sin conexión.
+                </div>
+              ) : (
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))',
+                    gap: 10,
+                  }}
+                >
+                  {savedLogos.map((lg) => (
+                    <div
+                      key={lg.id}
+                      style={{
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: 'var(--radius-md)',
+                        padding: 10,
+                        background: 'var(--bg-surface-subtle)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 8,
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: 74,
+                          background: '#ffffff',
+                          borderRadius: 6,
+                          border: '1px solid var(--border-subtle)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: 6,
+                        }}
+                      >
+                        <img
+                          src={lg.dataUrl}
+                          alt={lg.name}
+                          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                        />
+                      </div>
+                      <div style={{ fontSize: 12, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {lg.name}
+                      </div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          style={{ flex: 1, height: 28, fontSize: 11.5 }}
+                          disabled={!activeTab}
+                          onClick={() => {
+                            onPlaceLogoOnPage(lg);
+                            onClose();
+                          }}
+                        >
+                          Colocar en PDF
+                        </button>
+                        <button
+                          type="button"
+                          className="btn icon-only"
+                          style={{ width: 28, height: 28, color: 'var(--danger)' }}
+                          onClick={() => onDeleteLogo(lg.id)}
+                          title="Eliminar logo guardado"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ACCOUNTING TAPE & IVA CALCULATOR */}
+          {kind === 'calculator' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                  Suma partidas de facturas, presupuestos o estados de cuenta y estampa la cédula en el PDF:
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-subtle"
+                  onClick={() =>
+                    setCalcItems((prev) => [
+                      ...prev,
+                      { id: `c_${Date.now()}`, concept: `Concepto ${prev.length + 1}`, amount: '0.00' },
+                    ])
+                  }
+                >
+                  <Plus size={14} />
+                  <span>Agregar partida</span>
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                {calcItems.map((row, idx) => (
+                  <div key={row.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span style={{ fontSize: 11.5, color: 'var(--text-muted)', width: 18 }}>
+                      {idx + 1}.
+                    </span>
+                    <input
+                      type="text"
+                      className="prop-input"
+                      style={{ flex: 1 }}
+                      value={row.concept}
+                      onChange={(e) =>
+                        setCalcItems((prev) =>
+                          prev.map((it) => (it.id === row.id ? { ...it, concept: e.target.value } : it))
+                        )
+                      }
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="prop-input"
+                      style={{ width: 135, textAlign: 'right', fontFamily: 'var(--font-mono)' }}
+                      value={row.amount}
+                      onChange={(e) =>
+                        setCalcItems((prev) =>
+                          prev.map((it) => (it.id === row.id ? { ...it, amount: e.target.value } : it))
+                        )
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="btn icon-only"
+                      style={{ color: 'var(--danger)' }}
+                      disabled={calcItems.length <= 1}
+                      onClick={() =>
+                        setCalcItems((prev) => prev.filter((it) => it.id !== row.id))
+                      }
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="setting-card" style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span className="prop-label">Tasa IVA (%):</span>
+                    <input
+                      type="number"
+                      className="prop-input"
+                      style={{ width: 72 }}
+                      value={taxRate}
+                      onChange={(e) => setTaxRate(Number(e.target.value) || 0)}
+                    />
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={applyRetentionIsr}
+                      onChange={(e) => setApplyRetentionIsr(e.target.checked)}
+                    />
+                    <span>Aplicar Retención ISR (10%)</span>
+                  </label>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn btn-subtle"
+                  onClick={() => {
+                    navigator.clipboard.writeText(buildAccountingStampSummary());
+                    onNotify('Cédula contable copiada al portapapeles.');
+                  }}
+                >
+                  <Copy size={13.5} />
+                  <span>Copiar desglose</span>
+                </button>
+              </div>
+
+              <div
+                style={{
+                  background: 'var(--bg-surface-subtle)',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '12px 16px',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 12.5,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4,
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>SUBTOTAL:</span>
+                  <strong>{formatMoney(subtotal)}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>IVA ({taxRate}%):</span>
+                  <strong>{formatMoney(ivaAmount)}</strong>
+                </div>
+                {applyRetentionIsr && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--warning)' }}>
+                    <span>RETENCIÓN ISR (10%):</span>
+                    <strong>-{formatMoney(retIsr)}</strong>
+                  </div>
+                )}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    borderTop: '1px solid var(--border-strong)',
+                    paddingTop: 6,
+                    marginTop: 4,
+                    fontSize: 14,
+                    color: 'var(--accent)',
+                  }}
+                >
+                  <strong>TOTAL NETO VERIFICADO:</strong>
+                  <strong>{formatMoney(grandTotal)}</strong>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* PDF TABLES TO EXCEL CSV */}
+          {kind === 'export-csv' && (
+            <div>
+              {!activeTab ? (
+                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                  Abre primero un estado de cuenta, factura o presupuesto PDF para extraer sus tablas a Excel.
+                </p>
+              ) : (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                      Filas tabulares detectadas automáticamente: <strong>{csvRowCount}</strong>
+                    </span>
+                    <select
+                      className="prop-select"
+                      value={csvScope}
+                      onChange={(e) => setCsvScope(e.target.value as 'current' | 'all')}
+                    >
+                      <option value="all">Todas las páginas del PDF ({activeTab.pages.length})</option>
+                      <option value="current">Solo página actual (Pág. {activeTab.currentPageIndex + 1})</option>
+                    </select>
+                  </div>
+
+                  <textarea
+                    readOnly
+                    className="prop-input"
+                    style={{
+                      width: '100%',
+                      height: 210,
+                      padding: 10,
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 11.5,
+                      lineHeight: 1.45,
+                      resize: 'vertical',
+                    }}
+                    value={csvPreview || 'Analizando estructura de columnas del PDF…'}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           {/* MERGE */}
           {kind === 'merge' && (
             <div>
@@ -803,6 +1282,31 @@ export const ToolsModal: React.FC<ToolsModalProps> = ({
           <button type="button" className="btn btn-subtle" onClick={onClose}>
             Cerrar
           </button>
+
+          {kind === 'calculator' && activeTab && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                onInsertAccountingSummaryOnPage(buildAccountingStampSummary());
+                onClose();
+              }}
+            >
+              <Calculator size={14} />
+              <span>Insertar Cédula Contable en el PDF</span>
+            </button>
+          )}
+
+          {kind === 'export-csv' && activeTab && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleDownloadCsv}
+            >
+              <FileSpreadsheet size={14} />
+              <span>Descargar Tabla Excel (.csv)</span>
+            </button>
+          )}
 
           {kind === 'merge' && (
             <button

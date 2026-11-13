@@ -302,6 +302,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <option value="night">Lectura Nocturna</option>
                     <option value="sepia">Sepia Editorial</option>
                     <option value="contrast">Alto Contraste</option>
+                    <option value="blueprint">Plano Ingeniería (Blueprint Azul)</option>
                   </select>
                 </div>
 
@@ -325,6 +326,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div>
                 <div className="setting-card">
                   <div>
+                    <div className="setting-card-title">Empresa / Despacho para Cajetines y Sellos</div>
+                    <div className="setting-card-desc">
+                      Aparece automáticamente en Cajetines de Ingeniería y Acuses de Administración.
+                    </div>
+                  </div>
+                  <input
+                    type="text"
+                    className="prop-input"
+                    style={{ width: 210 }}
+                    value={settings.companyName}
+                    onChange={(e) => update('companyName', e.target.value)}
+                  />
+                </div>
+
+                <div className="setting-card">
+                  <div>
                     <div className="setting-card-title">Nombre de Autor en Notas y Firmas</div>
                     <div className="setting-card-desc">
                       Se incluye en comentarios de revisión y sellos firmados.
@@ -333,10 +350,41 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <input
                     type="text"
                     className="prop-input"
-                    style={{ width: 200 }}
+                    style={{ width: 210 }}
                     value={settings.authorName}
                     onChange={(e) => update('authorName', e.target.value)}
                   />
+                </div>
+
+                <div className="setting-card">
+                  <div>
+                    <div className="setting-card-title">Parámetros Contables (IVA % y Moneda)</div>
+                    <div className="setting-card-desc">
+                      Usados por defecto en la Calculadora de Cinta e inserción de cédulas fiscales.
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="text"
+                      className="prop-input"
+                      style={{ width: 58, textAlign: 'center' }}
+                      value={settings.currencySymbol}
+                      onChange={(e) => update('currencySymbol', e.target.value || '$')}
+                      title="Símbolo de moneda"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      max={50}
+                      className="prop-input"
+                      style={{ width: 78 }}
+                      value={settings.defaultTaxRatePct}
+                      onChange={(e) =>
+                        update('defaultTaxRatePct', Number(e.target.value) || 0)
+                      }
+                      title="Tasa de IVA %"
+                    />
+                  </div>
                 </div>
 
                 <div className="setting-card">

@@ -12,7 +12,10 @@ import type {
   PdfOverlayElement,
   PdfTabDocument,
   RecentFileEntry,
+  SavedLogo,
   SavedSignature,
+  ScaleCalibration,
+  StudioDepartment,
   ToolModalKind,
   ViewLayout,
   WatermarkConfig,
@@ -22,9 +25,11 @@ import {
   applySettingsToDom,
   clearRecentFiles,
   loadRecentFiles,
+  loadSavedLogos,
   loadSavedSignatures,
   loadSettings,
   recordRecentFile,
+  saveLogosList,
   saveSettings,
   saveSignaturesList,
   togglePinRecentFile,
@@ -82,6 +87,7 @@ export const App: React.FC = () => {
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [splitCompareTabId, setSplitCompareTabId] = useState<string | null>(null);
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('home');
+  const [department, setDepartment] = useState<StudioDepartment>('general');
   const [activeTool, setActiveTool] = useState<ActiveTool>('select');
   const [leftPanel, setLeftPanel] = useState<
     'thumbnails' | 'outline' | 'search' | 'layers' | 'closed'
@@ -93,6 +99,7 @@ export const App: React.FC = () => {
   const [savedSignatures, setSavedSignatures] = useState<SavedSignature[]>(() =>
     loadSavedSignatures()
   );
+  const [savedLogos, setSavedLogos] = useState<SavedLogo[]>(() => loadSavedLogos());
   const [recentFiles, setRecentFiles] = useState<RecentFileEntry[]>(() =>
     loadRecentFiles()
   );
@@ -143,10 +150,12 @@ export const App: React.FC = () => {
       fileName: string,
       bytes: Uint8Array,
       filePath?: string,
-      initialMode: WorkspaceMode = 'edit'
+      initialMode: WorkspaceMode = 'edit',
+      initialPage = 0
     ) => {
       try {
         const doc = await loadPdfIntoTabDocument(fileName, bytes, settings, filePath);
+        doc.currentPageIndex = Math.max(0, Math.min(doc.pages.length - 1, initialPage));
         setTabs((prev) => [...prev, doc]);
         setActiveTabId(doc.id);
         setWorkspaceMode(initialMode);
@@ -262,19 +271,35 @@ export const App: React.FC = () => {
     [openBytesAsNewTab, notify]
   );
 
-  const handleLoadShowcaseDemo = useCallback(async () => {
-    const demoBytes = await generateShowcaseSamplePdf();
-    await openBytesAsNewTab(
-      'Propuesta_Ejecutiva_Editable_LEF.pdf',
-      demoBytes,
-      undefined,
-      'edit'
-    );
-    setActiveTool('edit-pdf-text');
-    notify(
-      'Modo "Editar / Mover Texto del PDF" activado: haz clic o arrastra cualquier texto de la hoja.'
-    );
-  }, [openBytesAsNewTab, notify]);
+  const handleLoadShowcaseDemo = useCallback(
+    async (targetDept: StudioDepartment = 'general', pageIdx = 0) => {
+      const demoBytes = await generateShowcaseSamplePdf();
+      await openBytesAsNewTab(
+        'Proyecto_Ejecutivo_Ingenieria_Contabilidad_LEF.pdf',
+        demoBytes,
+        undefined,
+        'edit',
+        pageIdx
+      );
+      setDepartment(targetDept);
+      if (targetDept === 'engineering') {
+        setActiveTool('measure-line');
+        notify('Suite Ingeniería activa: arrastra sobre el plano (Pág. 3) para medir cotas reales 1:100.');
+      } else if (targetDept === 'accounting') {
+        setActiveTool('tick-ok');
+        notify('Suite Contabilidad activa: marca partidas conciliadas o abre Calculadora de Cinta IVA.');
+      } else if (targetDept === 'admin') {
+        setActiveTool('select');
+        notify('Suite Administración activa: usa Mis Logos, Firmar, Sellos o Acuse de Recibido.');
+      } else {
+        setActiveTool('edit-pdf-text');
+        notify(
+          'Modo "Editar / Mover Texto del PDF" activo: haz clic o arrastra cualquier texto de la hoja.'
+        );
+      }
+    },
+    [openBytesAsNewTab, notify]
+  );
 
   const handleCreateBlankPdf = useCallback(async () => {
     const blankBytes = await createBlankPdfBytes();
@@ -322,6 +347,52 @@ export const App: React.FC = () => {
     }
   }, [activeTab]);
 
+  // Helper to insert any image DataURL onto the active page
+  const insertImageDataUrlOnActivePage = useCallback(
+    async (dataUrl: string, label: string, defaultWidthNorm = 0.28) => {
+      if (!activeTab) return;
+      const curPage = activeTab.pages[activeTab.currentPageIndex];
+      if (!curPage) return;
+      const dims = await getImageDimensions(dataUrl);
+      const aspect = dims.width / Math.max(1, dims.height);
+      const w = defaultWidthNorm;
+      const h = Math.min(0.48, (w / aspect) * (curPage.widthPt / Math.max(1, curPage.heightPt)));
+      const newId = `img_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`;
+
+      const newImgEl: PdfOverlayElement = {
+        id: newId,
+        pageId: curPage.id,
+        kind: 'image',
+        x: defaultWidthNorm < 0.22 ? 0.08 : 0.34,
+        y: defaultWidthNorm < 0.22 ? 0.05 : 0.26,
+        width: w,
+        height: h,
+        rotation: 0,
+        opacity: 1,
+        zIndex: activeTab.elements.length + 1,
+        dataUrl,
+        naturalWidth: dims.width,
+        naturalHeight: dims.height,
+        preserveAspect: true,
+        text: label,
+      };
+
+      mutateActiveTab(
+        (tab) => ({
+          ...tab,
+          isModified: true,
+          elements: [...tab.elements, newImgEl],
+        }),
+        true
+      );
+      setWorkspaceMode('edit');
+      setActiveTool('select');
+      setSelectedElementId(newId);
+      setSelectedNativeTextId(null);
+    },
+    [activeTab, mutateActiveTab]
+  );
+
   // Image Insertion & Replacement Handler
   const handleTriggerAddImage = useCallback(() => {
     replaceTargetIdRef.current = null;
@@ -366,47 +437,29 @@ export const App: React.FC = () => {
       return;
     }
 
-    const curPage = activeTab.pages[activeTab.currentPageIndex];
-    if (!curPage) return;
-    const aspect = dims.width / Math.max(1, dims.height);
-    const w = 0.32;
-    const h = Math.min(0.48, (w / aspect) * (curPage.widthPt / Math.max(1, curPage.heightPt)));
-    const newId = `img_${Date.now()}`;
-
-    const newImgEl: PdfOverlayElement = {
-      id: newId,
-      pageId: curPage.id,
-      kind: 'image',
-      x: 0.34,
-      y: 0.28,
-      width: w,
-      height: h,
-      rotation: 0,
-      opacity: 1,
-      zIndex: activeTab.elements.length + 1,
-      dataUrl,
-      naturalWidth: dims.width,
-      naturalHeight: dims.height,
-      preserveAspect: true,
-      text: file.name,
-    };
-
-    mutateActiveTab(
-      (tab) => ({
-        ...tab,
-        isModified: true,
-        elements: [...tab.elements, newImgEl],
-      }),
-      true
-    );
-    setWorkspaceMode('edit');
-    setActiveTool('select');
-    setSelectedElementId(newId);
-    setSelectedNativeTextId(null);
+    await insertImageDataUrlOnActivePage(dataUrl, file.name, 0.32);
     notify('Imagen insertada: arrástrala o usa las esquinas para ajustar su tamaño.');
   };
 
-  // Place Signature or Stamp
+  // Clipboard Ctrl+V Image Paste directly onto active PDF page!
+  useEffect(() => {
+    const onPaste = async (e: ClipboardEvent) => {
+      if (!activeTab || workspaceMode === 'home') return;
+      const items = Array.from(e.clipboardData?.items || []);
+      const imgItem = items.find((it) => it.type.startsWith('image/'));
+      if (!imgItem) return;
+      const blob = imgItem.getAsFile();
+      if (!blob) return;
+      e.preventDefault();
+      const dataUrl = await fileToDataUrl(blob);
+      await insertImageDataUrlOnActivePage(dataUrl, 'Captura pegada', 0.32);
+      notify('Imagen del portapapeles pegada directamente en la página.');
+    };
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+  }, [activeTab, workspaceMode, insertImageDataUrlOnActivePage, notify]);
+
+  // Place Signature, Logo, Stamp, Engineering Title Block, or Admin Received Stamp
   const handlePlaceSignatureOnPage = useCallback(
     (dataUrl: string, signerLabel: string) => {
       if (!activeTab) return;
@@ -469,14 +522,14 @@ export const App: React.FC = () => {
               kind: 'stamp',
               x: 0.62,
               y: 0.12,
-              width: 0.26,
+              width: 0.28,
               height: 0.068,
               rotation: 0,
               opacity: 0.94,
               zIndex: tab.elements.length + 1,
               text: presetText,
               subText: settings.includeDateOnStamps
-                ? new Date().toLocaleDateString('es-ES')
+                ? `${settings.companyName} · ${new Date().toLocaleDateString('es-ES')}`
                 : '',
               color,
             },
@@ -489,7 +542,155 @@ export const App: React.FC = () => {
       setSelectedElementId(newId);
       notify(`Sello "${presetText}" insertado.`);
     },
-    [activeTab, settings.includeDateOnStamps, mutateActiveTab, notify]
+    [activeTab, settings.includeDateOnStamps, settings.companyName, mutateActiveTab, notify]
+  );
+
+  const handleInsertEngineeringTitleBlock = useCallback(() => {
+    if (!activeTab) return;
+    const curPage = activeTab.pages[activeTab.currentPageIndex];
+    if (!curPage) return;
+    const newId = `tb_${Date.now()}`;
+    const today = new Date().toLocaleDateString('es-ES');
+    const blockText = [
+      `PROYECTO / EMPRESA: ${settings.companyName.toUpperCase()}`,
+      `DOCUMENTO: ${activeTab.fileName.replace(/\.pdf$/i, '')}`,
+      `ESCALA: ${activeTab.scaleCalibration.preset}   |   UNIDAD: ${activeTab.scaleCalibration.unit}   |   REV: A`,
+      `ING. RESPONSABLE: ${settings.authorName}   |   FECHA: ${today}`,
+    ].join('\n');
+
+    mutateActiveTab(
+      (tab) => ({
+        ...tab,
+        isModified: true,
+        elements: [
+          ...tab.elements,
+          {
+            id: newId,
+            pageId: curPage.id,
+            kind: 'text',
+            x: 0.46,
+            y: 0.84,
+            width: 0.47,
+            height: 0.095,
+            rotation: 0,
+            opacity: 1,
+            zIndex: tab.elements.length + 1,
+            text: blockText,
+            fontFamily: 'mono',
+            fontSizePt: 8.5,
+            fontWeight: 'bold',
+            fontStyle: 'normal',
+            textAlign: 'left',
+            color: '#111318',
+            backgroundColor: '#F8FAFC',
+            borderColor: '#1D4ED8',
+          },
+        ],
+      }),
+      true
+    );
+    setWorkspaceMode('edit');
+    setActiveTool('select');
+    setSelectedElementId(newId);
+    notify('Cajetín Técnico de Ingeniería insertado (doble clic para editar datos).');
+  }, [activeTab, settings.companyName, settings.authorName, mutateActiveTab, notify]);
+
+  const handleInsertAdminReceivedBlock = useCallback(() => {
+    if (!activeTab) return;
+    const curPage = activeTab.pages[activeTab.currentPageIndex];
+    if (!curPage) return;
+    const newId = `adm_${Date.now()}`;
+    const now = new Date();
+    const stampText = [
+      `ACUSE DE RECIBIDO · ${settings.companyName.toUpperCase()}`,
+      `FECHA: ${now.toLocaleDateString('es-ES')}   HORA: ${now.toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })}`,
+      `RECIBIÓ: ${settings.authorName}   FOLIO: ADM-${String(Math.floor(1000 + Math.random() * 9000))}`,
+      `ÁREA: ADMINISTRACIÓN Y CONTROL DOCUMENTAL`,
+    ].join('\n');
+
+    mutateActiveTab(
+      (tab) => ({
+        ...tab,
+        isModified: true,
+        elements: [
+          ...tab.elements,
+          {
+            id: newId,
+            pageId: curPage.id,
+            kind: 'text',
+            x: 0.52,
+            y: 0.08,
+            width: 0.41,
+            height: 0.09,
+            rotation: 0,
+            opacity: 0.96,
+            zIndex: tab.elements.length + 1,
+            text: stampText,
+            fontFamily: 'mono',
+            fontSizePt: 8.5,
+            fontWeight: 'bold',
+            fontStyle: 'normal',
+            textAlign: 'left',
+            color: '#C81E32',
+            backgroundColor: '#FFF5F5',
+            borderColor: '#C81E32',
+          },
+        ],
+      }),
+      true
+    );
+    setWorkspaceMode('edit');
+    setActiveTool('select');
+    setSelectedElementId(newId);
+    notify('Sello Administrativo de Acuse de Recibido colocado.');
+  }, [activeTab, settings.companyName, settings.authorName, mutateActiveTab, notify]);
+
+  const handleInsertAccountingSummaryOnPage = useCallback(
+    (summaryText: string) => {
+      if (!activeTab) return;
+      const curPage = activeTab.pages[activeTab.currentPageIndex];
+      if (!curPage) return;
+      const newId = `acc_${Date.now()}`;
+      mutateActiveTab(
+        (tab) => ({
+          ...tab,
+          isModified: true,
+          elements: [
+            ...tab.elements,
+            {
+              id: newId,
+              pageId: curPage.id,
+              kind: 'text',
+              x: 0.5,
+              y: 0.68,
+              width: 0.43,
+              height: 0.16,
+              rotation: 0,
+              opacity: 0.98,
+              zIndex: tab.elements.length + 1,
+              text: summaryText,
+              fontFamily: 'mono',
+              fontSizePt: 8.5,
+              fontWeight: 'bold',
+              fontStyle: 'normal',
+              textAlign: 'left',
+              color: '#0D7A5F',
+              backgroundColor: '#F0FDF4',
+              borderColor: '#0D7A5F',
+            },
+          ],
+        }),
+        true
+      );
+      setWorkspaceMode('edit');
+      setActiveTool('select');
+      setSelectedElementId(newId);
+      notify('Cédula Contable de IVA insertada en el PDF.');
+    },
+    [activeTab, mutateActiveTab, notify]
   );
 
   // Overlay & Native Text CRUD
@@ -648,8 +849,8 @@ export const App: React.FC = () => {
       {
         id: 'demo-pdf',
         category: 'Demo',
-        label: 'Cargar documento Demo Editable (Probar edición de textos)',
-        run: handleLoadShowcaseDemo,
+        label: 'Cargar Proyecto Demo (Edición, Ingeniería y Contabilidad)',
+        run: () => handleLoadShowcaseDemo('general', 0),
       },
       {
         id: 'edit-native-text',
@@ -658,24 +859,57 @@ export const App: React.FC = () => {
         run: () => {
           if (activeTab) {
             setWorkspaceMode('edit');
+            setDepartment('general');
             setActiveTool('edit-pdf-text');
           } else {
-            handleLoadShowcaseDemo();
+            handleLoadShowcaseDemo('general', 0);
           }
         },
       },
       {
         id: 'insert-image',
-        category: 'Edición',
-        label: 'Agregar / Insertar Imagen en la Página',
+        category: 'Imágenes',
+        label: 'Subir / Insertar Imagen o Fotografía en la Página',
         run: () => {
           if (activeTab) handleTriggerAddImage();
           else notify('Abre primero un PDF para insertar una imagen.');
         },
       },
       {
+        id: 'logo-vault',
+        category: 'Logos',
+        label: 'Abrir Bóveda de Logos Empresariales',
+        run: () => setToolModal('logos'),
+      },
+      {
+        id: 'dept-eng',
+        category: 'Ingeniería',
+        label: 'Activar Suite de Ingeniería (Cotas a escala, Áreas m² y Cajetín)',
+        run: () => {
+          if (activeTab) {
+            setWorkspaceMode('edit');
+            setDepartment('engineering');
+            setActiveTool('measure-line');
+          } else {
+            handleLoadShowcaseDemo('engineering', 2);
+          }
+        },
+      },
+      {
+        id: 'dept-acc',
+        category: 'Contabilidad',
+        label: 'Abrir Calculadora Contable de Cinta e IVA',
+        run: () => setToolModal('calculator'),
+      },
+      {
+        id: 'export-csv',
+        category: 'Contabilidad',
+        label: 'Extraer Tablas del PDF a Excel (.csv)',
+        run: () => setToolModal('export-csv'),
+      },
+      {
         id: 'sign-doc',
-        category: 'Firmar',
+        category: 'Administración',
         label: 'Abrir Bóveda de Firmas Transparentes',
         run: () => {
           if (activeTab) setSignatureModalOpen(true);
@@ -695,18 +929,6 @@ export const App: React.FC = () => {
         category: 'Pro',
         label: 'Unir varios archivos PDF…',
         run: () => setToolModal('merge'),
-      },
-      {
-        id: 'images-pdf',
-        category: 'Pro',
-        label: 'Convertir imágenes PNG/JPG a PDF…',
-        run: () => setToolModal('images-to-pdf'),
-      },
-      {
-        id: 'watermark',
-        category: 'Pro',
-        label: 'Configurar Marca de Agua',
-        run: () => setToolModal('watermark'),
       },
       {
         id: 'save-pdf',
@@ -820,6 +1042,7 @@ export const App: React.FC = () => {
       {workspaceMode === 'home' || !activeTab ? (
         <HomeHub
           recentFiles={recentFiles}
+          savedLogosCount={savedLogos.length}
           onOpenPdfDialog={handleOpenPdfDialog}
           onDropFiles={handleDropFilesOnHome}
           onLoadShowcaseDemo={handleLoadShowcaseDemo}
@@ -833,12 +1056,19 @@ export const App: React.FC = () => {
           <RibbonToolbar
             tab={activeTab}
             workspaceMode={workspaceMode}
+            department={department}
             activeTool={activeTool}
             splitCompareTabId={splitCompareTabId}
             availableTabsCount={tabs.length}
             onChangeMode={(m) => {
               setWorkspaceMode(m);
               if (m === 'edit' && activeTool === 'pan') setActiveTool('select');
+            }}
+            onChangeDepartment={(dept) => {
+              setDepartment(dept);
+              if (dept === 'engineering') setActiveTool('measure-line');
+              else if (dept === 'accounting') setActiveTool('tick-ok');
+              else setActiveTool('select');
             }}
             onSelectTool={(tool) => {
               setActiveTool(tool);
@@ -849,8 +1079,14 @@ export const App: React.FC = () => {
               }
             }}
             onTriggerAddImage={handleTriggerAddImage}
+            onOpenLogoVault={() => setToolModal('logos')}
             onOpenSignatureVault={() => setSignatureModalOpen(true)}
             onPlaceQuickStamp={handlePlaceQuickStamp}
+            onInsertEngineeringTitleBlock={handleInsertEngineeringTitleBlock}
+            onInsertAdminReceivedBlock={handleInsertAdminReceivedBlock}
+            onChangeScaleCalibration={(cal: ScaleCalibration) =>
+              mutateActiveTab((t) => ({ ...t, scaleCalibration: cal }))
+            }
             onUndo={handleUndo}
             onRedo={handleRedo}
             onNavigatePage={(idx) =>
@@ -1064,6 +1300,12 @@ export const App: React.FC = () => {
                       true
                     )
                   }
+                  onIncrementCalloutNumber={() =>
+                    mutateActiveTab((t) => ({
+                      ...t,
+                      nextCalloutNumber: (t.nextCalloutNumber || 1) + 1,
+                    }))
+                  }
                   onUpdateOverlayElement={(id, patch, pushUndo = false) =>
                     mutateActiveTab(
                       (t) => ({
@@ -1172,7 +1414,8 @@ export const App: React.FC = () => {
             {activeTab && workspaceMode !== 'home' && (
               <span>
                 {activeTab.fileName} · Página {activeTab.currentPageIndex + 1} de{' '}
-                {activeTab.pages.length} · Zoom {Math.round(activeTab.zoom * 100)}%
+                {activeTab.pages.length} · Zoom {Math.round(activeTab.zoom * 100)}% · Escala{' '}
+                {activeTab.scaleCalibration.preset}
               </span>
             )}
           </div>
@@ -1219,6 +1462,24 @@ export const App: React.FC = () => {
           kind={toolModal}
           activeTab={activeTab}
           defaultExportDpi={settings.exportImageDpi}
+          defaultTaxRatePct={settings.defaultTaxRatePct}
+          currencySymbol={settings.currencySymbol}
+          savedLogos={savedLogos}
+          onSaveLogo={(logo) => {
+            const next = [logo, ...savedLogos];
+            setSavedLogos(next);
+            saveLogosList(next);
+          }}
+          onDeleteLogo={(id) => {
+            const next = savedLogos.filter((l) => l.id !== id);
+            setSavedLogos(next);
+            saveLogosList(next);
+          }}
+          onPlaceLogoOnPage={(logo) => {
+            insertImageDataUrlOnActivePage(logo.dataUrl, logo.name, 0.19);
+            notify(`Logo "${logo.name}" estampado en la página.`);
+          }}
+          onInsertAccountingSummaryOnPage={handleInsertAccountingSummaryOnPage}
           onOpenGeneratedPdfInTab={(name, bytes) =>
             openBytesAsNewTab(name, bytes, undefined, 'edit')
           }

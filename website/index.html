@@ -1,50 +1,39 @@
 <!doctype html>
-<html lang="es" data-theme="light">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Descargar PDF-LEF Studio Pro para Windows — Suite PDF Nativa y Minimalista</title>
+    <title>PDF-LEF Studio Pro — Descarga Oficial para Windows 10 / 11</title>
     <meta
       name="description"
-      content="Descarga PDF-LEF Studio Pro para Windows 10 y 11. Edita y mueve textos existentes de cualquier PDF, inserta imágenes, firma sin fondo blanco y organiza páginas 100% local sin suscripciones."
+      content="Descarga PDF-LEF Studio Pro para Windows: estudio nativo 100% local para editar y mover textos PDF, subir imágenes y logos, acotar planos de Ingeniería, conciliar Contabilidad y firmar documentos."
     />
-    <link rel="icon" href="./assets/favicon.ico" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@700;800&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="icon" href="assets/favicon.ico" />
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <header class="site-nav">
-      <div class="container nav-inner">
-        <a href="#" class="brand-link" id="nav-brand">
-          <img src="./assets/icon-256.png" alt="Logo PDF-LEF" />
-          <span class="brand-wordmark">PDF<span>-LEF</span></span>
+    <!-- THUNDERBIRD-STYLE DARK PRODUCT HEADER -->
+    <header class="tb-header">
+      <div class="tb-container tb-nav">
+        <a href="#" class="tb-brand">
+          <img src="assets/icon-256.png" alt="Logo PDF-LEF" class="tb-brand-logo" />
+          <span class="tb-brand-name">PDF-<span>LEF</span></span>
+          <span class="tb-brand-badge">Studio Pro</span>
         </a>
 
-        <nav class="nav-links" aria-label="Navegación principal">
-          <a href="#funciones">Funciones</a>
-          <a href="#comparativa">PDF-LEF vs Acrobat</a>
-          <a href="#requisitos">Windows 10 / 11</a>
+        <nav class="tb-links">
+          <a href="#edicion">Textos, Imágenes y Logos</a>
+          <a href="#ingenieria">Ingeniería CAD</a>
+          <a href="#contabilidad">Contabilidad e IVA</a>
+          <a href="#administracion">Administración</a>
+          <a href="#comparativa">Comparativa</a>
         </nav>
 
-        <div class="nav-actions">
-          <button
-            type="button"
-            id="web-theme-toggle"
-            class="theme-toggle"
-            title="Alternar tema claro / oscuro"
-            aria-label="Alternar tema"
-          >
-            ◐
-          </button>
+        <div class="tb-nav-cta">
           <a
             id="nav-download-btn"
             href="https://github.com/Lycar-Desarrollos/PDF-LEF/releases/latest"
-            class="btn-dl compact"
+            class="btn-download-sm"
           >
             Descargar .exe
           </a>
@@ -52,242 +41,349 @@
       </div>
     </header>
 
-    <main>
-      <!-- HERO -->
-      <section class="hero">
-        <div class="container">
-          <div class="hero-kicker">EDICIÓN NATIVA PARA WINDOWS 10 &amp; 11 · 100% LOCAL</div>
-          <h1>El estudio PDF minimalista que supera a los clásicos pesados.</h1>
-          <p class="hero-lead">
-            Edita y mueve textos existentes dentro de cualquier PDF, inserta imágenes con precisión
-            milimétrica, firma eliminando el fondo blanco automáticamente y organiza cientos de
-            páginas al instante desde tu PC.
+    <!-- THUNDERBIRD-STYLE DRAMATIC DARK HERO + 3D DESKTOP SHOWCASE + DIAGONAL DIVIDER -->
+    <section class="tb-hero">
+      <div class="tb-hero-glow"></div>
+      <div class="tb-container tb-hero-grid">
+        <div class="tb-hero-copy">
+          <div class="tb-eyebrow">
+            <span class="dot-online"></span>
+            APLICACIÓN NATIVA DE ESCRITORIO · 100% LOCAL SIN NUBE
+          </div>
+          <h1>Haz tus PDFs libres, editables y listos para cualquier área.</h1>
+          <p class="tb-hero-lead">
+            <strong>PDF-LEF Studio Pro</strong> es la suite nativa para Windows 10 y 11 creada para
+            editar y mover textos reales del PDF, subir imágenes y <strong>logos empresariales</strong>,
+            acotar planos de <strong>Ingeniería</strong>, auditar tablas de <strong>Contabilidad</strong> y
+            firmar expedientes de <strong>Administración</strong> sin suscripciones ni internet.
           </p>
 
-          <div class="hero-cta-row">
+          <div class="tb-cta-group">
             <a
               id="hero-download-exe"
               href="https://github.com/Lycar-Desarrollos/PDF-LEF/releases/latest"
-              class="btn-dl"
+              class="btn-download-hero"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" />
               </svg>
-              <span id="download-btn-label">Descargar para Windows (.exe)</span>
-            </a>
-
-            <a href="#comparativa" class="btn-outline" id="hero-compare-link">
-              Ver por qué elegir PDF-LEF
-            </a>
-          </div>
-
-          <div class="hero-meta" id="release-version-meta">
-            Versión 1.0.0 · Instalador ligero (~8 MB) · Español e Inglés · Tus archivos jamás salen de tu equipo
-          </div>
-
-          <!-- Interactive Feature Switcher Preview -->
-          <div class="showcase-wrap">
-            <div class="mock-titlebar">
-              <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 12.5px">
-                <img src="./assets/icon-256.png" alt="" width="18" height="18" style="border-radius: 4px" />
-                <span>PDF-LEF Studio Pro</span>
-              </div>
-
-              <div class="mock-tabs" role="tablist">
-                <button type="button" class="mock-tab active" data-tab="text" id="tab-preview-text">
-                  1. Editar y Mover Textos
-                </button>
-                <button type="button" class="mock-tab" data-tab="sign" id="tab-preview-sign">
-                  2. Imágenes y Firmas
-                </button>
-                <button type="button" class="mock-tab" data-tab="pages" id="tab-preview-pages">
-                  3. Mesa de Luz
-                </button>
-                <button type="button" class="mock-tab" data-tab="config" id="tab-preview-config">
-                  4. Configuración Pro
-                </button>
-              </div>
-
-              <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted)">
-                OFFLINE · WIN11
-              </div>
-            </div>
-
-            <div class="mock-stage" id="showcase-stage">
-              <!-- Populated and switched dynamically by app.js -->
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- CORE FEATURES -->
-      <section class="section" id="funciones">
-        <div class="container">
-          <div class="section-header">
-            <h2>Diseñado al detalle para trabajo real.</h2>
-            <p>
-              Eliminamos los menús laberínticos, las ventanas emergentes invasivas y la lentitud.
-              Todo está exactamente donde lo esperas.
-            </p>
-          </div>
-
-          <div class="features-grid">
-            <article class="feature-box">
-              <div class="feature-num">01 / EDICIÓN REAL</div>
-              <h3>Edita y mueve textos del PDF</h3>
-              <p>
-                Haz clic directamente sobre cualquier línea o cifra existente en el PDF para
-                corregirla, cambiarle tipografía o arrastrarla a otra posición cubriendo el fondo
-                automáticamente.
-              </p>
-            </article>
-
-            <article class="feature-box">
-              <div class="feature-num">02 / OBJETOS E IMÁGENES</div>
-              <h3>Inserta logos, fotos y cuadros libres</h3>
-              <p>
-                Arrastra imágenes PNG, JPG, WebP o SVG directo sobre cualquier hoja. Redimensiona
-                desde sus 8 esquinas con guías magnéticas de centrado y control de capas.
-              </p>
-            </article>
-
-            <article class="feature-box">
-              <div class="feature-num">03 / BÓVEDA DE FIRMAS</div>
-              <h3>Firmas transparentes en 1 clic</h3>
-              <p>
-                Dibuja tu firma, créala con tipografía caligráfica o sube una foto en papel:
-                PDF-LEF elimina el fondo blanco automáticamente y la guarda en tu PC.
-              </p>
-            </article>
-
-            <article class="feature-box">
-              <div class="feature-num">04 / MESA DE LUZ</div>
-              <h3>Unir, dividir, rotar y reordenar</h3>
-              <p>
-                Combina múltiples PDFs, extrae rangos exactos, inserta hojas en blanco y reorganiza
-                cientos de páginas visualmente con arrastrar y soltar.
-              </p>
-            </article>
-
-            <article class="feature-box">
-              <div class="feature-num">05 / ACABADO EMPRESARIAL</div>
-              <h3>Sellos, marcas de agua, Bates y OCR</h3>
-              <p>
-                Estampa sellos comerciales con fecha automática, folios legales Bates, censura
-                permanente de datos confidenciales y reconocimiento óptico de texto local.
-              </p>
-            </article>
-
-            <article class="feature-box">
-              <div class="feature-num">06 / PERSONALIZACIÓN TOTAL</div>
-              <h3>Configuración clara y exportable</h3>
-              <p>
-                Alterna entre Blanco Editorial y Grafito Oscuro, elige acentos de marca, densidad
-                compacta o táctil, renderizado 4K HiDPI y atajos rápidos con Ctrl+K.
-              </p>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <!-- COMPARISON -->
-      <section class="section" id="comparativa">
-        <div class="container">
-          <div class="section-header">
-            <h2>Claridad y velocidad frente al estándar tradicional.</h2>
-            <p>
-              Construido sobre arquitectura nativa Tauri v2 (Rust) para abrir al instante sin
-              consumir los recursos de tu computadora.
-            </p>
-          </div>
-
-          <div class="compare-table-wrap">
-            <table class="compare-table">
-              <thead>
-                <tr>
-                  <th>Característica</th>
-                  <th class="highlight-col">PDF-LEF Studio Pro</th>
-                  <th>Editores Tradicionales (Acrobat)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Peso del instalador en Windows</td>
-                  <td class="highlight-col">~8 MB ultraligero (.exe nativo)</td>
-                  <td>Más de 900 MB + servicios en segundo plano</td>
-                </tr>
-                <tr>
-                  <td>Velocidad de apertura al doble clic</td>
-                  <td class="highlight-col">Instantánea (&lt; 0.4 segundos)</td>
-                  <td>Lenta con pantallas de carga y avisos</td>
-                </tr>
-                <tr>
-                  <td>Editar y mover textos existentes + imágenes</td>
-                  <td class="highlight-col">Directo en 1 clic con guías magnéticas</td>
-                  <td>Oculto tras múltiples paneles complejos</td>
-                </tr>
-                <tr>
-                  <td>Privacidad de documentos confidenciales</td>
-                  <td class="highlight-col">100% Local Offline garantizado</td>
-                  <td>Sincronización constante con servidores externos</td>
-                </tr>
-                <tr>
-                  <td>Panel de Configuración y Estilo</td>
-                  <td class="highlight-col">Minimalista, temas/acentos/densidad y perfil JSON</td>
-                  <td>Ventanas heredadas con decenas de pestañas confusas</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <!-- DOWNLOAD CTA -->
-      <section class="section" id="requisitos">
-        <div class="container">
-          <div class="download-cta">
-            <div style="max-width: 560px">
-              <h2
-                style="
-                  font-family: var(--font-display);
-                  font-size: 30px;
-                  margin: 0 0 10px;
-                  letter-spacing: -0.03em;
-                "
-              >
-                Listo para instalar en tu PC con Windows.
-              </h2>
-              <p style="margin: 0; color: var(--text-body); font-size: 15px">
-                Compatible con <strong>Windows 10 (64-bit)</strong> y
-                <strong>Windows 11</strong>. Incluye asociación automática de archivos
-                <code>.pdf</code>, acceso directo en Escritorio y desinstalador limpio.
-              </p>
-            </div>
-
-            <div style="display: flex; flex-direction: column; gap: 8px">
-              <a
-                id="footer-download-exe"
-                href="https://github.com/Lycar-Desarrollos/PDF-LEF/releases/latest"
-                class="btn-dl"
-              >
-                Descargar PDF-LEF-Setup.exe
-              </a>
-              <span style="font-size: 12px; color: var(--text-muted); text-align: center">
-                Desarrollado por Lycar Desarrollos · Licencia Comercial Propia
+              <span>
+                <strong>Descargar PDF-LEF Studio Pro</strong>
+                <small>Instalador Nativo Windows (.exe · 64-bit)</small>
               </span>
+            </a>
+
+            <a
+              href="https://github.com/Lycar-Desarrollos/PDF-LEF/releases/latest"
+              class="btn-secondary-hero"
+            >
+              Paquete MSI Empresarial
+            </a>
+          </div>
+
+          <div id="release-version-meta" class="tb-os-meta">
+            Windows 10 y Windows 11 (x64) · Instalador ligero (~9 MB) · Licencia Comercial Limpia · Cero Telemetría
+          </div>
+        </div>
+
+        <!-- 3D Angled Desktop Window Preview (Thunderbird Showcase Pattern) -->
+        <div class="tb-hero-visual">
+          <div class="win11-mockup-card">
+            <div class="win11-titlebar">
+              <div class="win11-brand">
+                <img src="assets/icon-256.png" alt="" />
+                <span>PDF-<b>LEF</b></span>
+                <span class="win11-tab active">Proyecto_Ingenieria_Fiscal.pdf</span>
+                <span class="win11-tab">Contrato_2026.pdf</span>
+              </div>
+              <div class="win11-dots">
+                <span>—</span><span>▢</span><span class="close">✕</span>
+              </div>
+            </div>
+
+            <!-- Interactive Department Switcher right inside the Hero! -->
+            <div class="win11-dept-bar">
+              <button type="button" class="dept-btn active" data-dept="general">Edición e Imágenes</button>
+              <button type="button" class="dept-btn" data-dept="eng">Ingeniería CAD</button>
+              <button type="button" class="dept-btn" data-dept="acc">Contabilidad IVA</button>
+              <button type="button" class="dept-btn" data-dept="adm">Logos y Firmas</button>
+            </div>
+
+            <div class="win11-body" id="hero-interactive-stage">
+              <!-- Populated dynamically by website/app.js -->
             </div>
           </div>
         </div>
-      </section>
-    </main>
+      </div>
 
-    <footer class="container site-footer">
-      <div>© 2026 Lycar Desarrollos · PDF-LEF Studio Pro para Windows.</div>
-      <div>100% Procesamiento Local · Privacidad Absoluta.</div>
+      <!-- Thunderbird-inspired Sloped Diagonal White Divider -->
+      <div class="tb-diagonal-divider">
+        <svg viewBox="0 0 1440 90" preserveAspectRatio="none">
+          <polygon fill="#ffffff" points="0,90 1440,0 1440,90" />
+        </svg>
+      </div>
+    </section>
+
+    <!-- PURE WHITE SECTION 1: CORE EDITING, IMAGES & COMPANY LOGO VAULT -->
+    <section id="edicion" class="tb-section-light">
+      <div class="tb-container">
+        <div class="section-heading">
+          <span class="section-tag">NÚCLEO DE EDICIÓN DIRECTA</span>
+          <h2>Sube imágenes, guarda tus logos y mueve cualquier texto del PDF</h2>
+          <p>
+            Diseñado para que nunca tengas que volver a convertir un PDF a Word solo para corregir un monto,
+            insertar una fotografía o estampar el membrete de tu empresa.
+          </p>
+        </div>
+
+        <div class="feature-cards-3">
+          <article class="f-card">
+            <div class="f-icon ruby">Aa</div>
+            <h3>Editar y Mover Textos Existentes</h3>
+            <p>
+              Haz clic sobre cualquier línea o cifra del PDF para cambiar su texto, tipografía o color, y
+              arrástrala libremente a otra posición con parche automático del color del papel.
+            </p>
+          </article>
+
+          <article class="f-card">
+            <div class="f-icon cobalt">IMG</div>
+            <h3>Subir, Pegar (Ctrl+V) y Escalar Imágenes</h3>
+            <p>
+              Arrastra fotos PNG, JPG o WebP directo sobre la hoja o pega capturas del portapapeles de Windows.
+              Escálalas desde 8 puntos de control conservando su nitidez original.
+            </p>
+          </article>
+
+          <article class="f-card">
+            <div class="f-icon emerald">LOGO</div>
+            <h3>Bóveda Local de Logos Empresariales</h3>
+            <p>
+              Sube los logotipos de tu constructora, despacho o empresa una sola vez (con opción de quitar el fondo
+              blanco automáticamente) y estámpalos en cualquier PDF en 1 clic.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- DEPARTMENT SHOWCASE BANDS: ENGINEERING, ACCOUNTING, ADMINISTRATION -->
+    <section class="tb-section-subtle">
+      <div class="tb-container">
+        <!-- INGENIERÍA -->
+        <div id="ingenieria" class="dept-showcase-row">
+          <div class="dept-copy">
+            <span class="dept-pill eng">SUITE DE INGENIERÍA Y ARQUITECTURA</span>
+            <h3>Acota planos a escala real, mide áreas en m² e inserta cajetines técnicos</h3>
+            <p>
+              Revisa planos estructurales, eléctricos o industriales sin abrir pesado software CAD. Calibra la escala
+              del documento y obtén mediciones exactas al instante.
+            </p>
+            <ul class="dept-list">
+              <li><strong>Escalas calibradas:</strong> 1:1, 1:20, 1:50, 1:75, 1:100, 1:200 y 1:500 en metros, cm, mm o pies.</li>
+              <li><strong>Cotas lineales y Áreas m²:</strong> Arrastra de punto A a B para estampar cotas vectoriales y superficies.</li>
+              <li><strong>Globos de revisión ① ② ③ y Filtro Blueprint:</strong> Numera hallazgos de obra e inserta Cajetín Técnico en 1 clic.</li>
+            </ul>
+          </div>
+          <div class="dept-visual-card eng-card">
+            <div class="cad-blueprint-preview">
+              <div class="cad-grid-box">
+                <span class="cad-dim-top">18.40 m (Escala 1:100)</span>
+                <span class="cad-area-center">176.64 m²<small>NAVE PRINCIPAL</small></span>
+                <span class="cad-pin pin-1">1</span>
+                <span class="cad-pin pin-2">2</span>
+              </div>
+              <div class="cad-titleblock">
+                <div><strong>PROYECTO:</strong> LYCAR DESARROLLOS</div>
+                <div><strong>ESCALA:</strong> 1:100 · <strong>ESTADO:</strong> APTO PARA CONSTRUCCIÓN</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CONTABILIDAD -->
+        <div id="contabilidad" class="dept-showcase-row reverse">
+          <div class="dept-copy">
+            <span class="dept-pill acc">SUITE DE CONTABILIDAD Y AUDITORÍA FISCAL</span>
+            <h3>Calculadora de cinta con IVA, marcas de conciliación y PDF a Excel (.csv)</h3>
+            <p>
+              Acelera cierres mensuales, auditorías de facturas y conciliaciones bancarias trabajando directamente
+              sobre tus estados de cuenta y pólizas PDF.
+            </p>
+            <ul class="dept-list">
+              <li><strong>Calculadora de Cinta e Impuestos:</strong> Suma partidas, calcula IVA (16% configurable) y retenciones ISR, y estampa la cédula verificada sobre el PDF.</li>
+              <li><strong>Extractor directo a Microsoft Excel (.csv):</strong> Detecta filas y columnas de estados de cuenta y facturas listas para abrir en Excel.</li>
+              <li><strong>Tickmarks de Auditoría y Sellos Fiscales:</strong> Marca cada renglón con <em>✓ Conciliado</em>, <em>✗ Diferencia</em> o <em>! Revisar IVA</em>, y sella <code>CONTABILIZADO</code>.</li>
+            </ul>
+          </div>
+          <div class="dept-visual-card acc-card">
+            <div class="acc-preview">
+              <div class="acc-row">
+                <span>FAC-901 · Acero Estructural</span>
+                <strong>$18,500.00</strong>
+                <span class="tick-ok">✓ Conciliado</span>
+              </div>
+              <div class="acc-row">
+                <span>FAC-902 · Concreto Premezclado</span>
+                <strong>$6,450.00</strong>
+                <span class="tick-ok">✓ Conciliado</span>
+              </div>
+              <div class="acc-row">
+                <span>FAC-903 · Flete Especial</span>
+                <strong>$1,200.00</strong>
+                <span class="tick-warn">! Revisar IVA</span>
+              </div>
+              <div class="acc-tape">
+                <div><span>SUBTOTAL:</span><span>$26,150.00</span></div>
+                <div><span>IVA (16%):</span><span>$4,184.00</span></div>
+                <div class="acc-total"><span>TOTAL AUDITADO:</span><span>$30,334.00</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ADMINISTRACIÓN -->
+        <div id="administracion" class="dept-showcase-row">
+          <div class="dept-copy">
+            <span class="dept-pill adm">SUITE DE ADMINISTRACIÓN Y LEGAL</span>
+            <h3>Firmas sin fondo blanco, Acuses de Recibido, folios Bates y Mesa de Luz</h3>
+            <p>
+              Control documental ejecutivo con máxima privacidad local: tus contratos, nóminas y escrituras jamás salen
+              de tu computadora en Windows.
+            </p>
+            <ul class="dept-list">
+              <li><strong>Bóveda de Firmas Transparentes:</strong> Dibuja o fotografía tu firma en papel; PDF-LEF elimina el fondo blanco al instante.</li>
+              <li><strong>Acuse de Recibido Oficial y Foliado Bates:</strong> Inserta sellos fechados con hora/folio y numera expedientes completos (<code>LEF-00001</code>).</li>
+              <li><strong>Unir, Dividir, Censurar y Organizar:</strong> Reordena páginas arrastrándolas en la Mesa de Luz o convierte colecciones de fotos a PDF.</li>
+            </ul>
+          </div>
+          <div class="dept-visual-card adm-card">
+            <div class="adm-preview">
+              <div class="adm-received">
+                <strong>ACUSE DE RECIBIDO · LYCAR DESARROLLOS</strong>
+                <span>FECHA: 13/11/2026 · HORA: 10:45 · FOLIO: ADM-4821</span>
+              </div>
+              <div class="adm-sig-box">
+                <div class="adm-sig-script">Ing. Luis E. Flores</div>
+                <small>Firma Transparente Verificada · Bóveda Local</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPARISON TABLE -->
+    <section id="comparativa" class="tb-section-light">
+      <div class="tb-container">
+        <div class="section-heading">
+          <span class="section-tag">SUPERIOR EN DISEÑO, VELOCIDAD Y PRIVACIDAD</span>
+          <h2>¿Por qué elegir PDF-LEF Studio Pro en Windows?</h2>
+        </div>
+
+        <div class="comp-table-wrap">
+          <table class="comp-table">
+            <thead>
+              <tr>
+                <th>Capacidad Profesional</th>
+                <th class="highlight-col">PDF-LEF Studio Pro</th>
+                <th>Editores Clásicos Pesados</th>
+                <th>Páginas Web Online</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Arranque instantáneo en Windows (&lt; 0.4 s) y bajo uso de RAM</td>
+                <td class="highlight-col">✓ Motor Nativo Rust + WebView2</td>
+                <td>✗ Más de 1.5 GB en disco</td>
+                <td>Depende del navegador</td>
+              </tr>
+              <tr>
+                <td>Editar y arrastrar textos existentes del PDF</td>
+                <td class="highlight-col">✓ Incluido en sitio</td>
+                <td>Solo con suscripción cara</td>
+                <td>Limitado</td>
+              </tr>
+              <tr>
+                <td>Bóveda Local de Logos Empresariales y Firmas sin fondo</td>
+                <td class="highlight-col">✓ Ilimitada 100% Local</td>
+                <td>Parcial</td>
+                <td>Riesgo de subir logos/firmas</td>
+              </tr>
+              <tr>
+                <td>Herramientas de Ingeniería (Escalas 1:100, Áreas m²) y Contabilidad (IVA / CSV)</td>
+                <td class="highlight-col">✓ Integradas de serie</td>
+                <td>✗ Requiere plugins aparte</td>
+                <td>✗ No disponible</td>
+              </tr>
+              <tr>
+                <td>Privacidad de contratos, planos y estados de cuenta</td>
+                <td class="highlight-col">✓ 100% En tu PC (Cero Nube)</td>
+                <td>Nube activada por defecto</td>
+                <td>✗ Tus archivos se suben a terceros</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- THUNDERBIRD-STYLE RICH DARK FOOTER -->
+    <footer class="tb-footer">
+      <div class="tb-container">
+        <div class="tb-footer-cta">
+          <div>
+            <h3>Listo para trabajar en tu PC con Windows</h3>
+            <p>Descarga el instalador nativo oficial y úsalo de manera 100% local sin límites.</p>
+          </div>
+          <a
+            id="footer-download-exe"
+            href="https://github.com/Lycar-Desarrollos/PDF-LEF/releases/latest"
+            class="btn-download-hero"
+          >
+            <span>
+              <strong>Descargar Instalador .EXE</strong>
+              <small>Windows 10 / 11 · 64 bits</small>
+            </span>
+          </a>
+        </div>
+
+        <div class="tb-footer-cols">
+          <div>
+            <div class="tb-brand" style="margin-bottom: 10px">
+              <img src="assets/icon-256.png" alt="Logo PDF-LEF" class="tb-brand-logo" />
+              <span class="tb-brand-name">PDF-<span>LEF</span></span>
+            </div>
+            <p style="font-size: 13px; color: #94a3b8; line-height: 1.6; max-width: 300px">
+              Desarrollado por <strong>Lycar Desarrollos</strong>. Ingeniería documental nativa,
+              minimalista y 100% privada para equipos profesionales.
+            </p>
+          </div>
+
+          <div>
+            <h4>Departamentos</h4>
+            <a href="#edicion">Edición de Textos e Imágenes</a>
+            <a href="#edicion">Bóveda de Logos Empresariales</a>
+            <a href="#ingenieria">Ingeniería y Planos CAD</a>
+            <a href="#contabilidad">Contabilidad, IVA y Excel CSV</a>
+            <a href="#administracion">Administración y Firmas</a>
+          </div>
+
+          <div>
+            <h4>Distribución Windows</h4>
+            <a href="https://github.com/Lycar-Desarrollos/PDF-LEF/releases/latest">Instalador NSIS (.exe)</a>
+            <a href="https://github.com/Lycar-Desarrollos/PDF-LEF/releases/latest">Paquete Corporativo (.msi)</a>
+            <a href="https://github.com/Lycar-Desarrollos/PDF-LEF">Repositorio Oficial GitHub</a>
+          </div>
+        </div>
+
+        <div class="tb-footer-bottom">
+          <span>© 2026 Lycar Desarrollos · PDF-LEF Studio Pro. Todos los derechos reservados.</span>
+          <span>Arquitectura comercial libre de GPL/AGPL · 100% Offline en Windows.</span>
+        </div>
+      </div>
     </footer>
 
-    <script src="./app.js"></script>
+    <script src="app.js"></script>
   </body>
 </html>

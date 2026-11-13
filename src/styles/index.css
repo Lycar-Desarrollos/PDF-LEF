@@ -815,6 +815,9 @@ textarea {
 .pdf-page-shell.paper-contrast canvas.pdf-render-canvas {
   filter: contrast(1.22) saturate(1.05);
 }
+.pdf-page-shell.paper-blueprint canvas.pdf-render-canvas {
+  filter: invert(0.92) sepia(0.85) hue-rotate(175deg) saturate(2.5) contrast(1.08);
+}
 
 .pdf-render-canvas {
   display: block;

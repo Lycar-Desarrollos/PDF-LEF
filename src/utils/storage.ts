@@ -1,7 +1,13 @@
-import type { AppSettings, RecentFileEntry, SavedSignature } from '../types/pdf';
+import type {
+  AppSettings,
+  RecentFileEntry,
+  SavedLogo,
+  SavedSignature,
+} from '../types/pdf';
 
-const SETTINGS_KEY = 'pdf_lef_settings_v1';
+const SETTINGS_KEY = 'pdf_lef_settings_v2';
 const SIGNATURES_KEY = 'pdf_lef_signatures_v1';
+const LOGOS_KEY = 'pdf_lef_logos_v1';
 const RECENTS_KEY = 'pdf_lef_recents_v1';
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -18,7 +24,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultLeftPanel: 'thumbnails',
   hiDpiRendering: true,
 
-  authorName: 'Usuario PDF-LEF',
+  authorName: 'Ing. / Lic. Usuario',
+  companyName: 'Lycar Desarrollos',
+  defaultTaxRatePct: 16,
+  currencySymbol: '$',
   defaultFontFamily: 'sans',
   defaultFontSizePt: 12,
   defaultTextColor: '#111318',
@@ -88,6 +97,23 @@ export function saveSignaturesList(list: SavedSignature[]): void {
   }
 }
 
+export function loadSavedLogos(): SavedLogo[] {
+  try {
+    const raw = localStorage.getItem(LOGOS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveLogosList(list: SavedLogo[]): void {
+  try {
+    localStorage.setItem(LOGOS_KEY, JSON.stringify(list));
+  } catch {
+    // Ignore
+  }
+}
+
 export function loadRecentFiles(): RecentFileEntry[] {
   try {
     const raw = localStorage.getItem(RECENTS_KEY);
@@ -97,7 +123,9 @@ export function loadRecentFiles(): RecentFileEntry[] {
   }
 }
 
-export function recordRecentFile(entry: Omit<RecentFileEntry, 'id' | 'lastOpenedAt'>): RecentFileEntry[] {
+export function recordRecentFile(
+  entry: Omit<RecentFileEntry, 'id' | 'lastOpenedAt'>
+): RecentFileEntry[] {
   const existing = loadRecentFiles();
   const key = entry.filePath || entry.fileName;
   const prev = existing.find((item) => (item.filePath || item.fileName) === key);

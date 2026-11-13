@@ -19,6 +19,8 @@ import type {
 } from '../types/pdf';
 import {
   extractNativeEditableTexts,
+  formatEngineeringArea,
+  formatEngineeringLength,
   renderPageToCanvas,
 } from '../utils/pdfEngine';
 import { fileToDataUrl, getImageDimensions } from '../utils/imageUtils';
@@ -38,6 +40,7 @@ interface PdfCanvasStageProps {
   onUpdateNativeTextItem: (item: NativePdfTextItem, pushUndo?: boolean) => void;
   onResetNativeTextItem: (id: string) => void;
   onAddOverlayElement: (el: PdfOverlayElement) => void;
+  onIncrementCalloutNumber: () => void;
   onUpdateOverlayElement: (
     id: string,
     patch: Partial<PdfOverlayElement>,
@@ -74,6 +77,7 @@ interface InteractivePageCardProps {
   onUpdateNativeTextItem: (item: NativePdfTextItem, pushUndo?: boolean) => void;
   onResetNativeTextItem: (id: string) => void;
   onAddOverlayElement: (el: PdfOverlayElement) => void;
+  onIncrementCalloutNumber: () => void;
   onUpdateOverlayElement: (
     id: string,
     patch: Partial<PdfOverlayElement>,
@@ -101,6 +105,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
   onUpdateNativeTextItem,
   onResetNativeTextItem,
   onAddOverlayElement,
+  onIncrementCalloutNumber,
   onUpdateOverlayElement,
   onDuplicateOverlayElement,
   onReorderElementLayer,
@@ -117,7 +122,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
   const [snapV, setSnapV] = useState<number | null>(null);
   const [snapH, setSnapH] = useState<number | null>(null);
 
-  // Live drawing preview state (shapes, highlights, ink)
+  // Live drawing preview state (shapes, highlights, ink, dimension lines)
   const [draftBox, setDraftBox] = useState<{
     x: number;
     y: number;
@@ -125,6 +130,13 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
     h: number;
   } | null>(null);
   const [draftInk, setDraftInk] = useState<Array<{ x: number; y: number }> | null>(null);
+  const [draftLine, setDraftLine] = useState<{
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    label: string;
+  } | null>(null);
 
   // Render PDF page canvas cleanly on zoom / rotation change
   useEffect(() => {
@@ -299,7 +311,17 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
         nh = Math.max(0.016, nw / ratio);
       }
 
-      onUpdateOverlayElement(el.id, { x: nx, y: ny, width: nw, height: nh }, false);
+      const patch: Partial<PdfOverlayElement> = { x: nx, y: ny, width: nw, height: nh };
+      if (el.kind === 'area') {
+        patch.text = formatEngineeringArea(
+          pageDesc.widthPt,
+          pageDesc.heightPt,
+          nw,
+          nh,
+          tab.scaleCalibration
+        );
+      }
+      onUpdateOverlayElement(el.id, patch, false);
     };
 
     const onUp = () => {
@@ -415,6 +437,186 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
       });
       onSelectElement(newId);
       if (settings.autoSelectAfterInsert) onSwitchToSelectTool();
+      return;
+    }
+
+    // Engineering Auto-Numbered Callout Pin
+    if (activeTool === 'callout') {
+      const num = tab.nextCalloutNumber || 1;
+      const newId = `cal_${Date.now()}`;
+      onAddOverlayElement({
+        id: newId,
+        pageId: pageDesc.id,
+        kind: 'callout',
+        x: Math.min(0.8, nx),
+        y: Math.min(0.92, ny),
+        width: 0.19,
+        height: 0.036,
+        rotation: 0,
+        opacity: 1,
+        zIndex: tab.elements.length + 1,
+        calloutNumber: num,
+        text: `Detalle Ing. #${num}`,
+        color: '#C81E32',
+      });
+      onIncrementCalloutNumber();
+      onSelectElement(newId);
+      return;
+    }
+
+    // Accounting Reconciliation Audit Tickmarks
+    if (
+      activeTool === 'tick-ok' ||
+      activeTool === 'tick-err' ||
+      activeTool === 'tick-warn'
+    ) {
+      const variant =
+        activeTool === 'tick-err'
+          ? 'err'
+          : activeTool === 'tick-warn'
+          ? 'warn'
+          : 'ok';
+      const defaultColor =
+        variant === 'ok' ? '#0D7A5F' : variant === 'err' ? '#C42B1C' : '#B45309';
+      const defaultLabel =
+        variant === 'ok'
+          ? 'Conciliado OK'
+          : variant === 'err'
+          ? 'Diferencia'
+          : 'Revisar IVA';
+      const newId = `tm_${Date.now()}`;
+      onAddOverlayElement({
+        id: newId,
+        pageId: pageDesc.id,
+        kind: 'tickmark',
+        x: Math.min(0.86, nx),
+        y: Math.min(0.94, ny),
+        width: 0.14,
+        height: 0.032,
+        rotation: 0,
+        opacity: 1,
+        zIndex: tab.elements.length + 1,
+        tickVariant: variant,
+        color: defaultColor,
+        text: defaultLabel,
+      });
+      onSelectElement(newId);
+      return;
+    }
+
+    // Engineering Calibrated Linear Distance Measurement
+    if (activeTool === 'measure-line') {
+      const startPt = { x: nx, y: ny };
+      let endPt = { x: Math.min(0.98, nx + 0.08), y: ny };
+      let label = formatEngineeringLength(
+        pageDesc.widthPt,
+        pageDesc.heightPt,
+        startPt,
+        endPt,
+        tab.scaleCalibration
+      );
+      setDraftLine({ x1: startPt.x, y1: startPt.y, x2: endPt.x, y2: endPt.y, label });
+
+      const onMove = (ev: MouseEvent) => {
+        const p = getNormCoords(ev.clientX, ev.clientY);
+        endPt = { x: p.nx, y: p.ny };
+        label = formatEngineeringLength(
+          pageDesc.widthPt,
+          pageDesc.heightPt,
+          startPt,
+          endPt,
+          tab.scaleCalibration
+        );
+        setDraftLine({ x1: startPt.x, y1: startPt.y, x2: endPt.x, y2: endPt.y, label });
+      };
+
+      const onUp = () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+        setDraftLine(null);
+        const minX = Math.min(startPt.x, endPt.x);
+        const maxX = Math.max(startPt.x, endPt.x);
+        const minY = Math.min(startPt.y, endPt.y);
+        const maxY = Math.max(startPt.y, endPt.y);
+        const newId = `dim_${Date.now()}`;
+        onAddOverlayElement({
+          id: newId,
+          pageId: pageDesc.id,
+          kind: 'dimension',
+          x: Math.max(0, minX - 0.015),
+          y: Math.max(0, minY - 0.018),
+          width: Math.max(0.06, maxX - minX + 0.03),
+          height: Math.max(0.035, maxY - minY + 0.036),
+          rotation: 0,
+          opacity: 1,
+          zIndex: tab.elements.length + 1,
+          color: '#1D4ED8',
+          strokeWidth: 2,
+          points: [startPt, endPt],
+          text: label,
+          subText: `Escala ${tab.scaleCalibration.preset}`,
+        });
+        onSelectElement(newId);
+      };
+
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+      return;
+    }
+
+    // Engineering Calibrated Area Measurement (m² / cm² / ft²)
+    if (activeTool === 'measure-area') {
+      const startX = nx;
+      const startY = ny;
+      let curBox = { x: startX, y: startY, w: 0.06, h: 0.05 };
+      setDraftBox(curBox);
+
+      const onMove = (ev: MouseEvent) => {
+        const p = getNormCoords(ev.clientX, ev.clientY);
+        curBox = {
+          x: Math.min(startX, p.nx),
+          y: Math.min(startY, p.ny),
+          w: Math.abs(p.nx - startX),
+          h: Math.abs(p.ny - startY),
+        };
+        setDraftBox(curBox);
+      };
+
+      const onUp = () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+        setDraftBox(null);
+        const finalW = Math.max(0.05, curBox.w);
+        const finalH = Math.max(0.04, curBox.h);
+        const areaText = formatEngineeringArea(
+          pageDesc.widthPt,
+          pageDesc.heightPt,
+          finalW,
+          finalH,
+          tab.scaleCalibration
+        );
+        const newId = `area_${Date.now()}`;
+        onAddOverlayElement({
+          id: newId,
+          pageId: pageDesc.id,
+          kind: 'area',
+          x: curBox.x,
+          y: curBox.y,
+          width: finalW,
+          height: finalH,
+          rotation: 0,
+          opacity: 1,
+          zIndex: tab.elements.length + 1,
+          color: '#0D7A5F',
+          strokeWidth: 1.8,
+          text: areaText,
+          subText: `Escala ${tab.scaleCalibration.preset}`,
+        });
+        onSelectElement(newId);
+      };
+
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
       return;
     }
 
@@ -580,7 +782,13 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
         activeTool === 'ellipse' ||
         activeTool === 'arrow' ||
         activeTool === 'highlight' ||
-        activeTool === 'redact'
+        activeTool === 'redact' ||
+        activeTool === 'measure-line' ||
+        activeTool === 'measure-area' ||
+        activeTool === 'callout' ||
+        activeTool === 'tick-ok' ||
+        activeTool === 'tick-err' ||
+        activeTool === 'tick-warn'
       ? 'crosshair'
       : 'default';
 
@@ -1113,6 +1321,196 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                   />
                 </svg>
               )}
+
+              {/* Engineering Linear Dimension (Cota Escalar) */}
+              {el.kind === 'dimension' && (
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {el.points && el.points.length >= 2 ? (
+                    <svg
+                      width="100%"
+                      height="100%"
+                      viewBox={`${el.x * 1000} ${el.y * 1000} ${Math.max(
+                        1,
+                        el.width * 1000
+                      )} ${Math.max(1, el.height * 1000)}`}
+                      preserveAspectRatio="none"
+                      style={{ position: 'absolute', inset: 0, overflow: 'visible' }}
+                    >
+                      <line
+                        x1={el.points[0].x * 1000}
+                        y1={el.points[0].y * 1000}
+                        x2={el.points[1].x * 1000}
+                        y2={el.points[1].y * 1000}
+                        stroke={el.color || '#1D4ED8'}
+                        strokeWidth={Math.max(2, (el.strokeWidth || 2) * 1.4)}
+                      />
+                      <circle
+                        cx={el.points[0].x * 1000}
+                        cy={el.points[0].y * 1000}
+                        r={4}
+                        fill={el.color || '#1D4ED8'}
+                      />
+                      <circle
+                        cx={el.points[1].x * 1000}
+                        cy={el.points[1].y * 1000}
+                        r={4}
+                        fill={el.color || '#1D4ED8'}
+                      />
+                    </svg>
+                  ) : null}
+                  <div
+                    style={{
+                      position: 'relative',
+                      background: '#ffffff',
+                      border: `1.5px solid ${el.color || '#1D4ED8'}`,
+                      color: el.color || '#1D4ED8',
+                      borderRadius: 4,
+                      padding: '1px 6px',
+                      fontFamily: 'var(--font-mono)',
+                      fontWeight: 700,
+                      fontSize: `${Math.max(9, 9.5 * tab.zoom)}px`,
+                      whiteSpace: 'nowrap',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                    }}
+                  >
+                    {el.text}
+                  </div>
+                </div>
+              )}
+
+              {/* Engineering Area Measurement Polygon Box */}
+              {el.kind === 'area' && (
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    border: `1.8px dashed ${el.color || '#0D7A5F'}`,
+                    backgroundColor: `${el.color || '#0D7A5F'}18`,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 4,
+                  }}
+                >
+                  <span
+                    style={{
+                      background: '#ffffff',
+                      border: `1px solid ${el.color || '#0D7A5F'}`,
+                      color: el.color || '#0D7A5F',
+                      borderRadius: 4,
+                      padding: '2px 7px',
+                      fontFamily: 'var(--font-mono)',
+                      fontWeight: 700,
+                      fontSize: `${Math.max(9, 10 * tab.zoom)}px`,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {el.text}
+                  </span>
+                  {el.subText && (
+                    <span
+                      style={{
+                        fontSize: `${Math.max(7.5, 8 * tab.zoom)}px`,
+                        color: el.color || '#0D7A5F',
+                        fontWeight: 600,
+                        marginTop: 2,
+                      }}
+                    >
+                      {el.subText}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Engineering Auto-Numbered Callout Pin */}
+              {el.kind === 'callout' && (
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: Math.max(20, 20 * tab.zoom),
+                      height: Math.max(20, 20 * tab.zoom),
+                      borderRadius: '50%',
+                      backgroundColor: el.color || '#C81E32',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: `${Math.max(9.5, 10 * tab.zoom)}px`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+                    }}
+                  >
+                    {el.calloutNumber || 1}
+                  </div>
+                  {el.text && (
+                    <div
+                      style={{
+                        background: 'rgba(255,255,255,0.95)',
+                        border: `1.2px solid ${el.color || '#C81E32'}`,
+                        color: '#111318',
+                        borderRadius: 4,
+                        padding: '2px 6px',
+                        fontSize: `${Math.max(8.5, 9 * tab.zoom)}px`,
+                        fontWeight: 600,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {el.text}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Accounting Reconciliation Audit Tickmark */}
+              {el.kind === 'tickmark' && (
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    background: `${el.color || '#0D7A5F'}16`,
+                    border: `1.5px solid ${el.color || '#0D7A5F'}`,
+                    color: el.color || '#0D7A5F',
+                    borderRadius: 99,
+                    padding: '1px 7px',
+                    fontSize: `${Math.max(8.5, 9.2 * tab.zoom)}px`,
+                    fontWeight: 700,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <span style={{ fontWeight: 900 }}>
+                    {el.tickVariant === 'err'
+                      ? '✗'
+                      : el.tickVariant === 'warn'
+                      ? '!'
+                      : '✓'}
+                  </span>
+                  <span>{el.text}</span>
+                </div>
+              )}
             </div>
           );
         })}
@@ -1131,6 +1529,46 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
               pointerEvents: 'none',
             }}
           />
+        )}
+        {draftLine && (
+          <>
+            <svg
+              width="100%"
+              height="100%"
+              viewBox="0 0 1000 1000"
+              preserveAspectRatio="none"
+              style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+            >
+              <line
+                x1={draftLine.x1 * 1000}
+                y1={draftLine.y1 * 1000}
+                x2={draftLine.x2 * 1000}
+                y2={draftLine.y2 * 1000}
+                stroke="#1D4ED8"
+                strokeWidth={3}
+                strokeDasharray="6 4"
+              />
+            </svg>
+            <div
+              style={{
+                position: 'absolute',
+                left: `${((draftLine.x1 + draftLine.x2) / 2) * 100}%`,
+                top: `${((draftLine.y1 + draftLine.y2) / 2) * 100}%`,
+                transform: 'translate(-50%, -120%)',
+                background: '#1D4ED8',
+                color: '#ffffff',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 11,
+                fontWeight: 700,
+                padding: '2px 7px',
+                borderRadius: 4,
+                pointerEvents: 'none',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {draftLine.label}
+            </div>
+          </>
         )}
         {draftInk && draftInk.length > 1 && (
           <svg
@@ -1292,6 +1730,7 @@ export const PdfCanvasStage: React.FC<PdfCanvasStageProps> = (props) => {
             onUpdateNativeTextItem={props.onUpdateNativeTextItem}
             onResetNativeTextItem={props.onResetNativeTextItem}
             onAddOverlayElement={props.onAddOverlayElement}
+            onIncrementCalloutNumber={props.onIncrementCalloutNumber}
             onUpdateOverlayElement={props.onUpdateOverlayElement}
             onDuplicateOverlayElement={props.onDuplicateOverlayElement}
             onReorderElementLayer={props.onReorderElementLayer}
@@ -1338,6 +1777,7 @@ export const PdfCanvasStage: React.FC<PdfCanvasStageProps> = (props) => {
               onUpdateNativeTextItem={() => {}}
               onResetNativeTextItem={() => {}}
               onAddOverlayElement={() => {}}
+              onIncrementCalloutNumber={() => {}}
               onUpdateOverlayElement={() => {}}
               onDuplicateOverlayElement={() => {}}
               onReorderElementLayer={() => {}}

@@ -1,26 +1,29 @@
 import React, { useState } from 'react';
 import {
+  Building2,
+  Calculator,
   Clock,
+  Compass,
   FilePlus2,
+  FileSpreadsheet,
   FileStack,
   FolderOpen,
   ImagePlus,
   Pencil,
   Pin,
-  ScanText,
-  Scissors,
   ShieldCheck,
   Signature,
   Sparkles,
   Trash2,
 } from 'lucide-react';
-import type { RecentFileEntry, ToolModalKind } from '../types/pdf';
+import type { RecentFileEntry, StudioDepartment, ToolModalKind } from '../types/pdf';
 
 interface HomeHubProps {
   recentFiles: RecentFileEntry[];
+  savedLogosCount: number;
   onOpenPdfDialog: () => void;
   onDropFiles: (files: File[]) => void;
-  onLoadShowcaseDemo: () => void;
+  onLoadShowcaseDemo: (dept?: StudioDepartment, pageIndex?: number) => void;
   onCreateBlankPdf: () => void;
   onOpenToolModal: (kind: ToolModalKind) => void;
   onTogglePinRecent: (id: string) => void;
@@ -35,6 +38,7 @@ function formatBytes(bytes: number): string {
 
 export const HomeHub: React.FC<HomeHubProps> = ({
   recentFiles,
+  savedLogosCount,
   onOpenPdfDialog,
   onDropFiles,
   onLoadShowcaseDemo,
@@ -75,7 +79,7 @@ export const HomeHub: React.FC<HomeHubProps> = ({
             boxShadow: dragging ? '0 0 0 3px var(--accent-soft)' : undefined,
           }}
         >
-          <div style={{ maxWidth: 580 }}>
+          <div style={{ maxWidth: 610 }}>
             <div
               style={{
                 display: 'inline-flex',
@@ -90,7 +94,7 @@ export const HomeHub: React.FC<HomeHubProps> = ({
               }}
             >
               <ShieldCheck size={14} />
-              <span>100% Local en Windows · Cero Nube · Máxima Precisión</span>
+              <span>100% Local en Windows · Cero Nube · Ediciones Ingeniería, Contabilidad y Administración</span>
             </div>
             <h1
               style={{
@@ -99,9 +103,17 @@ export const HomeHub: React.FC<HomeHubProps> = ({
                 fontWeight: 800,
                 letterSpacing: '-0.03em',
                 margin: '0 0 8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
               }}
             >
-              PDF-LEF Studio Pro
+              <img
+                src="/brand/logo-mark.svg"
+                alt="PDF-LEF"
+                style={{ width: 30, height: 30, borderRadius: 7 }}
+              />
+              <span>PDF-LEF Studio Pro</span>
             </h1>
             <p
               style={{
@@ -111,9 +123,10 @@ export const HomeHub: React.FC<HomeHubProps> = ({
                 color: 'var(--text-secondary)',
               }}
             >
-              Abre cualquier PDF para leer, <strong>editar y mover textos existentes</strong>,
-              insertar imágenes, firmar sin fondo blanco, organizar páginas o exportar sin
-              límites. Arrastra tus archivos aquí o elige una acción rápida.
+              Abre cualquier PDF o imagen para <strong>editar y mover textos existentes</strong>,
+              subir y escalar fotografías o <strong>logos empresariales</strong>, acotar planos a escala
+              de <strong>Ingeniería</strong>, conciliar tablas de <strong>Contabilidad</strong> y firmar
+              expedientes de <strong>Administración</strong>.
             </p>
           </div>
 
@@ -133,15 +146,15 @@ export const HomeHub: React.FC<HomeHubProps> = ({
               id="home-demo-pdf-btn"
               className="btn btn-subtle"
               style={{ height: 36, padding: '0 16px', fontSize: 12.5 }}
-              onClick={onLoadShowcaseDemo}
+              onClick={() => onLoadShowcaseDemo('general', 0)}
             >
               <Sparkles size={14} style={{ color: 'var(--accent)' }} />
-              <span>Probar Documento Demo Editable</span>
+              <span>Abrir Proyecto Demo (3 Páginas)</span>
             </button>
           </div>
         </section>
 
-        {/* Quick Studio Workflows */}
+        {/* Specialized Department Suites (Thunderbird Spaces Model) */}
         <div
           style={{
             fontSize: 11.5,
@@ -152,21 +165,93 @@ export const HomeHub: React.FC<HomeHubProps> = ({
             marginBottom: 12,
           }}
         >
-          Estudio y Herramientas Directas
+          Espacios de Trabajo Especializados y Edición Directa
         </div>
 
         <section className="home-actions-grid">
           <button
             type="button"
             className="action-card"
-            onClick={onOpenPdfDialog}
+            onClick={() => onLoadShowcaseDemo('general', 0)}
           >
             <div className="action-icon-box">
               <Pencil size={18} />
             </div>
-            <div className="action-card-title">Editar y Mover Textos</div>
+            <div className="action-card-title">Editar Textos y Subir Imágenes</div>
             <div className="action-card-desc">
-              Modifica palabras existentes del PDF, muévelas de posición o cambia su tipografía.
+              Modifica palabras existentes del PDF, arrástralas de lugar, sube fotos o pega capturas con Ctrl+V.
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="action-card"
+            onClick={() => onOpenToolModal('logos')}
+          >
+            <div className="action-icon-box">
+              <Building2 size={18} />
+            </div>
+            <div className="action-card-title">
+              Bóveda de Logos ({savedLogosCount})
+            </div>
+            <div className="action-card-desc">
+              Guarda los logotipos de tu empresa sin fondo blanco y estámpalos en cualquier PDF en 1 clic.
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="action-card"
+            onClick={() => onLoadShowcaseDemo('engineering', 2)}
+          >
+            <div className="action-icon-box" style={{ color: '#1D4ED8', background: 'rgba(29,78,216,0.1)' }}>
+              <Compass size={18} />
+            </div>
+            <div className="action-card-title">Suite Ingeniería y Planos CAD</div>
+            <div className="action-card-desc">
+              Acota distancias y áreas m² a escala (1:100, 1:50), globos numerados, filtro Blueprint y Cajetín Técnico.
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="action-card"
+            onClick={() => onLoadShowcaseDemo('accounting', 2)}
+          >
+            <div className="action-icon-box" style={{ color: '#0D7A5F', background: 'rgba(13,122,95,0.1)' }}>
+              <Calculator size={18} />
+            </div>
+            <div className="action-card-title">Contabilidad, IVA y Auditoría</div>
+            <div className="action-card-desc">
+              Calculadora de cinta con desglose de IVA/ISR estampable, marcas de conciliación ✓/✗ y sellos fiscales.
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="action-card"
+            onClick={() => onOpenToolModal('export-csv')}
+          >
+            <div className="action-icon-box" style={{ color: '#0F766E', background: 'rgba(15,118,110,0.1)' }}>
+              <FileSpreadsheet size={18} />
+            </div>
+            <div className="action-card-title">Extraer Tablas PDF a Excel</div>
+            <div className="action-card-desc">
+              Convierte estados de cuenta, presupuestos y facturas PDF en archivos .CSV listos para Microsoft Excel.
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="action-card"
+            onClick={() => onLoadShowcaseDemo('admin', 0)}
+          >
+            <div className="action-icon-box">
+              <Signature size={18} />
+            </div>
+            <div className="action-card-title">Administración, Firmas y Sellos</div>
+            <div className="action-card-desc">
+              Firmas transparentes, Acuse de Recibido, folios legales Bates, censura confidencial y marcas de agua.
             </div>
           </button>
 
@@ -178,23 +263,9 @@ export const HomeHub: React.FC<HomeHubProps> = ({
             <div className="action-icon-box">
               <FileStack size={18} />
             </div>
-            <div className="action-card-title">Unir varios PDFs</div>
+            <div className="action-card-title">Unir y Dividir Expedientes</div>
             <div className="action-card-desc">
-              Combina múltiples documentos en un solo archivo limpio ordenándolos a tu gusto.
-            </div>
-          </button>
-
-          <button
-            type="button"
-            className="action-card"
-            onClick={() => onOpenToolModal('images-to-pdf')}
-          >
-            <div className="action-icon-box">
-              <ImagePlus size={18} />
-            </div>
-            <div className="action-card-title">Imágenes a PDF</div>
-            <div className="action-card-desc">
-              Convierte fotos PNG, JPG o WebP en documentos A4, Carta o tamaño exacto.
+              Combina múltiples PDFs o convierte colecciones de fotografías PNG/JPG en documentos limpios.
             </div>
           </button>
 
@@ -206,70 +277,32 @@ export const HomeHub: React.FC<HomeHubProps> = ({
             <div className="action-icon-box">
               <FilePlus2 size={18} />
             </div>
-            <div className="action-card-title">Crear PDF desde Cero</div>
+            <div className="action-card-title">Crear PDF Membretado en Blanco</div>
             <div className="action-card-desc">
-              Inicia un lienzo A4 limpio para redactar, colocar logotipos, sellos y firmas.
-            </div>
-          </button>
-
-          <button
-            type="button"
-            className="action-card"
-            onClick={() => {
-              onLoadShowcaseDemo();
-            }}
-          >
-            <div className="action-icon-box">
-              <Signature size={18} />
-            </div>
-            <div className="action-card-title">Bóveda de Firmas</div>
-            <div className="action-card-desc">
-              Dibuja o sube foto de tu firma eliminando el fondo blanco automáticamente.
-            </div>
-          </button>
-
-          <button
-            type="button"
-            className="action-card"
-            onClick={() => onOpenToolModal('split')}
-          >
-            <div className="action-icon-box">
-              <Scissors size={18} />
-            </div>
-            <div className="action-card-title">Dividir y Extraer</div>
-            <div className="action-card-desc">
-              Extrae rangos específicos de páginas en nuevos archivos independientes.
-            </div>
-          </button>
-
-          <button
-            type="button"
-            className="action-card"
-            onClick={() => onOpenToolModal('ocr')}
-          >
-            <div className="action-icon-box">
-              <ScanText size={18} />
-            </div>
-            <div className="action-card-title">OCR Escaneos Offline</div>
-            <div className="action-card-desc">
-              Reconoce texto copiable desde documentos escaneados sin salir de tu equipo.
-            </div>
-          </button>
-
-          <button
-            type="button"
-            className="action-card"
-            onClick={() => onOpenToolModal('watermark')}
-          >
-            <div className="action-icon-box">
-              <Sparkles size={18} />
-            </div>
-            <div className="action-card-title">Marca de Agua y Folios</div>
-            <div className="action-card-desc">
-              Estampa sellos diagonales y numeración profesional Bates en segundos.
+              Inicia una hoja A4 limpia lista para insertar tu logo empresarial, textos, tablas e imágenes.
             </div>
           </button>
         </section>
+
+        {/* Secondary Quick Conversion Bar */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn btn-subtle"
+            onClick={() => onOpenToolModal('images-to-pdf')}
+          >
+            <ImagePlus size={14} />
+            <span>Convertir Fotos PNG/JPG a PDF…</span>
+          </button>
+          <button
+            type="button"
+            className="btn btn-subtle"
+            onClick={() => onOpenToolModal('calculator')}
+          >
+            <Calculator size={14} />
+            <span>Abrir Calculadora Contable IVA…</span>
+          </button>
+        </div>
 
         {/* Recent & Pinned Documents */}
         <section
@@ -325,9 +358,9 @@ export const HomeHub: React.FC<HomeHubProps> = ({
             >
               Aún no hay archivos recientes. Abre un PDF desde tu equipo o haz clic en{' '}
               <strong style={{ color: 'var(--text-primary)' }}>
-                Probar Documento Demo Editable
+                Abrir Proyecto Demo (3 Páginas)
               </strong>{' '}
-              para explorar todas las herramientas.
+              para explorar edición de textos, logos, planos de ingeniería y tablas contables.
             </div>
           ) : (
             <div>
