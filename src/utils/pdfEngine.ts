@@ -458,260 +458,195 @@ export async function createBlankPdfBytes(
 }
 
 /**
- * Generates an interactive 3-page Executive Sample PDF in Spanish
- * so the user can test Direct Existing-Text Editing, Moving Text, Adding Images,
- * Signatures, Stamps, and Page Reordering immediately!
+ * Generates a clean, minimalist 2-page Executive Sample PDF in Spanish
+ * so the user can test Direct Existing-Text Editing, Moving Text with Snap Alignment,
+ * Inserting Clean Images/Logos, Signatures, Stamps, and Page Organization immediately.
  */
 export async function generateShowcaseSamplePdf(): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
-  doc.setTitle('Propuesta Ejecutiva y Acuerdo Comercial — PDF-LEF');
+  doc.setTitle('Propuesta Ejecutiva y Acuerdo de Servicios — PDF-LEF');
   doc.setAuthor('Lycar Desarrollos');
-  doc.setSubject('Documento interactivo de demostración');
-  doc.setCreator('PDF-LEF Studio Pro');
+  doc.setSubject('Documento ejecutivo editable');
+  doc.setCreator('PDF-LEF');
 
   const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
   const fontReg = await doc.embedFont(StandardFonts.Helvetica);
   const fontMono = await doc.embedFont(StandardFonts.Courier);
 
-  const ruby = rgb(0.784, 0.118, 0.196);
-  const dark = rgb(0.08, 0.09, 0.11);
-  const muted = rgb(0.36, 0.39, 0.45);
-  const lightBox = rgb(0.965, 0.97, 0.98);
+  const sapphire = rgb(0.145, 0.388, 0.922);
+  const dark = rgb(0.06, 0.09, 0.16);
+  const muted = rgb(0.36, 0.41, 0.49);
+  const lightBox = rgb(0.96, 0.973, 0.992);
 
-  // PAGE 1: Commercial Proposal & Editable Pricing Table
+  // PAGE 1: Clean Executive Proposal & Editable Summary Table
   const p1 = doc.addPage([595.28, 841.89]);
-  p1.drawRectangle({ x: 48, y: 760, width: 6, height: 38, color: ruby });
-  p1.drawText('LYCAR DESARROLLOS · PDF-LEF STUDIO PRO', {
-    x: 64,
+  p1.drawRectangle({ x: 52, y: 760, width: 5, height: 38, color: sapphire });
+  p1.drawText('PDF-LEF · DOCUMENTO EJECUTIVO INTERACTIVO', {
+    x: 68,
     y: 785,
-    size: 10,
+    size: 9.5,
     font: fontBold,
-    color: ruby,
+    color: sapphire,
   });
-  p1.drawText('Propuesta Comercial y Licencia Corporativa', {
-    x: 64,
+  p1.drawText('Acuerdo de Servicios y Propuesta Comercial', {
+    x: 68,
     y: 763,
-    size: 20,
+    size: 19,
     font: fontBold,
     color: dark,
   });
-  p1.drawText('Folio: LEF-2026-0842   |   Fecha: 13 de Noviembre de 2026', {
-    x: 48,
+  p1.drawText('Folio: LEF-2026-0190   |   Fecha: 13 de Noviembre de 2026', {
+    x: 52,
     y: 730,
-    size: 10.5,
+    size: 10,
     font: fontMono,
     color: muted,
   });
 
-  p1.drawRectangle({ x: 48, y: 632, width: 499, height: 80, color: lightBox });
-  p1.drawText('PRUEBA LA EDICION DIRECTA DE TEXTO EXISTENTE:', {
-    x: 64,
+  p1.drawRectangle({ x: 52, y: 638, width: 491, height: 74, color: lightBox });
+  p1.drawText('EDICION DIRECTA SIN DANAR EL DISENO:', {
+    x: 68,
     y: 690,
-    size: 10.5,
+    size: 10,
     font: fontBold,
-    color: ruby,
+    color: sapphire,
   });
-  p1.drawText('1. Activa el modo "Editar y Anotar" -> "Editar Texto del PDF".', {
-    x: 64,
-    y: 671,
-    size: 10.5,
+  p1.drawText('Haz clic sobre cualquier linea de esta hoja para corregir su texto al instante,', {
+    x: 68,
+    y: 672,
+    size: 10,
     font: fontReg,
     color: dark,
   });
-  p1.drawText('2. Haz clic sobre cualquier texto de esta pagina para cambiarlo o arrastralo para moverlo.', {
-    x: 64,
-    y: 653,
-    size: 10.5,
+  p1.drawText('o arrastrala con las guias magneticas para moverla sin que nada se desempareje.', {
+    x: 68,
+    y: 655,
+    size: 10,
     font: fontReg,
     color: dark,
   });
 
-  p1.drawText('1. Resumen del Proyecto', {
-    x: 48,
-    y: 595,
-    size: 14,
+  p1.drawText('1. Alcance General', {
+    x: 52,
+    y: 596,
+    size: 13.5,
     font: fontBold,
     color: dark,
   });
   p1.drawText(
-    'El presente documento establece las condiciones de entrega de la suite nativa para Windows.',
-    { x: 48, y: 573, size: 11, font: fontReg, color: muted }
+    'Este documento presenta los terminos generales de entrega, soporte y confidencialidad.',
+    { x: 52, y: 574, size: 10.5, font: fontReg, color: muted }
   );
   p1.drawText(
-    'Incluye edicion de texto real, insercion de imagenes, firmas sin fondo y organizacion total.',
-    { x: 48, y: 556, size: 11, font: fontReg, color: muted }
+    'Puedes agregar imagenes limpias, logotipos sin fondo, firmas o sellos en cualquier seccion.',
+    { x: 52, y: 557, size: 10.5, font: fontReg, color: muted }
   );
 
-  p1.drawText('2. Desglose Economico (Editable)', {
-    x: 48,
-    y: 515,
-    size: 14,
+  p1.drawText('2. Resumen de Conceptos', {
+    x: 52,
+    y: 514,
+    size: 13.5,
     font: fontBold,
     color: dark,
   });
 
   const rows = [
-    ['Concepto', 'Cantidad', 'Importe USD'],
-    ['Licencia Empresarial PDF-LEF Windows 11', '25 puestos', '$ 1,250.00'],
-    ['Modulo de Firmas y Sellos Locales Offline', 'Incluido', '$ 0.00'],
-    ['Soporte Prioritario y Actualizaciones Anuales', '12 meses', '$ 340.00'],
-    ['TOTAL NETO A FACTURAR', '', '$ 1,590.00'],
+    ['Descripcion del Servicio', 'Periodo', 'Importe USD'],
+    ['Implementacion y Configuracion Documental', 'Entrega unica', '$ 1,250.00'],
+    ['Licencia Corporativa Local para Windows', 'Permanente', '$ 680.00'],
+    ['Soporte Preferente y Actualizaciones', '12 meses', '$ 290.00'],
+    ['TOTAL GENERAL', '', '$ 2,220.00'],
   ];
 
-  let ry = 482;
+  let ry = 480;
   rows.forEach((r, idx) => {
     const isHeader = idx === 0;
     const isTotal = idx === rows.length - 1;
     if (isHeader || isTotal) {
-      p1.drawRectangle({ x: 48, y: ry - 7, width: 499, height: 26, color: lightBox });
+      p1.drawRectangle({ x: 52, y: ry - 7, width: 491, height: 26, color: lightBox });
     }
     const f = isHeader || isTotal ? fontBold : fontReg;
-    const c = isTotal ? ruby : dark;
-    p1.drawText(r[0], { x: 58, y: ry, size: 10.5, font: f, color: c });
+    const c = isTotal ? sapphire : dark;
+    p1.drawText(r[0], { x: 64, y: ry, size: 10.5, font: f, color: c });
     if (r[1]) p1.drawText(r[1], { x: 345, y: ry, size: 10.5, font: f, color: muted });
     p1.drawText(r[2], { x: 458, y: ry, size: 10.5, font: f, color: c });
-    ry -= 30;
+    ry -= 32;
   });
 
-  p1.drawText('3. Conformidad y Firma Autorizada', {
-    x: 48,
-    y: 295,
-    size: 14,
+  p1.drawText('3. Conformidad y Firmas', {
+    x: 52,
+    y: 288,
+    size: 13.5,
     font: fontBold,
     color: dark,
   });
-  p1.drawText('Inserta aqui tu firma desde el boton "Firmar" o agrega el logo de tu empresa:', {
-    x: 48,
-    y: 274,
-    size: 10.5,
+  p1.drawText('Coloca aqui tu firma transparente o el logotipo oficial de tu organizacion:', {
+    x: 52,
+    y: 268,
+    size: 10,
     font: fontReg,
     color: muted,
   });
 
   p1.drawRectangle({
-    x: 48,
-    y: 155,
-    width: 230,
+    x: 52,
+    y: 148,
+    width: 228,
     height: 98,
-    borderColor: rgb(0.8, 0.82, 0.86),
+    borderColor: rgb(0.82, 0.85, 0.9),
     borderWidth: 1,
   });
-  p1.drawText('Firma del Cliente / Sello', {
-    x: 62,
-    y: 168,
+  p1.drawText('Representante del Cliente', {
+    x: 68,
+    y: 162,
     size: 9.5,
     font: fontReg,
     color: muted,
   });
 
   p1.drawRectangle({
-    x: 316,
-    y: 155,
-    width: 230,
+    x: 315,
+    y: 148,
+    width: 228,
     height: 98,
-    borderColor: rgb(0.8, 0.82, 0.86),
+    borderColor: rgb(0.82, 0.85, 0.9),
     borderWidth: 1,
   });
-  p1.drawText('Direccion Ejecutiva — Lycar Desarrollos', {
-    x: 330,
-    y: 168,
+  p1.drawText('Autorizacion — Direccion General', {
+    x: 331,
+    y: 162,
     size: 9.5,
     font: fontReg,
     color: muted,
   });
 
-  // PAGE 2: Technical Specifications
+  // PAGE 2: Clean Clauses & Notes Page
   const p2 = doc.addPage([595.28, 841.89]);
-  p2.drawText('Anexo Tecnico — Arquitectura 100% Local en Windows', {
-    x: 48,
-    y: 775,
-    size: 17,
-    font: fontBold,
-    color: dark,
-  });
-  p2.drawText(
-    'Todos los documentos abiertos en PDF-LEF se procesan exclusivamente en la memoria local del equipo.',
-    { x: 48, y: 745, size: 11, font: fontReg, color: muted }
-  );
-  p2.drawText('Especificaciones Verificadas:', {
-    x: 48,
-    y: 705,
-    size: 13,
-    font: fontBold,
-    color: ruby,
-  });
-  const specs = [
-    '- Motor binario nativo Tauri v2 (Rust) con instalador ligero .exe para Windows 10 y Windows 11.',
-    '- Edicion directa sobre textos existentes del PDF: modificar palabras, mover bloques y cambiar estilo.',
-    '- Suite Ingenieria: cotas de medicion calibradas por escala (1:100, 1:50), areas m2 y globos.',
-    '- Suite Contabilidad: calculadora de auditoria con IVA/ISR, marcas de conciliacion y exportar a Excel CSV.',
-    '- Suite Administracion: Boveda de Logos Empresariales, Firmas sin fondo, Sellos y folios Bates.',
-  ];
-  let sy = 678;
-  for (const line of specs) {
-    p2.drawText(line, { x: 56, y: sy, size: 10.5, font: fontReg, color: dark });
-    sy -= 26;
-  }
-
-  // PAGE 3: Engineering Plan & Accounting Conciliation Demo
-  const p3 = doc.addPage([595.28, 841.89]);
-  p3.drawText('Plano de Ingenieria (Escala 1:100) y Estado Contable', {
-    x: 48,
-    y: 780,
+  p2.drawRectangle({ x: 52, y: 760, width: 5, height: 32, color: sapphire });
+  p2.drawText('Anexo — Terminos de Privacidad y Entrega Local', {
+    x: 68,
+    y: 768,
     size: 16,
     font: fontBold,
     color: dark,
   });
-  p3.drawText('Usa la pestana "Ingenieria" para medir muros/areas o "Contabilidad" para conciliar partidas:', {
-    x: 48,
-    y: 758,
-    size: 10.5,
-    font: fontReg,
-    color: muted,
-  });
+  p2.drawText(
+    'Todos los archivos abiertos y editados en PDF-LEF permanecen al 100% en tu computadora.',
+    { x: 52, y: 734, size: 10.5, font: fontReg, color: muted }
+  );
 
-  // Sample Architectural / Structural Bay Rectangle (283.46 pt = 100 mm on paper = 10.00 m at 1:100!)
-  p3.drawRectangle({
-    x: 60,
-    y: 530,
-    width: 283.46,
-    height: 170.08,
-    borderColor: rgb(0.11, 0.3, 0.78),
-    borderWidth: 1.8,
-    color: rgb(0.95, 0.97, 1),
-  });
-  p3.drawText('NAVE INDUSTRIAL A-1 (10.00 m x 6.00 m = 60.00 m2)', {
-    x: 82,
-    y: 612,
-    size: 9.5,
-    font: fontBold,
-    color: rgb(0.11, 0.3, 0.78),
-  });
-
-  // Accounting Ledger Table for CSV Export & Audit Tickmarks
-  p3.drawText('Auxiliar de Polizas y Facturas para Conciliacion:', {
-    x: 48,
-    y: 480,
-    size: 13,
-    font: fontBold,
-    color: dark,
-  });
-  const ledger = [
-    ['Poliza', 'Proveedor / Concepto', 'Subtotal', 'IVA 16%', 'Total MXN'],
-    ['ING-101', 'Acero Estructural S.A.', '45000.00', '7200.00', '52200.00'],
-    ['EGR-102', 'Concretos del Sureste', '28500.00', '4560.00', '33060.00'],
-    ['EGR-103', 'Servicios Electricos LEF', '12000.00', '1920.00', '13920.00'],
+  const specs = [
+    '1. Edicion directa de textos existentes conservando la alineacion y limpieza de la pagina.',
+    '2. Insercion limpia de imagenes, fotografias y logotipos con eliminacion de fondo blanco.',
+    '3. Firmas manuscritas sin fondo, sellos rapidos, resaltado, notas y censura confidencial.',
+    '4. Organizacion visual de paginas: unir varios PDFs, dividir, rotar, numerar y exportar.',
+    '5. Icono oficial PDF-LEF para todos tus documentos .pdf al usarla como app predeterminada.',
   ];
-  let ly = 450;
-  ledger.forEach((row, idx) => {
-    const f = idx === 0 ? fontBold : fontMono;
-    p3.drawText(row[0], { x: 54, y: ly, size: 9.5, font: f, color: dark });
-    p3.drawText(row[1], { x: 125, y: ly, size: 9.5, font: idx === 0 ? fontBold : fontReg, color: dark });
-    p3.drawText(row[2], { x: 315, y: ly, size: 9.5, font: f, color: dark });
-    p3.drawText(row[3], { x: 405, y: ly, size: 9.5, font: f, color: muted });
-    p3.drawText(row[4], { x: 482, y: ly, size: 9.5, font: f, color: idx === 0 ? ruby : dark });
-    ly -= 26;
-  });
+  let sy = 690;
+  for (const line of specs) {
+    p2.drawText(line, { x: 58, y: sy, size: 10.5, font: fontReg, color: dark });
+    sy -= 28;
+  }
 
   return doc.save();
 }

@@ -162,3 +162,24 @@ export async function checkStartupOpenedPdfFromWindows(): Promise<OpenedPdfPaylo
     return null;
   }
 }
+
+export async function registerDefaultPdfApp(): Promise<{ native: boolean; message: string }> {
+  if (isTauriDesktop()) {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const msg = await invoke<string>('register_default_pdf_app');
+      return { native: true, message: msg };
+    } catch (err) {
+      return {
+        native: false,
+        message: err instanceof Error ? err.message : 'No se pudo abrir Configuración de Windows.',
+      };
+    }
+  }
+  return {
+    native: false,
+    message:
+      'Al instalar PDF-LEF en Windows (.exe), todos tus archivos .pdf adoptan automáticamente el icono exclusivo PDF-LEF.',
+  };
+}
+

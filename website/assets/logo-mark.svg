@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="tileBg" x1="64" y1="32" x2="448" y2="480" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#111827"/>
+      <stop offset="55%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#1E1B4B"/>
+    </linearGradient>
+    <radialGradient id="tileGlow" cx="50%" cy="28%" r="62%">
+      <stop offset="0%" stop-color="#2563EB" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#0F172A" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="foxCrown" x1="136" y1="108" x2="376" y2="388" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="48%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#6366F1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Minimalist Native Squircle Tile -->
+  <rect x="28" y="28" width="456" height="456" rx="112" fill="url(#tileBg)"/>
+  <rect x="28" y="28" width="456" height="456" rx="112" fill="url(#tileGlow)"/>
+  <rect x="30" y="30" width="452" height="452" rx="110" stroke="#60A5FA" stroke-opacity="0.22" stroke-width="4"/>
+
+  <!-- Ultra-Minimalist Symmetrical Fox Silhouette -->
+  <path d="M148 118C149.5 107 162.5 102.5 170.5 110.5L228 168C246 164 266 164 284 168L341.5 110.5C349.5 102.5 362.5 107 364 118L380 242C384 274 368 308 338 336L268 394C261 399.8 251 399.8 244 394L174 336C144 308 128 274 132 242L148 118Z" fill="url(#foxCrown)"/>
+
+  <!-- Subtle Inner Ear Triangles -->
+  <path d="M167 138L208 179L161 196L167 138Z" fill="#BAE6FD" opacity="0.42"/>
+  <path d="M345 138L304 179L351 196L345 138Z" fill="#BAE6FD" opacity="0.42"/>
+
+  <!-- Crisp Pure White Cheeks Forming Negative-Space V Bridge -->
+  <path d="M132 254C178 252 220 282 256 352C292 282 334 252 380 254C379 284 363 313 338 336L268 394C261 399.8 251 399.8 244 394L174 336C149 313 133 284 132 254Z" fill="#FFFFFF"/>
+
+  <!-- Minimalist Rounded Triangle Nose -->
+  <path d="M241 372H271L258.5 391C257.3 392.8 254.7 392.8 253.5 391L241 372Z" fill="#0F172A"/>
+</svg>

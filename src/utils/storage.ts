@@ -5,35 +5,35 @@ import type {
   SavedSignature,
 } from '../types/pdf';
 
-const SETTINGS_KEY = 'pdf_lef_settings_v2';
+const SETTINGS_KEY = 'pdf_lef_settings_v3';
 const SIGNATURES_KEY = 'pdf_lef_signatures_v1';
 const LOGOS_KEY = 'pdf_lef_logos_v1';
 const RECENTS_KEY = 'pdf_lef_recents_v1';
 
 export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'light',
-  accent: 'ruby',
+  accent: 'cobalt',
   density: 'standard',
   uiScale: 100,
   showStatusBar: true,
   smoothAnimations: true,
 
-  defaultZoom: 1.15,
+  defaultZoom: 1.05,
   defaultViewLayout: 'continuous',
   defaultPaperFilter: 'original',
   defaultLeftPanel: 'thumbnails',
   hiDpiRendering: true,
 
-  authorName: 'Ing. / Lic. Usuario',
+  authorName: 'Usuario PDF-LEF',
   companyName: 'Lycar Desarrollos',
   defaultTaxRatePct: 16,
   currencySymbol: '$',
   defaultFontFamily: 'sans',
   defaultFontSizePt: 12,
-  defaultTextColor: '#111318',
+  defaultTextColor: '#0F172A',
   defaultHighlightColor: '#FACC15',
-  defaultInkColor: '#C81E32',
-  defaultInkWidth: 2.5,
+  defaultInkColor: '#2563EB',
+  defaultInkWidth: 2.2,
   snapGuides: true,
   autoSelectAfterInsert: true,
   includeDateOnSignature: true,

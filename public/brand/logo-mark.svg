@@ -1,36 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <defs>
-    <linearGradient id="lefBg" x1="48" y1="32" x2="464" y2="480" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#18191C"/>
-      <stop offset="100%" stop-color="#0E0F12"/>
+    <linearGradient id="tileBg" x1="64" y1="32" x2="448" y2="480" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#111827"/>
+      <stop offset="55%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#1E1B4B"/>
     </linearGradient>
-    <linearGradient id="lefRuby" x1="120" y1="96" x2="396" y2="416" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#E1253C"/>
-      <stop offset="100%" stop-color="#B01528"/>
-    </linearGradient>
-    <linearGradient id="lefPaper" x1="136" y1="96" x2="352" y2="416" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="100%" stop-color="#EAECEF"/>
+    <radialGradient id="tileGlow" cx="50%" cy="28%" r="62%">
+      <stop offset="0%" stop-color="#2563EB" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#0F172A" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="foxCrown" x1="136" y1="108" x2="376" y2="388" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="48%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#6366F1"/>
     </linearGradient>
   </defs>
-  <!-- Windows 11 Squircle App Base -->
-  <rect x="24" y="24" width="464" height="464" rx="108" fill="url(#lefBg)"/>
-  <rect x="25.5" y="25.5" width="461" height="461" rx="106.5" stroke="#FFFFFF" stroke-opacity="0.1" stroke-width="3"/>
 
-  <!-- Subtle Ruby Back Sheet -->
-  <path d="M168 106C168 94.9543 176.954 86 188 86H338L392 140V382C392 393.046 383.046 402 372 402H188C176.954 402 168 393.046 168 382V106Z" fill="url(#lefRuby)" opacity="0.26"/>
+  <!-- Minimalist Native Squircle Tile -->
+  <rect x="28" y="28" width="456" height="456" rx="112" fill="url(#tileBg)"/>
+  <rect x="28" y="28" width="456" height="456" rx="112" fill="url(#tileGlow)"/>
+  <rect x="30" y="30" width="452" height="452" rx="110" stroke="#60A5FA" stroke-opacity="0.22" stroke-width="4"/>
 
-  <!-- Primary Crisp Document Sheet -->
-  <path d="M128 122C128 108.745 138.745 98 152 98H298L376 176V390C376 403.255 365.255 414 352 414H152C138.745 414 128 403.255 128 390V122Z" fill="url(#lefPaper)"/>
+  <!-- Ultra-Minimalist Symmetrical Fox Silhouette -->
+  <path d="M148 118C149.5 107 162.5 102.5 170.5 110.5L228 168C246 164 266 164 284 168L341.5 110.5C349.5 102.5 362.5 107 364 118L380 242C384 274 368 308 338 336L268 394C261 399.8 251 399.8 244 394L174 336C144 308 128 274 132 242L148 118Z" fill="url(#foxCrown)"/>
 
-  <!-- Precision Ruby Corner Fold -->
-  <path d="M298 98L376 176H320C307.85 176 298 166.15 298 154V98Z" fill="url(#lefRuby)"/>
+  <!-- Subtle Inner Ear Triangles -->
+  <path d="M167 138L208 179L161 196L167 138Z" fill="#BAE6FD" opacity="0.42"/>
+  <path d="M345 138L304 179L351 196L345 138Z" fill="#BAE6FD" opacity="0.42"/>
 
-  <!-- Minimalist Editorial "LEF" Structural Typography / Text Edit Bars -->
-  <rect x="172" y="212" width="32" height="142" rx="8" fill="#141518"/>
-  <rect x="172" y="324" width="96" height="30" rx="8" fill="#141518"/>
-  <rect x="224" y="212" width="108" height="28" rx="7" fill="url(#lefRuby)"/>
-  <rect x="224" y="264" width="82" height="26" rx="7" fill="#141518" opacity="0.85"/>
-  <!-- Cursor / Precision Node Accent -->
-  <circle cx="326" cy="339" r="15" fill="url(#lefRuby)"/>
+  <!-- Crisp Pure White Cheeks Forming Negative-Space V Bridge -->
+  <path d="M132 254C178 252 220 282 256 352C292 282 334 252 380 254C379 284 363 313 338 336L268 394C261 399.8 251 399.8 244 394L174 336C149 313 133 284 132 254Z" fill="#FFFFFF"/>
+
+  <!-- Minimalist Rounded Triangle Nose -->
+  <path d="M241 372H271L258.5 391C257.3 392.8 254.7 392.8 253.5 391L241 372Z" fill="#0F172A"/>
 </svg>

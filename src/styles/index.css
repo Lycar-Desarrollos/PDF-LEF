@@ -10,46 +10,47 @@
   --font-mono: 'Cascadia Code', Consolas, 'Courier New', monospace;
   --font-script: 'Segoe Script', 'Lucida Handwriting', 'Brush Script MT', Georgia, cursive;
 
-  /* Default Light Theme (Editorial Pure White) */
-  --bg-chrome: #f3f4f6;
+  /* Default Light Theme (Thunderbird Supernova Daylight + Crisp Slate) */
+  --bg-chrome: #eef2f7;
   --bg-surface: #ffffff;
   --bg-surface-elevated: #ffffff;
-  --bg-surface-subtle: #f7f8fa;
-  --bg-surface-hover: rgba(17, 19, 24, 0.045);
-  --bg-surface-active: rgba(17, 19, 24, 0.08);
-  --bg-canvas: #e9ebef;
-  --bg-backdrop: rgba(12, 14, 18, 0.44);
+  --bg-surface-subtle: #f5f7fb;
+  --bg-surface-hover: rgba(15, 23, 42, 0.045);
+  --bg-surface-active: rgba(15, 23, 42, 0.08);
+  --bg-canvas: #e4e9f2;
+  --bg-backdrop: rgba(9, 13, 24, 0.5);
 
-  --text-primary: #111318;
-  --text-secondary: #4b515d;
-  --text-muted: #767d8b;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
   --text-on-accent: #ffffff;
 
-  --border-subtle: rgba(17, 19, 24, 0.085);
-  --border-strong: rgba(17, 19, 24, 0.16);
-  --border-focus: rgba(200, 30, 50, 0.45);
+  --border-subtle: rgba(15, 23, 42, 0.085);
+  --border-strong: rgba(15, 23, 42, 0.16);
+  --border-focus: rgba(37, 99, 235, 0.45);
 
-  /* Ruby Accent (Default) */
-  --accent: #c81e32;
-  --accent-hover: #ad1729;
-  --accent-soft: rgba(200, 30, 50, 0.09);
-  --accent-soft-hover: rgba(200, 30, 50, 0.15);
-  --accent-border: rgba(200, 30, 50, 0.28);
+  /* Thunderbird Sapphire-Indigo Accent (Default) */
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: rgba(37, 99, 235, 0.09);
+  --accent-soft-hover: rgba(37, 99, 235, 0.15);
+  --accent-border: rgba(37, 99, 235, 0.28);
+  --accent-gradient: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
 
   /* Semantic Status */
   --success: #0d7a5f;
   --success-soft: rgba(13, 122, 95, 0.1);
   --warning: #b45309;
   --warning-soft: rgba(180, 83, 9, 0.1);
-  --danger: #c42b1c;
-  --danger-soft: rgba(196, 43, 28, 0.1);
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.1);
 
   /* Elevation & Geometry */
-  --shadow-xs: 0 1px 2px rgba(15, 18, 24, 0.05);
-  --shadow-sm: 0 2px 8px rgba(15, 18, 24, 0.06), 0 1px 2px rgba(15, 18, 24, 0.04);
-  --shadow-md: 0 8px 24px rgba(15, 18, 24, 0.09), 0 2px 6px rgba(15, 18, 24, 0.05);
-  --shadow-lg: 0 20px 48px rgba(12, 14, 20, 0.16), 0 4px 12px rgba(12, 14, 20, 0.08);
-  --shadow-page: 0 6px 24px rgba(15, 18, 25, 0.12), 0 1px 3px rgba(15, 18, 25, 0.08);
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.09), 0 2px 6px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 20px 48px rgba(9, 13, 24, 0.18), 0 4px 12px rgba(9, 13, 24, 0.08);
+  --shadow-page: 0 8px 28px rgba(15, 23, 42, 0.12), 0 1px 3px rgba(15, 23, 42, 0.08);
 
   --radius-xs: 5px;
   --radius-sm: 7px;
@@ -61,37 +62,45 @@
   --titlebar-h: 40px;
   --toolbar-h: 46px;
   --control-h: 32px;
-  --sidebar-w: 256px;
-  --inspector-w: 288px;
+  --sidebar-w: 242px;
+  --inspector-w: 272px;
   --transition-fast: 140ms cubic-bezier(0.2, 0, 0, 1);
   --transition-med: 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Dark Theme — Deep Graphite Windows 11 Studio */
+/* Dark Theme — Thunderbird Midnight Obsidian Studio */
 html[data-theme='dark'] {
-  --bg-chrome: #101114;
-  --bg-surface: #17191e;
-  --bg-surface-elevated: #1e2027;
-  --bg-surface-subtle: #14161a;
-  --bg-surface-hover: rgba(255, 255, 255, 0.055);
-  --bg-surface-active: rgba(255, 255, 255, 0.1);
-  --bg-canvas: #0b0c0f;
-  --bg-backdrop: rgba(0, 0, 0, 0.65);
+  --bg-chrome: #0a0e1a;
+  --bg-surface: #111625;
+  --bg-surface-elevated: #181f33;
+  --bg-surface-subtle: #0d1220;
+  --bg-surface-hover: rgba(255, 255, 255, 0.06);
+  --bg-surface-active: rgba(255, 255, 255, 0.11);
+  --bg-canvas: #070a12;
+  --bg-backdrop: rgba(3, 6, 14, 0.7);
 
-  --text-primary: #f3f4f6;
-  --text-secondary: #a6acb8;
-  --text-muted: #6e7584;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
 
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.15);
+  --border-subtle: rgba(148, 163, 184, 0.12);
+  --border-strong: rgba(148, 163, 184, 0.22);
 
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-sm: 0 3px 10px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 10px 28px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 24px 56px rgba(0, 0, 0, 0.62);
-  --shadow-page: 0 10px 32px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 3px 10px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 10px 28px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 24px 56px rgba(0, 0, 0, 0.68);
+  --shadow-page: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
+html[data-accent='ruby'] {
+  --accent: #c81e32;
+  --accent-hover: #ad1729;
+  --accent-soft: rgba(200, 30, 50, 0.09);
+  --accent-soft-hover: rgba(200, 30, 50, 0.15);
+  --accent-border: rgba(200, 30, 50, 0.28);
+  --accent-gradient: linear-gradient(135deg, #c81e32 0%, #9f1239 100%);
+}
 html[data-theme='dark'][data-accent='ruby'] {
   --accent: #e02d42;
   --accent-hover: #f03e53;
@@ -100,21 +109,23 @@ html[data-theme='dark'][data-accent='ruby'] {
   --accent-border: rgba(224, 45, 66, 0.36);
 }
 
-/* Alternate Curated Accents */
+/* Thunderbird Cobalt-Indigo Accent */
 html[data-accent='cobalt'] {
-  --accent: #1d4ed8;
-  --accent-hover: #1e40af;
-  --accent-soft: rgba(29, 78, 216, 0.1);
-  --accent-soft-hover: rgba(29, 78, 216, 0.16);
-  --accent-border: rgba(29, 78, 216, 0.3);
-  --border-focus: rgba(29, 78, 216, 0.45);
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: rgba(37, 99, 235, 0.1);
+  --accent-soft-hover: rgba(37, 99, 235, 0.16);
+  --accent-border: rgba(37, 99, 235, 0.3);
+  --border-focus: rgba(37, 99, 235, 0.45);
+  --accent-gradient: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
 }
 html[data-theme='dark'][data-accent='cobalt'] {
   --accent: #3b82f6;
   --accent-hover: #60a5fa;
-  --accent-soft: rgba(59, 130, 246, 0.15);
+  --accent-soft: rgba(59, 130, 246, 0.16);
   --accent-soft-hover: rgba(59, 130, 246, 0.24);
   --accent-border: rgba(59, 130, 246, 0.38);
+  --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
 }
 
 html[data-accent='emerald'] {
@@ -574,10 +585,10 @@ textarea {
   border-color: var(--border-strong);
 }
 .btn-primary {
-  background: var(--accent);
+  background: var(--accent-gradient, var(--accent));
   color: var(--text-on-accent);
   font-weight: 600;
-  box-shadow: 0 1px 2px rgba(200, 30, 50, 0.25);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.24);
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);
@@ -595,6 +606,7 @@ textarea {
   justify-content: space-between;
   gap: 8px;
   overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .tool-chip {
@@ -625,46 +637,49 @@ textarea {
   font-weight: 600;
 }
 .tool-chip.highlight-feature {
-  border-color: var(--border-subtle);
+  border-color: var(--accent-border);
   background: var(--bg-surface);
+  color: var(--accent);
+  font-weight: 600;
 }
 .tool-chip.highlight-feature.active {
-  background: var(--accent);
+  background: var(--accent-gradient, var(--accent));
   color: var(--text-on-accent);
   border-color: var(--accent);
 }
 
 /* ==========================================================================
-   MAIN WORKSPACE BODY (LEFT SIDEBAR + STAGE + RIGHT INSPECTOR)
+   MAIN WORKSPACE BODY (THUNDERBIRD SPACES RAIL + STAGE + RIGHT INSPECTOR)
    ========================================================================== */
 .workspace-body {
   flex: 1;
   min-height: 0;
+  min-width: 0;
   display: flex;
   position: relative;
   overflow: hidden;
 }
 
-/* Left Rail + Panel */
+/* Thunderbird Iconic Dark Spaces Rail */
 .left-rail {
-  width: 44px;
-  background: var(--bg-surface);
-  border-right: 1px solid var(--border-subtle);
+  width: 48px;
+  background: #0b0f1c;
+  border-right: 1px solid rgba(148, 163, 184, 0.14);
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 8px 0;
-  gap: 4px;
+  padding: 10px 0;
+  gap: 6px;
   flex-shrink: 0;
   z-index: 12;
 }
 .rail-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-sm);
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
   border: none;
   background: transparent;
-  color: var(--text-muted);
+  color: #94a3b8;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -673,22 +688,22 @@ textarea {
   transition: all var(--transition-fast);
 }
 .rail-btn:hover {
-  background: var(--bg-surface-hover);
-  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
 }
 .rail-btn.active {
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: rgba(59, 130, 246, 0.22);
+  color: #60a5fa;
 }
 .rail-btn.active::before {
   content: '';
   position: absolute;
-  left: -5px;
+  left: -6px;
   top: 8px;
   bottom: 8px;
   width: 3px;
   border-radius: 0 3px 3px 0;
-  background: var(--accent);
+  background: #38bdf8;
 }
 
 .left-drawer {
@@ -787,7 +802,7 @@ textarea {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 28px 32px 64px;
+  padding: 24px 24px 64px;
   gap: 24px;
   position: relative;
 }
@@ -802,7 +817,7 @@ textarea {
   position: relative;
   background: #ffffff;
   box-shadow: var(--shadow-page);
-  border-radius: 2px;
+  border-radius: 3px;
   flex-shrink: 0;
   transition: box-shadow var(--transition-fast);
 }
@@ -833,7 +848,7 @@ textarea {
   overflow: hidden;
 }
 
-/* Native PDF Existing Text Blocks (Direct In-Place Edit & Move!) */
+/* Native PDF Existing Text Blocks (Direct In-Place Edit & Move — Clamped to Page!) */
 .native-text-patch {
   position: absolute;
   pointer-events: none;
@@ -841,40 +856,48 @@ textarea {
 
 .native-text-box {
   position: absolute;
-  border: 1px dashed rgba(200, 30, 50, 0.32);
-  border-radius: 2px;
+  border: 1px dashed rgba(37, 99, 235, 0.24);
+  border-radius: 3px;
   cursor: move;
   transition: border-color 100ms ease, background-color 100ms ease;
   display: flex;
   align-items: center;
-  padding: 0 1px;
+  padding: 0 2px;
+  max-width: 96%;
+  box-sizing: border-box;
 }
 .native-text-box:hover {
   border: 1px solid var(--accent);
-  background: rgba(200, 30, 50, 0.05);
+  background: rgba(37, 99, 235, 0.05);
 }
 .native-text-box.modified {
-  border-color: rgba(200, 30, 50, 0.55);
+  border-color: rgba(37, 99, 235, 0.45);
 }
 .native-text-box.selected {
   border: 1.5px solid var(--accent);
+  background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 0 0 3px var(--accent-soft);
   z-index: 40;
 }
 .native-text-box.readonly-modified {
   border-color: transparent;
+  background: transparent;
   pointer-events: none;
 }
 .native-text-editor {
   width: 100%;
   min-width: 24px;
+  max-width: 100%;
   border: none;
   outline: none;
   background: transparent;
   padding: 0;
   margin: 0;
-  line-height: 1.12;
-  white-space: pre-wrap;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  box-sizing: border-box;
 }
 
 /* Movable & Resizable Overlay Elements */
@@ -935,7 +958,8 @@ textarea {
   top: 0;
   bottom: 0;
   width: 1px;
-  background: var(--accent);
+  background: #0ea5e9;
+  box-shadow: 0 0 4px rgba(14, 165, 233, 0.5);
   pointer-events: none;
   z-index: 90;
 }
@@ -944,22 +968,49 @@ textarea {
   left: 0;
   right: 0;
   height: 1px;
-  background: var(--accent);
+  background: #0ea5e9;
+  box-shadow: 0 0 4px rgba(14, 165, 233, 0.5);
   pointer-events: none;
   z-index: 90;
 }
 
 /* ==========================================================================
-   RIGHT OBJECT & DOCUMENT INSPECTOR
+   RIGHT OBJECT & DOCUMENT INSPECTOR (RESPONSIVE — NEVER CLIPS)
    ========================================================================== */
 .right-inspector {
   width: var(--inspector-w);
+  max-width: 30vw;
+  min-width: 224px;
   background: var(--bg-surface);
   border-left: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
   overflow-y: auto;
+  overflow-x: hidden;
+}
+
+@media (max-width: 1120px) {
+  .left-drawer {
+    width: 196px;
+  }
+  .right-inspector {
+    width: 232px;
+    min-width: 208px;
+  }
+  .canvas-viewport {
+    padding: 16px 12px 48px;
+  }
+}
+
+@media (max-width: 900px) {
+  .left-drawer {
+    display: none;
+  }
+  .right-inspector {
+    width: 214px;
+    min-width: 196px;
+  }
 }
 .inspector-section {
   padding: 14px;

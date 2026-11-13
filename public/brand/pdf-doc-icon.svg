@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="docPaper" x1="88" y1="24" x2="424" y2="484" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F1F5F9"/>
+    </linearGradient>
+    <linearGradient id="docFox" x1="168" y1="128" x2="344" y2="318" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="50%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#4F46E5"/>
+    </linearGradient>
+    <linearGradient id="docBadge" x1="72" y1="358" x2="440" y2="446" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1D4ED8"/>
+      <stop offset="100%" stop-color="#4F46E5"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Clean Minimalist Folded Sheet -->
+  <path d="M94 50C94 35.64 105.64 24 120 24H318L426 132V462C426 476.36 414.36 488 400 488H120C105.64 488 94 476.36 94 462V50Z" fill="#0F172A" opacity="0.12" transform="translate(0, 6)"/>
+  <path d="M92 46C92 31.64 103.64 20 118 20H316L424 128V458C424 472.36 412.36 484 398 484H118C103.64 484 92 472.36 92 458V46Z" fill="url(#docPaper)" stroke="#94A3B8" stroke-width="6" stroke-linejoin="round"/>
+
+  <!-- Minimalist Folded Corner -->
+  <path d="M316 20V104C316 117.255 326.745 128 340 128H424L316 20Z" fill="#E2E8F0" stroke="#94A3B8" stroke-width="5" stroke-linejoin="round"/>
+
+  <!-- Centered Minimalist Fox Emblem (clean, zero clutter) -->
+  <g transform="translate(115, 92) scale(0.55)">
+    <path d="M148 118C149.5 107 162.5 102.5 170.5 110.5L228 168C246 164 266 164 284 168L341.5 110.5C349.5 102.5 362.5 107 364 118L380 242C384 274 368 308 338 336L268 394C261 399.8 251 399.8 244 394L174 336C144 308 128 274 132 242L148 118Z" fill="url(#docFox)"/>
+    <path d="M167 138L208 179L161 196L167 138Z" fill="#BAE6FD" opacity="0.5"/>
+    <path d="M345 138L304 179L351 196L345 138Z" fill="#BAE6FD" opacity="0.5"/>
+    <path d="M132 254C178 252 220 282 256 352C292 282 334 252 380 254C379 284 363 313 338 336L268 394C261 399.8 251 399.8 244 394L174 336C149 313 133 284 132 254Z" fill="#DBEAFE"/>
+    <path d="M241 372H271L258.5 391C257.3 392.8 254.7 392.8 253.5 391L241 372Z" fill="#1E3A8A"/>
+  </g>
+
+  <!-- Minimalist Clean PDF·LEF Pill Badge -->
+  <rect x="68" y="356" width="376" height="90" rx="20" fill="url(#docBadge)"/>
+  <text x="206" y="418" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-weight="800" font-size="56" letter-spacing="2" fill="#FFFFFF">PDF</text>
+  <line x1="296" y1="376" x2="296" y2="426" stroke="#93C5FD" stroke-opacity="0.45" stroke-width="3" stroke-linecap="round"/>
+  <text x="364" y="413" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-weight="700" font-size="34" letter-spacing="2" fill="#DBEAFE">LEF</text>
+</svg>

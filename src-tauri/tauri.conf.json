@@ -13,10 +13,10 @@
     "windows": [
       {
         "label": "main",
-        "title": "PDF-LEF Studio Pro",
-        "width": 1360,
-        "height": 860,
-        "minWidth": 980,
+        "title": "PDF-LEF",
+        "width": 1380,
+        "height": 880,
+        "minWidth": 960,
         "minHeight": 640,
         "center": true,
         "decorations": false,
@@ -37,14 +37,18 @@
       "icons/icon.png",
       "icons/icon.ico"
     ],
+    "resources": [
+      "icons/pdf-document.ico"
+    ],
     "publisher": "Lycar Desarrollos",
     "shortDescription": "Suite PDF Nativa 100% Local para Windows",
-    "longDescription": "PDF-LEF Studio Pro: Visor ultrarrápido, edición directa y movimiento de textos existentes, imágenes, firmas sin fondo y organización de páginas 100% local en Windows.",
+    "longDescription": "PDF-LEF: Lector y editor PDF nativo 100% local para Windows con edicion directa de textos, imagenes, firmas y diseno exclusivo de documentos PDF.",
     "fileAssociations": [
       {
         "ext": ["pdf"],
-        "name": "Documento PDF",
-        "description": "Documento PDF abierto con PDF-LEF Studio Pro",
+        "name": "PDFLEF.Document",
+        "description": "Documento PDF (PDF-LEF)",
+        "role": "Editor",
         "mimeType": "application/pdf"
       }
     ],
@@ -54,6 +58,7 @@
       },
       "nsis": {
         "installerIcon": "icons/icon.ico",
+        "installerHooks": "nsis/hooks.nsh",
         "headerImage": null,
         "installMode": "both",
         "languages": ["Spanish", "English"],

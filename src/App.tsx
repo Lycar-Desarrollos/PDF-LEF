@@ -14,8 +14,6 @@ import type {
   RecentFileEntry,
   SavedLogo,
   SavedSignature,
-  ScaleCalibration,
-  StudioDepartment,
   ToolModalKind,
   ViewLayout,
   WatermarkConfig,
@@ -37,6 +35,7 @@ import {
 import {
   checkStartupOpenedPdfFromWindows,
   openPdfFilesWithDialog,
+  registerDefaultPdfApp,
   savePdfBytesToDisk,
 } from './utils/tauriBridge';
 import {
@@ -87,7 +86,6 @@ export const App: React.FC = () => {
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [splitCompareTabId, setSplitCompareTabId] = useState<string | null>(null);
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('home');
-  const [department, setDepartment] = useState<StudioDepartment>('general');
   const [activeTool, setActiveTool] = useState<ActiveTool>('select');
   const [leftPanel, setLeftPanel] = useState<
     'thumbnails' | 'outline' | 'search' | 'layers' | 'closed'
@@ -271,35 +269,25 @@ export const App: React.FC = () => {
     [openBytesAsNewTab, notify]
   );
 
-  const handleLoadShowcaseDemo = useCallback(
-    async (targetDept: StudioDepartment = 'general', pageIdx = 0) => {
-      const demoBytes = await generateShowcaseSamplePdf();
-      await openBytesAsNewTab(
-        'Proyecto_Ejecutivo_Ingenieria_Contabilidad_LEF.pdf',
-        demoBytes,
-        undefined,
-        'edit',
-        pageIdx
-      );
-      setDepartment(targetDept);
-      if (targetDept === 'engineering') {
-        setActiveTool('measure-line');
-        notify('Suite Ingeniería activa: arrastra sobre el plano (Pág. 3) para medir cotas reales 1:100.');
-      } else if (targetDept === 'accounting') {
-        setActiveTool('tick-ok');
-        notify('Suite Contabilidad activa: marca partidas conciliadas o abre Calculadora de Cinta IVA.');
-      } else if (targetDept === 'admin') {
-        setActiveTool('select');
-        notify('Suite Administración activa: usa Mis Logos, Firmar, Sellos o Acuse de Recibido.');
-      } else {
-        setActiveTool('edit-pdf-text');
-        notify(
-          'Modo "Editar / Mover Texto del PDF" activo: haz clic o arrastra cualquier texto de la hoja.'
-        );
-      }
-    },
-    [openBytesAsNewTab, notify]
-  );
+  const handleLoadShowcaseDemo = useCallback(async () => {
+    const demoBytes = await generateShowcaseSamplePdf();
+    await openBytesAsNewTab(
+      'Acuerdo_Ejecutivo_PDF_LEF.pdf',
+      demoBytes,
+      undefined,
+      'edit',
+      0
+    );
+    setActiveTool('edit-pdf-text');
+    notify(
+      'Haz clic en cualquier texto de la hoja para editarlo o arrástralo con alineación magnética.'
+    );
+  }, [openBytesAsNewTab, notify]);
+
+  const handleSetDefaultWindowsApp = useCallback(async () => {
+    const res = await registerDefaultPdfApp();
+    notify(res.message);
+  }, [notify]);
 
   const handleCreateBlankPdf = useCallback(async () => {
     const blankBytes = await createBlankPdfBytes();
@@ -545,109 +533,6 @@ export const App: React.FC = () => {
     [activeTab, settings.includeDateOnStamps, settings.companyName, mutateActiveTab, notify]
   );
 
-  const handleInsertEngineeringTitleBlock = useCallback(() => {
-    if (!activeTab) return;
-    const curPage = activeTab.pages[activeTab.currentPageIndex];
-    if (!curPage) return;
-    const newId = `tb_${Date.now()}`;
-    const today = new Date().toLocaleDateString('es-ES');
-    const blockText = [
-      `PROYECTO / EMPRESA: ${settings.companyName.toUpperCase()}`,
-      `DOCUMENTO: ${activeTab.fileName.replace(/\.pdf$/i, '')}`,
-      `ESCALA: ${activeTab.scaleCalibration.preset}   |   UNIDAD: ${activeTab.scaleCalibration.unit}   |   REV: A`,
-      `ING. RESPONSABLE: ${settings.authorName}   |   FECHA: ${today}`,
-    ].join('\n');
-
-    mutateActiveTab(
-      (tab) => ({
-        ...tab,
-        isModified: true,
-        elements: [
-          ...tab.elements,
-          {
-            id: newId,
-            pageId: curPage.id,
-            kind: 'text',
-            x: 0.46,
-            y: 0.84,
-            width: 0.47,
-            height: 0.095,
-            rotation: 0,
-            opacity: 1,
-            zIndex: tab.elements.length + 1,
-            text: blockText,
-            fontFamily: 'mono',
-            fontSizePt: 8.5,
-            fontWeight: 'bold',
-            fontStyle: 'normal',
-            textAlign: 'left',
-            color: '#111318',
-            backgroundColor: '#F8FAFC',
-            borderColor: '#1D4ED8',
-          },
-        ],
-      }),
-      true
-    );
-    setWorkspaceMode('edit');
-    setActiveTool('select');
-    setSelectedElementId(newId);
-    notify('Cajetín Técnico de Ingeniería insertado (doble clic para editar datos).');
-  }, [activeTab, settings.companyName, settings.authorName, mutateActiveTab, notify]);
-
-  const handleInsertAdminReceivedBlock = useCallback(() => {
-    if (!activeTab) return;
-    const curPage = activeTab.pages[activeTab.currentPageIndex];
-    if (!curPage) return;
-    const newId = `adm_${Date.now()}`;
-    const now = new Date();
-    const stampText = [
-      `ACUSE DE RECIBIDO · ${settings.companyName.toUpperCase()}`,
-      `FECHA: ${now.toLocaleDateString('es-ES')}   HORA: ${now.toLocaleTimeString('es-ES', {
-        hour: '2-digit',
-        minute: '2-digit',
-      })}`,
-      `RECIBIÓ: ${settings.authorName}   FOLIO: ADM-${String(Math.floor(1000 + Math.random() * 9000))}`,
-      `ÁREA: ADMINISTRACIÓN Y CONTROL DOCUMENTAL`,
-    ].join('\n');
-
-    mutateActiveTab(
-      (tab) => ({
-        ...tab,
-        isModified: true,
-        elements: [
-          ...tab.elements,
-          {
-            id: newId,
-            pageId: curPage.id,
-            kind: 'text',
-            x: 0.52,
-            y: 0.08,
-            width: 0.41,
-            height: 0.09,
-            rotation: 0,
-            opacity: 0.96,
-            zIndex: tab.elements.length + 1,
-            text: stampText,
-            fontFamily: 'mono',
-            fontSizePt: 8.5,
-            fontWeight: 'bold',
-            fontStyle: 'normal',
-            textAlign: 'left',
-            color: '#C81E32',
-            backgroundColor: '#FFF5F5',
-            borderColor: '#C81E32',
-          },
-        ],
-      }),
-      true
-    );
-    setWorkspaceMode('edit');
-    setActiveTool('select');
-    setSelectedElementId(newId);
-    notify('Sello Administrativo de Acuse de Recibido colocado.');
-  }, [activeTab, settings.companyName, settings.authorName, mutateActiveTab, notify]);
-
   const handleInsertAccountingSummaryOnPage = useCallback(
     (summaryText: string) => {
       if (!activeTab) return;
@@ -804,6 +689,62 @@ export const App: React.FC = () => {
 
       if (isTyping) return;
 
+      if (
+        ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) &&
+        activeTab &&
+        (selectedElementId || selectedNativeTextId)
+      ) {
+        e.preventDefault();
+        const step = e.shiftKey ? 0.008 : 0.0016;
+        const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+        const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+
+        if (selectedElementId) {
+          mutateActiveTab(
+            (t) => ({
+              ...t,
+              isModified: true,
+              elements: t.elements.map((el) =>
+                el.id === selectedElementId
+                  ? {
+                      ...el,
+                      x: Math.max(0, Math.min(1 - el.width, el.x + dx)),
+                      y: Math.max(0, Math.min(1 - el.height, el.y + dy)),
+                    }
+                  : el
+              ),
+            }),
+            true
+          );
+        } else if (selectedNativeTextId) {
+          mutateActiveTab((t) => {
+            let base = t.nativeTextEdits[selectedNativeTextId];
+            if (!base) {
+              for (const list of Object.values(t.extractedPageTexts)) {
+                const found = list.find((it) => it.id === selectedNativeTextId);
+                if (found) {
+                  base = found;
+                  break;
+                }
+              }
+            }
+            if (!base) return t;
+            const moved: NativePdfTextItem = {
+              ...base,
+              x: Math.max(0.02, Math.min(0.95 - Math.min(0.5, base.width), base.x + dx)),
+              y: Math.max(0.02, Math.min(0.97 - base.height, base.y + dy)),
+              modified: true,
+            };
+            return {
+              ...t,
+              isModified: true,
+              nativeTextEdits: { ...t.nativeTextEdits, [moved.id]: moved },
+            };
+          }, true);
+        }
+        return;
+      }
+
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         handleUndo();
@@ -828,6 +769,8 @@ export const App: React.FC = () => {
   }, [
     activeTab,
     selectedElementId,
+    selectedNativeTextId,
+    mutateActiveTab,
     handleOpenPdfDialog,
     handleSaveExportPdf,
     handleUndo,
@@ -848,9 +791,15 @@ export const App: React.FC = () => {
       },
       {
         id: 'demo-pdf',
-        category: 'Demo',
-        label: 'Cargar Proyecto Demo (Edición, Ingeniería y Contabilidad)',
-        run: () => handleLoadShowcaseDemo('general', 0),
+        category: 'Inicio',
+        label: 'Abrir Documento Ejemplo Editable',
+        run: handleLoadShowcaseDemo,
+      },
+      {
+        id: 'default-windows-app',
+        category: 'Windows',
+        label: 'Establecer PDF-LEF como App Predeterminada de PDF en Windows',
+        run: handleSetDefaultWindowsApp,
       },
       {
         id: 'edit-native-text',
@@ -859,17 +808,16 @@ export const App: React.FC = () => {
         run: () => {
           if (activeTab) {
             setWorkspaceMode('edit');
-            setDepartment('general');
             setActiveTool('edit-pdf-text');
           } else {
-            handleLoadShowcaseDemo('general', 0);
+            handleLoadShowcaseDemo();
           }
         },
       },
       {
         id: 'insert-image',
         category: 'Imágenes',
-        label: 'Subir / Insertar Imagen o Fotografía en la Página',
+        label: 'Subir Imagen o Fotografía Limpia en la Página',
         run: () => {
           if (activeTab) handleTriggerAddImage();
           else notify('Abre primero un PDF para insertar una imagen.');
@@ -878,55 +826,35 @@ export const App: React.FC = () => {
       {
         id: 'logo-vault',
         category: 'Logos',
-        label: 'Abrir Bóveda de Logos Empresariales',
+        label: 'Abrir Mis Logos Guardados',
         run: () => setToolModal('logos'),
       },
       {
-        id: 'dept-eng',
-        category: 'Ingeniería',
-        label: 'Activar Suite de Ingeniería (Cotas a escala, Áreas m² y Cajetín)',
+        id: 'sign-doc',
+        category: 'Firmas',
+        label: 'Dibujar o Insertar Firma Transparente',
         run: () => {
-          if (activeTab) {
-            setWorkspaceMode('edit');
-            setDepartment('engineering');
-            setActiveTool('measure-line');
-          } else {
-            handleLoadShowcaseDemo('engineering', 2);
-          }
+          if (activeTab) setSignatureModalOpen(true);
+          else notify('Abre primero un PDF para colocar tu firma.');
         },
       },
       {
-        id: 'dept-acc',
-        category: 'Contabilidad',
-        label: 'Abrir Calculadora Contable de Cinta e IVA',
-        run: () => setToolModal('calculator'),
-      },
-      {
         id: 'export-csv',
-        category: 'Contabilidad',
+        category: 'Exportar',
         label: 'Extraer Tablas del PDF a Excel (.csv)',
         run: () => setToolModal('export-csv'),
       },
       {
-        id: 'sign-doc',
-        category: 'Administración',
-        label: 'Abrir Bóveda de Firmas Transparentes',
-        run: () => {
-          if (activeTab) setSignatureModalOpen(true);
-          else notify('Abre primero un PDF para estampar tu firma.');
-        },
-      },
-      {
         id: 'organize-pages',
         category: 'Páginas',
-        label: 'Abrir Mesa de Luz (Reordenar, rotar y extraer páginas)',
+        label: 'Organizar Páginas (Reordenar, rotar y extraer)',
         run: () => {
           if (activeTab) setWorkspaceMode('organize');
         },
       },
       {
         id: 'merge-pdfs',
-        category: 'Pro',
+        category: 'Herramientas',
         label: 'Unir varios archivos PDF…',
         run: () => setToolModal('merge'),
       },
@@ -940,7 +868,7 @@ export const App: React.FC = () => {
       {
         id: 'toggle-theme',
         category: 'Estilo',
-        label: 'Alternar Modo Claro Blanco / Modo Oscuro Grafito',
+        label: 'Alternar Modo Claro / Modo Oscuro',
         run: () =>
           handleUpdateSettings({
             ...settings,
@@ -950,7 +878,7 @@ export const App: React.FC = () => {
       {
         id: 'open-settings',
         category: 'Ajustes',
-        label: 'Abrir Configuración y Preferencias Pro',
+        label: 'Abrir Configuración y Preferencias',
         shortcut: 'Ctrl+,',
         run: () => setSettingsOpen(true),
       },
@@ -960,6 +888,7 @@ export const App: React.FC = () => {
       settings,
       handleOpenPdfDialog,
       handleLoadShowcaseDemo,
+      handleSetDefaultWindowsApp,
       handleTriggerAddImage,
       handleSaveExportPdf,
       handleUpdateSettings,
@@ -1048,6 +977,10 @@ export const App: React.FC = () => {
           onLoadShowcaseDemo={handleLoadShowcaseDemo}
           onCreateBlankPdf={handleCreateBlankPdf}
           onOpenToolModal={(kind) => setToolModal(kind)}
+          onOpenSignatureVault={() => {
+            handleLoadShowcaseDemo().then(() => setSignatureModalOpen(true));
+          }}
+          onSetDefaultWindowsApp={handleSetDefaultWindowsApp}
           onTogglePinRecent={(id) => setRecentFiles(togglePinRecentFile(id))}
           onClearRecents={() => setRecentFiles(clearRecentFiles())}
         />
@@ -1056,19 +989,12 @@ export const App: React.FC = () => {
           <RibbonToolbar
             tab={activeTab}
             workspaceMode={workspaceMode}
-            department={department}
             activeTool={activeTool}
             splitCompareTabId={splitCompareTabId}
             availableTabsCount={tabs.length}
             onChangeMode={(m) => {
               setWorkspaceMode(m);
               if (m === 'edit' && activeTool === 'pan') setActiveTool('select');
-            }}
-            onChangeDepartment={(dept) => {
-              setDepartment(dept);
-              if (dept === 'engineering') setActiveTool('measure-line');
-              else if (dept === 'accounting') setActiveTool('tick-ok');
-              else setActiveTool('select');
             }}
             onSelectTool={(tool) => {
               setActiveTool(tool);
@@ -1082,11 +1008,6 @@ export const App: React.FC = () => {
             onOpenLogoVault={() => setToolModal('logos')}
             onOpenSignatureVault={() => setSignatureModalOpen(true)}
             onPlaceQuickStamp={handlePlaceQuickStamp}
-            onInsertEngineeringTitleBlock={handleInsertEngineeringTitleBlock}
-            onInsertAdminReceivedBlock={handleInsertAdminReceivedBlock}
-            onChangeScaleCalibration={(cal: ScaleCalibration) =>
-              mutateActiveTab((t) => ({ ...t, scaleCalibration: cal }))
-            }
             onUndo={handleUndo}
             onRedo={handleRedo}
             onNavigatePage={(idx) =>
@@ -1111,6 +1032,7 @@ export const App: React.FC = () => {
               }
             }}
             onOpenToolModal={(k) => setToolModal(k)}
+            onSetDefaultWindowsApp={handleSetDefaultWindowsApp}
             onPrintDocument={handlePrintActiveTab}
             onSaveExportPdf={handleSaveExportPdf}
           />

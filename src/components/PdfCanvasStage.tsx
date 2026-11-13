@@ -6,6 +6,7 @@ import {
   GripHorizontal,
   RotateCcw,
   Trash2,
+  Wand2,
 } from 'lucide-react';
 import type {
   ActiveTool,
@@ -23,7 +24,11 @@ import {
   formatEngineeringLength,
   renderPageToCanvas,
 } from '../utils/pdfEngine';
-import { fileToDataUrl, getImageDimensions } from '../utils/imageUtils';
+import {
+  fileToDataUrl,
+  getImageDimensions,
+  removeSignatureBackground,
+} from '../utils/imageUtils';
 
 interface PdfCanvasStageProps {
   tab: PdfTabDocument;
@@ -853,7 +858,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                 style={{
                   left: `${nt.x * 100}%`,
                   top: `${nt.y * 100}%`,
-                  minWidth: `${nt.width * 100}%`,
+                  maxWidth: `${Math.max(5, (0.975 - nt.x) * 100)}%`,
                   minHeight: `${nt.height * 100}%`,
                 }}
                 onMouseDown={(e) => {
@@ -873,10 +878,10 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                       className="btn"
                       style={{ height: 24, padding: '0 7px', fontSize: 11, cursor: 'grab' }}
                       onMouseDown={(e) => startMoveNativeText(e, nt)}
-                      title="Arrastra desde aquí para mover este texto de posición"
+                      title="Arrastra para mover con alineación magnética"
                     >
                       <GripHorizontal size={13} />
-                      <span>Mover texto</span>
+                      <span>Mover alineado</span>
                     </button>
                     {nt.modified && (
                       <button
@@ -917,7 +922,6 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                     }}
                     onMouseDown={(e) => {
                       if (!isSelected) {
-                        // First drag moves easily; once selected, click edits text directly!
                         startMoveNativeText(e, nt);
                       }
                     }}
@@ -937,7 +941,10 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                       fontWeight: nt.fontWeight,
                       fontStyle: nt.fontStyle,
                       color: nt.color,
-                      width: `${Math.max(nt.text.length * scaledFontPx * 0.56 + 14, nt.width * boxSize.w)}px`,
+                      width: `${Math.min(
+                        Math.max(48, (0.972 - nt.x) * boxSize.w),
+                        Math.max(nt.text.length * scaledFontPx * 0.56 + 14, nt.width * boxSize.w)
+                      )}px`,
                     }}
                   />
                 ) : (
@@ -948,8 +955,8 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                       fontWeight: nt.fontWeight,
                       fontStyle: nt.fontStyle,
                       color: nt.color,
-                      whiteSpace: 'pre',
-                      lineHeight: 1.12,
+                      whiteSpace: 'pre-wrap',
+                      lineHeight: 1.15,
                     }}
                   >
                     {nt.text}
@@ -990,6 +997,22 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                   className="object-quickbar"
                   onMouseDown={(e) => e.stopPropagation()}
                 >
+                  {el.kind === 'image' && el.dataUrl && (
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ height: 24, padding: '0 7px', fontSize: 11, color: 'var(--accent)' }}
+                      onClick={async () => {
+                        if (!el.dataUrl) return;
+                        const cleaned = await removeSignatureBackground(el.dataUrl, undefined, 232);
+                        onUpdateOverlayElement(el.id, { dataUrl: cleaned }, true);
+                      }}
+                      title="Quitar fondo blanco de esta imagen o logotipo"
+                    >
+                      <Wand2 size={12} />
+                      <span>Sin fondo</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="btn icon-only"
