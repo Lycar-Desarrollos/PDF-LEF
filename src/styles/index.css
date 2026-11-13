@@ -4,11 +4,11 @@
    ========================================================================== */
 
 :root {
-  /* Typography */
-  --font-sans: 'Inter', 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  --font-display: 'Plus Jakarta Sans', 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
-  --font-script: 'Dancing Script', 'Caveat', 'Segoe Script', cursive;
+  /* Native Windows 11 Typography (100% Offline, Zero Network Dependency) */
+  --font-sans: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-display: 'Segoe UI Variable Display', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Cascadia Code', Consolas, 'Courier New', monospace;
+  --font-script: 'Segoe Script', 'Lucida Handwriting', 'Brush Script MT', Georgia, cursive;
 
   /* Default Light Theme (Editorial Pure White) */
   --bg-chrome: #f3f4f6;
