@@ -98,7 +98,7 @@ export const HomeHub: React.FC<HomeHubProps> = ({
               }}
             >
               <ShieldCheck size={14} />
-              <span>100% Local en Windows · Rápido, Limpio y Sin Nube</span>
+              <span>Nativo en Windows 10 &amp; 11 · 100% Local · Próximamente macOS</span>
             </div>
             <h1
               style={{
@@ -127,9 +127,8 @@ export const HomeHub: React.FC<HomeHubProps> = ({
                 color: 'var(--text-secondary)',
               }}
             >
-              Tu lector y editor universal de documentos PDF. <strong>Edita y mueve textos existentes</strong> sin
-              dañar el formato, inserta <strong>imágenes y logotipos limpios</strong>, firma sin fondo y organiza
-              páginas con precisión total.
+              El poder de edición real de Adobe Acrobat con la ligereza de Thunderbird. <strong>Edita y mueve textos originales</strong> sin
+              dañar el formato, inserta <strong>imágenes y firmas transparentes</strong>, y organiza páginas con precisión quirúrgica.
             </p>
           </div>
 
