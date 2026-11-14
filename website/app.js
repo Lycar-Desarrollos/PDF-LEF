@@ -81,11 +81,20 @@ fetch('https://api.github.com/repos/Lycar-Desarrollos/PDF-LEF/releases/latest')
         const el = document.getElementById(id);
         if (el) el.setAttribute('href', exeAsset.browser_download_url);
       });
-      const meta = document.getElementById('release-version-meta');
-      if (meta && release.tag_name) {
-        const sizeMb = exeAsset.size ? (exeAsset.size / (1024 * 1024)).toFixed(1) : '8.8';
-        meta.textContent = `Versión ${release.tag_name} · Instalador verificado (${sizeMb} MB) · Windows 10 y Windows 11 (64-bit) · 100% Local`;
-      }
+    }
+    const msiAsset = release.assets.find((a) => a.name && a.name.toLowerCase().endsWith('.msi'));
+    if (msiAsset && msiAsset.browser_download_url) {
+      const msiEl = document.getElementById('hero-download-msi');
+      if (msiEl) msiEl.setAttribute('href', msiAsset.browser_download_url);
+    }
+    const meta = document.getElementById('release-version-meta');
+    if (meta && release.tag_name) {
+      const sizeMb = exeAsset && exeAsset.size ? (exeAsset.size / (1024 * 1024)).toFixed(1) : '3.1';
+      meta.innerHTML = `
+        <span class="tb-os-meta-item">✓ Versión ${release.tag_name} (${sizeMb} MB)</span>
+        <span class="tb-os-meta-item">✓ 100% Offline (Tus archivos jamás salen de tu PC)</span>
+        <span class="tb-os-meta-item">✓ Windows 10 y 11 (64-bit)</span>
+      `;
     }
   })
   .catch(() => {});
