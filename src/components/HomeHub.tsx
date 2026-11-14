@@ -23,6 +23,7 @@ interface HomeHubProps {
   onOpenPdfDialog: () => void;
   onDropFiles: (files: File[]) => void;
   onLoadShowcaseDemo: () => void;
+  onLoadSamplePdf?: (sampleName: string) => void;
   onCreateBlankPdf: () => void;
   onOpenToolModal: (kind: ToolModalKind) => void;
   onOpenSignatureVault: () => void;
@@ -37,12 +38,61 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+const TEST_DOCUMENTS = [
+  {
+    filename: '01_Cotizacion_Comercial_Abasteo.pdf',
+    badge: 'Cotización TI',
+    badgeBg: 'rgba(37, 99, 235, 0.12)',
+    badgeColor: '#2563eb',
+    size: '1 pág · 3.4 KB',
+    title: 'Cotización Abasteo Hardware',
+    desc: 'Laptops HP Victus e importes. Prueba editar importes y condiciones sin desbordar el margen.',
+  },
+  {
+    filename: '02_Factura_Fiscal_CFDI.pdf',
+    badge: 'CFDI 4.0 SAT',
+    badgeBg: 'rgba(16, 185, 129, 0.12)',
+    badgeColor: '#059669',
+    size: '1 pág · 3.3 KB',
+    title: 'Factura Fiscal con SAT',
+    desc: 'Emisor, Receptor, desglose de IVA y timbre digital. Prueba modificar conceptos o extraer a CSV.',
+  },
+  {
+    filename: '03_Contrato_Prestacion_Servicios.pdf',
+    badge: 'Contrato Legal',
+    badgeBg: 'rgba(139, 92, 246, 0.12)',
+    badgeColor: '#7c3aed',
+    size: '2 págs · 4.2 KB',
+    title: 'Contrato Marco de Servicios',
+    desc: 'Cláusulas legales y bloques de firmas ejecutivas en pág. 2. Prueba insertar firmas transparentes.',
+  },
+  {
+    filename: '04_Reporte_Financiero_Ejecutivo.pdf',
+    badge: 'Finanzas',
+    badgeBg: 'rgba(245, 158, 11, 0.12)',
+    badgeColor: '#d97706',
+    size: '1 pág · 3.1 KB',
+    title: 'Informe Ejecutivo con KPIs',
+    desc: 'Tarjetas de métricas ($24.8M USD) y tabla por regiones operativas para pruebas de edición.',
+  },
+  {
+    filename: '05_Certificado_Laboral_Nomina.pdf',
+    badge: 'RH y Nómina',
+    badgeBg: 'rgba(236, 72, 153, 0.12)',
+    badgeColor: '#db2777',
+    size: '1 pág · 3.1 KB',
+    title: 'Constancia Laboral y Nómina',
+    desc: 'Percepciones, deducciones y sello digital corporativo. Prueba modificar sueldos y agregar sellos.',
+  },
+];
+
 export const HomeHub: React.FC<HomeHubProps> = ({
   recentFiles,
   savedLogosCount,
   onOpenPdfDialog,
   onDropFiles,
   onLoadShowcaseDemo,
+  onLoadSamplePdf,
   onCreateBlankPdf,
   onOpenToolModal,
   onOpenSignatureVault,
@@ -284,6 +334,81 @@ export const HomeHub: React.FC<HomeHubProps> = ({
             </div>
           </button>
         </section>
+
+        {/* 5 Real Test Documents Showcase (Pruebas de Edición In Situ) */}
+        {onLoadSamplePdf && (
+          <div style={{ marginBottom: 28 }}>
+            <div
+              style={{
+                fontSize: 11.5,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                color: 'var(--text-muted)',
+                marginBottom: 12,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <span>📁 Suite de Pruebas: 5 Documentos Reales</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', textTransform: 'none' }}>
+                Carpeta /pruebas integrada
+              </span>
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: 12,
+              }}
+            >
+              {TEST_DOCUMENTS.map((doc) => (
+                <button
+                  key={doc.filename}
+                  type="button"
+                  className="action-card"
+                  style={{ textAlign: 'left', padding: '13px 15px', cursor: 'pointer' }}
+                  onClick={() => onLoadSamplePdf(doc.filename)}
+                  title={`Abrir ${doc.title} para probar edición in situ`}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: 7,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: '2px 7px',
+                        borderRadius: 4,
+                        background: doc.badgeBg,
+                        color: doc.badgeColor,
+                      }}
+                    >
+                      {doc.badge}
+                    </span>
+                    <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{doc.size}</span>
+                  </div>
+                  <div
+                    className="action-card-title"
+                    style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}
+                  >
+                    {doc.title}
+                  </div>
+                  <div className="action-card-desc" style={{ fontSize: 11.5, lineHeight: 1.42 }}>
+                    {doc.desc}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Recent & Pinned Documents */}
         <section

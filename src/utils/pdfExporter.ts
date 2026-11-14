@@ -258,10 +258,10 @@ export async function compileTabToPdfBytes(
 
     for (const nt of nativeEdits) {
       // Cover original text run cleanly with sampled paper background color
-      const patchX = nt.origX * pw - 1.5;
-      const patchW = nt.origWidth * pw + 3;
-      const patchH = nt.origHeight * ph + 2;
-      const patchY = ph - (nt.origY * ph + nt.origHeight * ph) - 1;
+      const patchX = Math.max(0, nt.origX * pw - 2.5);
+      const patchW = Math.min(pw - patchX, nt.origWidth * pw + 5);
+      const patchH = nt.origHeight * ph + 3.5;
+      const patchY = Math.max(0, ph - (nt.origY * ph + nt.origHeight * ph) - 1.5);
 
       pdfPage.drawRectangle({
         x: patchX,

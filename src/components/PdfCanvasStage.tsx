@@ -882,18 +882,22 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
           <div className="snap-guide-h" style={{ top: `${snapH * 100}%` }} />
         )}
 
-        {/* 1. Original Position Cover Patches for Modified/Moved/Deleted Native PDF Texts */}
-        {Object.values(tab.nativeTextEdits)
-          .filter((nt) => nt.pageId === pageDesc.id && (nt.modified || nt.deleted))
+        {/* 1. Original Position Cover Patches for Modified/Moved/Deleted/Active Native PDF Texts */}
+        {mergedNativeItems
+          .filter(
+            (nt) =>
+              nt.pageId === pageDesc.id &&
+              (nt.modified || nt.deleted || selectedNativeTextId === nt.id)
+          )
           .map((nt) => (
             <div
               key={`patch_${nt.id}`}
               className="native-text-patch"
               style={{
-                left: `calc(${nt.origX * 100}% - 2px)`,
-                top: `calc(${nt.origY * 100}% - 1px)`,
-                width: `calc(${nt.origWidth * 100}% + 4px)`,
-                height: `calc(${nt.origHeight * 100}% + 2px)`,
+                left: `calc(${nt.origX * 100}% - 3px)`,
+                top: `calc(${nt.origY * 100}% - 2px)`,
+                width: `calc(${nt.origWidth * 100}% + 6px)`,
+                height: `calc(${nt.origHeight * 100}% + 4px)`,
                 backgroundColor: nt.bgPatchColor || '#ffffff',
               }}
             />
@@ -904,8 +908,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
           .filter((nt) => !nt.deleted)
           .map((nt) => {
             const isSelected = selectedNativeTextId === nt.id;
-            const interactive =
-              isEditableMode && activeTool === 'edit-pdf-text';
+            const isEditTool = isEditableMode && activeTool === 'edit-pdf-text';
             const scaledFontPx = Math.max(8, nt.fontSizePt * tab.zoom);
             const maxAvailPx = Math.max(48, (0.972 - nt.x) * boxSize.w);
             const desiredPx = Math.max(
@@ -928,28 +931,57 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                 )
             );
 
+            // Case A: Unmodified text that is NOT currently selected
+            if (!nt.modified && !isSelected) {
+              if (!isEditTool) return null;
+              // Clean hover hotspot: no duplicate text, zero ghosting!
+              return (
+                <div
+                  key={nt.id}
+                  className="native-text-hotspot"
+                  style={{
+                    left: `${nt.x * 100}%`,
+                    top: `${nt.y * 100}%`,
+                    width: `${nt.width * 100}%`,
+                    height: `${nt.height * 100}%`,
+                  }}
+                  title="Clic para editar este texto"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    onSelectNativeText(nt.id);
+                    onSelectElement(null);
+                  }}
+                />
+              );
+            }
+
+            // Case B: Actively selected for editing OR Modified text item
+            const isNearTop = nt.y < 0.06;
+            const bgSolid = nt.bgPatchColor || '#ffffff';
+
             return (
               <div
                 key={nt.id}
                 className={`native-text-box ${nt.modified ? 'modified' : ''} ${
                   isSelected ? 'selected' : ''
-                } ${!interactive ? 'readonly-modified' : ''}`}
+                } ${!isEditTool && !isSelected ? 'readonly-modified' : ''}`}
                 style={{
                   left: `${nt.x * 100}%`,
                   top: `${nt.y * 100}%`,
                   maxWidth: `${Math.max(5, (0.972 - nt.x) * 100)}%`,
                   minHeight: `${nt.height * 100}%`,
+                  backgroundColor: bgSolid,
                 }}
                 onMouseDown={(e) => {
-                  if (!interactive) return;
                   e.stopPropagation();
                   onSelectNativeText(nt.id);
                   onSelectElement(null);
                 }}
               >
-                {interactive && isSelected && (
+                {/* Floating Quick Action Bar when Selected */}
+                {isSelected && isEditTool && (
                   <div
-                    className="object-quickbar"
+                    className={`object-quickbar ${isNearTop ? 'placed-bottom' : ''}`}
                     onMouseDown={(e) => e.stopPropagation()}
                   >
                     <button
@@ -962,6 +994,43 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                       <GripHorizontal size={13} />
                       <span>Mover alineado</span>
                     </button>
+
+                    <div style={{ width: 1, height: 16, background: 'var(--border-subtle)', margin: '0 2px' }} />
+
+                    <button
+                      type="button"
+                      className="btn icon-only"
+                      style={{ width: 22, height: 22, fontSize: 10, fontWeight: 700 }}
+                      onClick={() =>
+                        onUpdateNativeTextItem(
+                          { ...nt, fontSizePt: Math.max(6, Math.round((nt.fontSizePt - 1) * 2) / 2), modified: true },
+                          true
+                        )
+                      }
+                      title="Reducir tamaño de letra (A-)"
+                    >
+                      A-
+                    </button>
+                    <span style={{ fontSize: 10.5, fontWeight: 600, padding: '0 4px', color: 'var(--text-muted)' }}>
+                      {nt.fontSizePt} pt
+                    </span>
+                    <button
+                      type="button"
+                      className="btn icon-only"
+                      style={{ width: 22, height: 22, fontSize: 10, fontWeight: 700 }}
+                      onClick={() =>
+                        onUpdateNativeTextItem(
+                          { ...nt, fontSizePt: Math.min(72, Math.round((nt.fontSizePt + 1) * 2) / 2), modified: true },
+                          true
+                        )
+                      }
+                      title="Aumentar tamaño de letra (A+)"
+                    >
+                      A+
+                    </button>
+
+                    <div style={{ width: 1, height: 16, background: 'var(--border-subtle)', margin: '0 2px' }} />
+
                     {nt.modified && (
                       <button
                         type="button"
@@ -987,21 +1056,32 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                     >
                       <Trash2 size={12} />
                     </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      style={{ height: 22, padding: '0 8px', fontSize: 10.5, marginLeft: 2 }}
+                      onClick={() => onSelectNativeText(null)}
+                      title="Confirmar edición (o presiona Esc)"
+                    >
+                      ✓ Listo
+                    </button>
                   </div>
                 )}
 
-                {interactive ? (
+                {/* If selected in edit mode: Editable Textarea */}
+                {isSelected && isEditTool ? (
                   <textarea
                     rows={visualRows}
                     className="native-text-editor"
+                    autoFocus
                     value={nt.text}
                     onFocus={() => {
                       onSelectNativeText(nt.id);
                       onSelectElement(null);
                     }}
-                    onMouseDown={(e) => {
-                      if (!isSelected) {
-                        startMoveNativeText(e, nt, e.currentTarget);
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        onSelectNativeText(null);
                       }
                     }}
                     onChange={(e) =>
@@ -1020,10 +1100,12 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                       fontWeight: nt.fontWeight,
                       fontStyle: nt.fontStyle,
                       color: nt.color,
+                      backgroundColor: bgSolid,
                       width: `${finalWidthPx}px`,
                     }}
                   />
                 ) : (
+                  /* Modified item display when NOT actively selected */
                   <span
                     style={{
                       fontFamily: cssFontForChoice(nt.fontFamily),
@@ -1036,6 +1118,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                       display: 'inline-block',
                       maxWidth: `${maxAvailPx}px`,
                       lineHeight: 1.18,
+                      backgroundColor: bgSolid,
                     }}
                   >
                     {nt.text}

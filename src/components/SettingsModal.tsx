@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import {
+  CheckCircle2,
   Download,
   Eye,
   Keyboard,
   Palette,
   PenTool,
+  RefreshCw,
   RotateCcw,
   ShieldCheck,
   Upload,
@@ -29,7 +31,7 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
-type SettingsSection = 'appearance' | 'viewer' | 'editor' | 'privacy' | 'shortcuts';
+type SettingsSection = 'appearance' | 'viewer' | 'editor' | 'privacy' | 'shortcuts' | 'updates';
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
@@ -38,6 +40,45 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
 }) => {
   const [section, setSection] = useState<SettingsSection>('appearance');
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateResult, setUpdateResult] = useState<{
+    status: 'latest' | 'available' | 'error';
+    version?: string;
+    downloadUrl?: string;
+    notes?: string;
+  } | null>(null);
+
+  const checkUpdates = async () => {
+    setCheckingUpdate(true);
+    setUpdateResult(null);
+    try {
+      const res = await fetch('https://api.github.com/repos/Lycar-Desarrollos/PDF-LEF/releases/latest');
+      if (!res.ok) throw new Error('No se pudo consultar el servidor de actualizaciones');
+      const release = await res.json();
+      const latestTag = release.tag_name || 'v1.0.0';
+      const exeAsset = Array.isArray(release.assets)
+        ? release.assets.find((a: { name?: string }) => a.name?.toLowerCase().endsWith('.exe'))
+        : null;
+
+      if (latestTag === 'v1.0.0') {
+        setUpdateResult({
+          status: 'latest',
+          version: latestTag,
+        });
+      } else {
+        setUpdateResult({
+          status: 'available',
+          version: latestTag,
+          downloadUrl: exeAsset?.browser_download_url || release.html_url,
+          notes: release.body || '',
+        });
+      }
+    } catch {
+      setUpdateResult({ status: 'error' });
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
 
   const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     onChangeSettings({ ...settings, [key]: value });
@@ -122,6 +163,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             >
               <Keyboard size={15} />
               <span>Atajos y Respaldo</span>
+            </button>
+            <button
+              type="button"
+              className={`settings-nav-btn ${section === 'updates' ? 'active' : ''}`}
+              onClick={() => setSection('updates')}
+            >
+              <RefreshCw size={15} />
+              <span>Actualizaciones y Versión</span>
             </button>
           </nav>
 
@@ -565,6 +614,112 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <RotateCcw size={14} />
                     <span>Restablecer de Fábrica</span>
                   </button>
+                </div>
+              </div>
+            )}
+
+            {section === 'updates' && (
+              <div>
+                <div className="setting-card">
+                  <div>
+                    <div className="setting-card-title">Versión Instalada</div>
+                    <div className="setting-card-desc">
+                      PDF-LEF v1.0.0 (Edición Nativa 64-bit para Windows 10 y Windows 11).
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={checkingUpdate}
+                    onClick={checkUpdates}
+                  >
+                    <RefreshCw size={14} className={checkingUpdate ? 'spin-icon' : ''} />
+                    <span>{checkingUpdate ? 'Consultando servidor…' : 'Buscar actualizaciones'}</span>
+                  </button>
+                </div>
+
+                {updateResult && (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      padding: '14px 18px',
+                      borderRadius: 'var(--radius-md)',
+                      background:
+                        updateResult.status === 'latest'
+                          ? 'rgba(16, 185, 129, 0.08)'
+                          : updateResult.status === 'available'
+                          ? 'rgba(37, 99, 235, 0.08)'
+                          : 'rgba(239, 68, 68, 0.08)',
+                      border: `1px solid ${
+                        updateResult.status === 'latest'
+                          ? 'rgba(16, 185, 129, 0.3)'
+                          : updateResult.status === 'available'
+                          ? 'rgba(37, 99, 235, 0.3)'
+                          : 'rgba(239, 68, 68, 0.3)'
+                      }`,
+                    }}
+                  >
+                    {updateResult.status === 'latest' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--success)' }}>
+                        <CheckCircle2 size={18} />
+                        <div>
+                          <strong>¡Estás en la versión más reciente ({updateResult.version})!</strong>
+                          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                            Tu equipo cuenta con la versión oficial estable más reciente de PDF-LEF.
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {updateResult.status === 'available' && (
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                          <strong style={{ color: 'var(--accent)' }}>
+                            🎉 ¡Nueva versión disponible: {updateResult.version}!
+                          </strong>
+                          {updateResult.downloadUrl && (
+                            <a
+                              href={updateResult.downloadUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="btn btn-primary"
+                              style={{ height: 28, fontSize: 11.5 }}
+                            >
+                              <Download size={13} />
+                              <span>Descargar e Instalar</span>
+                            </a>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
+                          {updateResult.notes || 'Mejoras de rendimiento y correcciones automáticas.'}
+                        </div>
+                      </div>
+                    )}
+
+                    {updateResult.status === 'error' && (
+                      <div style={{ color: 'var(--danger)', fontSize: 12.5 }}>
+                        No se pudo conectar con el servidor de actualizaciones de GitHub. Revisa tu conexión a internet.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div
+                  style={{
+                    marginTop: 20,
+                    padding: '16px',
+                    borderRadius: 'var(--radius-md)',
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border-subtle)',
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
+                    ¿Cómo se distribuyen las actualizaciones a todos los equipos?
+                  </div>
+                  <div style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--text-secondary)' }}>
+                    Cada vez que publicas una nueva versión en GitHub con una etiqueta (ejemplo <code>v1.0.1</code>), GitHub Actions compila automáticamente el nuevo ejecutable <code>.exe</code> y <code>.msi</code>.
+                    Todas las computadoras con PDF-LEF instalado detectan automáticamente la actualización directamente desde el repositorio oficial sin intermediarios.
+                  </div>
                 </div>
               </div>
             )}

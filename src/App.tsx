@@ -284,6 +284,22 @@ export const App: React.FC = () => {
     );
   }, [openBytesAsNewTab, notify]);
 
+  const handleLoadSamplePdf = useCallback(
+    async (sampleName: string) => {
+      try {
+        const response = await fetch(`/pruebas/${sampleName}`);
+        if (!response.ok) throw new Error('Archivo no encontrado');
+        const buf = await response.arrayBuffer();
+        await openBytesAsNewTab(sampleName, new Uint8Array(buf), undefined, 'edit', 0);
+        setActiveTool('edit-pdf-text');
+        notify(`Documento cargado: ${sampleName}. Clic en cualquier texto para editarlo.`);
+      } catch {
+        notify(`Error al cargar el archivo de prueba ${sampleName}`);
+      }
+    },
+    [openBytesAsNewTab, notify]
+  );
+
   const handleSetDefaultWindowsApp = useCallback(async () => {
     const res = await registerDefaultPdfApp();
     notify(res.message);
@@ -1028,6 +1044,7 @@ export const App: React.FC = () => {
           onOpenPdfDialog={handleOpenPdfDialog}
           onDropFiles={handleDropFilesOnHome}
           onLoadShowcaseDemo={handleLoadShowcaseDemo}
+          onLoadSamplePdf={handleLoadSamplePdf}
           onCreateBlankPdf={handleCreateBlankPdf}
           onOpenToolModal={(kind) => setToolModal(kind)}
           onOpenSignatureVault={() => {

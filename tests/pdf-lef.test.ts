@@ -547,3 +547,75 @@ test('8. Windows Tauri v2, NSIS, ICO headers, CSS dropdown & brand cleanliness a
     );
   }
 });
+
+test('9. Verification of 5 real-world test PDFs in pruebas/ and in-place native text editing without ghosting', async () => {
+  const expectedPdfs = [
+    '01_Cotizacion_Comercial_Abasteo.pdf',
+    '02_Factura_Fiscal_CFDI.pdf',
+    '03_Contrato_Prestacion_Servicios.pdf',
+    '04_Reporte_Financiero_Ejecutivo.pdf',
+    '05_Certificado_Laboral_Nomina.pdf',
+  ];
+
+  for (const fileName of expectedPdfs) {
+    const p1 = join(ROOT, 'pruebas', fileName);
+    const p2 = join(ROOT, 'public/pruebas', fileName);
+    assert.ok(existsSync(p1), `Missing test PDF in pruebas/: ${fileName}`);
+    assert.ok(existsSync(p2), `Missing test PDF in public/pruebas/: ${fileName}`);
+    const b = readFileSync(p1);
+    assert.ok(b.length > 2000, `${fileName} should be a non-trivial PDF`);
+  }
+
+  // Load and audit 01_Cotizacion_Comercial_Abasteo.pdf (User screenshot replica)
+  const cotizacionBytes = readFileSync(join(ROOT, 'pruebas/01_Cotizacion_Comercial_Abasteo.pdf'));
+  const tab = await loadPdfIntoTabDocument('01_Cotizacion_Comercial_Abasteo.pdf', cotizacionBytes, DEFAULT_SETTINGS);
+  assert.equal(tab.pages.length, 1, 'Quotation must have 1 page');
+
+  const items = await extractPageTextsForTab(tab, 0);
+  assert.ok(items.length >= 10, 'Must extract editable items from quotation');
+
+  const fullText = items.map((i) => i.text).join(' ');
+  assert.match(fullText, /Cotizacion/);
+  assert.match(fullText, /LEBARFF SERVICIO DE MANTENIMIENTO GENERAL/);
+  assert.match(fullText, /QT9865402-2/);
+  assert.match(fullText, /Laptop Gamer HP Victus/);
+  assert.match(fullText, /\$52,908\.00/);
+
+  // Edit total price from $52,908.00 to $48,500.00 MXN
+  const totalItem = items.find((i) => i.text.includes('$52,908.00'));
+  assert.ok(totalItem, 'Must find total price item to edit');
+
+  tab.nativeTextEdits[totalItem.id] = {
+    ...totalItem,
+    text: '$48,500.00 MXN',
+    modified: true,
+  };
+
+  // Verify in search that deleted/replaced original text is suppressed and edited text is found
+  const hitsOriginal = await searchInTabDocument(tab, '$52,908.00');
+  assert.equal(hitsOriginal.length, 0, 'Original price must be cleanly suppressed from live search');
+
+  const hitsEdited = await searchInTabDocument(tab, '$48,500.00 MXN');
+  assert.equal(hitsEdited.length, 1, 'Edited price must be found in live search');
+
+  const recompiledBytes = await compileTabToPdfBytes(tab);
+  const reloadedTab = await loadPdfIntoTabDocument('Cotizacion_Editada.pdf', recompiledBytes, DEFAULT_SETTINGS);
+  const reloadedItems = await extractPageTextsForTab(reloadedTab, 0);
+  const reloadedText = reloadedItems.map((i) => i.text).join(' ');
+
+  assert.match(reloadedText, /\$48,500\.00 MXN/, 'Edited price must be drawn cleanly in recompiled PDF');
+
+  // Verify Multipage Contract (03_Contrato_Prestacion_Servicios.pdf)
+  const contratoBytes = readFileSync(join(ROOT, 'pruebas/03_Contrato_Prestacion_Servicios.pdf'));
+  const contratoTab = await loadPdfIntoTabDocument('Contrato.pdf', contratoBytes, DEFAULT_SETTINGS);
+  assert.equal(contratoTab.pages.length, 2, 'Contract must have 2 pages');
+
+  // Verify Table extraction on Factura (02_Factura_Fiscal_CFDI.pdf)
+  const facturaBytes = readFileSync(join(ROOT, 'pruebas/02_Factura_Fiscal_CFDI.pdf'));
+  const facturaTab = await loadPdfIntoTabDocument('Factura.pdf', facturaBytes, DEFAULT_SETTINGS);
+  await extractPageTextsForTab(facturaTab, 0);
+  const csv = await extractTabTablesToCsv(facturaTab);
+  assert.ok(csv.length > 50, 'CSV table extraction on invoice should produce table data');
+  assert.match(csv, /Licencia Anual Plataforma de Analisis PDF-LEF/);
+});
+

@@ -855,36 +855,52 @@ textarea {
 .native-text-patch {
   position: absolute;
   pointer-events: none;
+  z-index: 25;
+}
+
+/* Clean Hover Hotspots for Unmodified Native PDF Text (Zero Ghosting!) */
+.native-text-hotspot {
+  position: absolute;
+  border: 1px dashed transparent;
+  border-radius: 3px;
+  cursor: text;
+  box-sizing: border-box;
+  transition: border-color 100ms ease, background-color 100ms ease;
+  z-index: 35;
+}
+.native-text-hotspot:hover {
+  border-color: rgba(37, 99, 235, 0.65);
+  background-color: rgba(37, 99, 235, 0.05);
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
 }
 
 .native-text-box {
   position: absolute;
-  border: 1px dashed rgba(37, 99, 235, 0.24);
   border-radius: 3px;
-  cursor: move;
-  transition: border-color 100ms ease, background-color 100ms ease;
+  cursor: pointer;
+  transition: border-color 100ms ease, box-shadow 100ms ease;
   display: flex;
   align-items: center;
-  padding: 0 2px;
+  padding: 1px 3px;
   max-width: 96%;
   box-sizing: border-box;
+  z-index: 40;
 }
-.native-text-box:hover {
-  border: 1px solid var(--accent);
-  background: rgba(37, 99, 235, 0.05);
+.native-text-box.modified:not(.selected) {
+  border: 1px dashed rgba(37, 99, 235, 0.45);
 }
-.native-text-box.modified {
-  border-color: rgba(37, 99, 235, 0.45);
+.native-text-box.modified:not(.selected):hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
 }
 .native-text-box.selected {
   border: 1.5px solid var(--accent);
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 0 0 3px var(--accent-soft);
-  z-index: 40;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.16), 0 0 0 3px var(--accent-soft);
+  z-index: 60;
+  cursor: default;
 }
 .native-text-box.readonly-modified {
   border-color: transparent;
-  background: transparent;
   pointer-events: none;
 }
 .native-text-editor {
@@ -893,7 +909,6 @@ textarea {
   max-width: 100%;
   border: none;
   outline: none;
-  background: transparent;
   padding: 0;
   margin: 0;
   line-height: 1.18;
@@ -956,6 +971,10 @@ textarea {
   gap: 2px;
   z-index: 80;
   white-space: nowrap;
+}
+.object-quickbar.placed-bottom {
+  top: auto;
+  bottom: -36px;
 }
 
 /* Smart Alignment Guide Lines */
