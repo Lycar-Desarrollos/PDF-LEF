@@ -284,10 +284,13 @@ export type ToolModalKind =
   | null
   | 'merge'
   | 'split'
+  | 'remove-pages'
+  | 'crop'
   | 'watermark'
   | 'numbering'
   | 'images-to-pdf'
   | 'pdf-to-images'
+  | 'pdf-to-word'
   | 'ocr'
   | 'optimize'
   | 'metadata'

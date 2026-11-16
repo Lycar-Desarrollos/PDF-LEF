@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ArrowDownUp,
   Copy,
+  Crop,
   FileOutput,
   FilePlus,
   FolderPlus,
@@ -14,12 +16,14 @@ import { renderPageToCanvas } from '../utils/pdfEngine';
 interface PageOrganizerProps {
   tab: PdfTabDocument;
   onReorderPages: (fromIdx: number, toIdx: number) => void;
+  onReversePages?: () => void;
   onRotatePages: (indices: number[], deltaDeg: number) => void;
   onDuplicatePages: (indices: number[]) => void;
   onDeletePages: (indices: number[]) => void;
   onInsertBlankPage: (afterIndex: number) => void;
   onAppendExternalPdf: () => void;
   onExtractPagesToNewTab: (indices: number[]) => void;
+  onOpenCropModal?: () => void;
   onOpenPageInEditor: (pageIndex: number) => void;
 }
 
@@ -57,12 +61,14 @@ const OrganizerThumb: React.FC<{ tab: PdfTabDocument; pageDesc: PageDescriptor }
 export const PageOrganizer: React.FC<PageOrganizerProps> = ({
   tab,
   onReorderPages,
+  onReversePages,
   onRotatePages,
   onDuplicatePages,
   onDeletePages,
   onInsertBlankPage,
   onAppendExternalPdf,
   onExtractPagesToNewTab,
+  onOpenCropModal,
   onOpenPageInEditor,
 }) => {
   const [selectedIndices, setSelectedIndices] = useState<number[]>([0]);
@@ -94,9 +100,9 @@ export const PageOrganizer: React.FC<PageOrganizerProps> = ({
           flexWrap: 'wrap',
         }}
       >
-        <div className="toolbar-group">
+        <div className="toolbar-group" style={{ flexWrap: 'wrap' }}>
           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
-            {selectedIndices.length} seleccionada(s) · Arrastra para reordenar
+            {selectedIndices.length} de {tab.pages.length} seleccionada(s)
           </span>
           <button
             type="button"
@@ -104,11 +110,43 @@ export const PageOrganizer: React.FC<PageOrganizerProps> = ({
             style={{ height: 28, fontSize: 11.5 }}
             onClick={() => setSelectedIndices(tab.pages.map((_, i) => i))}
           >
-            Seleccionar todas
+            Todas
           </button>
+          <button
+            type="button"
+            className="btn"
+            style={{ height: 28, fontSize: 11.5 }}
+            onClick={() =>
+              setSelectedIndices(tab.pages.map((_, i) => i).filter((i) => (i + 1) % 2 === 0))
+            }
+          >
+            Pares
+          </button>
+          <button
+            type="button"
+            className="btn"
+            style={{ height: 28, fontSize: 11.5 }}
+            onClick={() =>
+              setSelectedIndices(tab.pages.map((_, i) => i).filter((i) => (i + 1) % 2 === 1))
+            }
+          >
+            Impares
+          </button>
+          {onReversePages && tab.pages.length > 1 && (
+            <button
+              type="button"
+              className="btn btn-subtle"
+              style={{ height: 28, fontSize: 11.5 }}
+              onClick={onReversePages}
+              title="Invertir el orden de todas las páginas"
+            >
+              <ArrowDownUp size={13} />
+              <span>Invertir orden</span>
+            </button>
+          )}
         </div>
 
-        <div className="toolbar-group">
+        <div className="toolbar-group" style={{ flexWrap: 'wrap' }}>
           <button
             type="button"
             className="btn btn-subtle"
@@ -127,6 +165,12 @@ export const PageOrganizer: React.FC<PageOrganizerProps> = ({
             <RotateCw size={14} />
             <span>Girar Der.</span>
           </button>
+          {onOpenCropModal && (
+            <button type="button" className="btn btn-subtle" onClick={onOpenCropModal}>
+              <Crop size={14} />
+              <span>Recortar</span>
+            </button>
+          )}
           <button
             type="button"
             className="btn btn-subtle"
@@ -148,7 +192,7 @@ export const PageOrganizer: React.FC<PageOrganizerProps> = ({
             }
           >
             <FilePlus size={14} />
-            <span>Página en blanco</span>
+            <span>Hoja en blanco</span>
           </button>
           <button
             type="button"
@@ -156,7 +200,7 @@ export const PageOrganizer: React.FC<PageOrganizerProps> = ({
             onClick={onAppendExternalPdf}
           >
             <FolderPlus size={14} />
-            <span>Anexar otro PDF…</span>
+            <span>Anexar PDF…</span>
           </button>
           <button
             type="button"
@@ -165,7 +209,7 @@ export const PageOrganizer: React.FC<PageOrganizerProps> = ({
             onClick={() => onExtractPagesToNewTab(selectedIndices)}
           >
             <FileOutput size={14} />
-            <span>Extraer en pestaña</span>
+            <span>Extraer</span>
           </button>
           <button
             type="button"

@@ -1,14 +1,14 @@
 {
-  "name": "pdf-lef",
+  "name": "kova-pdf",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "node --import ./tests/ts-loader.mjs --test tests/pdf-lef.test.ts",
+    "test": "node --import ./tests/ts-loader.mjs --test tests/kova-pdf.test.ts",
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",

@@ -179,7 +179,7 @@ export async function registerDefaultPdfApp(): Promise<{ native: boolean; messag
   return {
     native: false,
     message:
-      'Al instalar PDF-LEF en Windows (.exe), todos tus archivos .pdf adoptan automáticamente el icono exclusivo PDF-LEF.',
+      'En Windows 10 y 11, el instalador nativo de Kova PDF registra la asociación oficial para abrir cualquier archivo .pdf con doble clic.',
   };
 }
 

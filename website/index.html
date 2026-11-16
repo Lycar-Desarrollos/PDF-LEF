@@ -3,346 +3,337 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PDF-LEF — El Lector y Editor PDF Nativo para Windows (Próximamente en Mac)</title>
+    <title>Kova PDF — Estudio PDF Nativo para Windows | Kova Studio</title>
     <meta
       name="description"
-      content="PDF-LEF te da el poder de edición real de Adobe Acrobat Pro sin suscripciones mensuales: edita y mueve textos sin desalinearlos, inserta imágenes limpias, firma documentos con fondo transparente y disfrútala como tu app predeterminada en Windows. Próximamente en macOS."
+      content="Kova PDF v2.0: Estudio nativo 100% local para Windows 10 y 11. Edita textos sobre fondos oscuros y de color, firma sin fondo blanco, convierte PDF a Word (.docx) y Excel (.csv), recorta, comprime y organiza páginas sin subir tus documentos a la nube."
     />
     <link rel="icon" href="assets/favicon.ico" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <!-- MINIMALIST THUNDERBIRD-SUPERNOVA NAVIGATION -->
-    <header class="tb-header">
-      <div class="tb-container tb-nav">
-        <a href="#" class="tb-brand">
-          <img src="assets/logo-mark.svg" alt="PDF-LEF" class="tb-brand-logo" />
-          <span class="tb-brand-name">PDF<span>LEF</span></span>
+    <!-- ARCHITECTURAL NAVIGATION -->
+    <header class="kova-header">
+      <div class="kova-container kova-nav">
+        <a href="#" class="kova-brand" aria-label="Kova PDF Home">
+          <img src="assets/logo-mark.svg" alt="Kova PDF" class="kova-brand-logo" />
+          <div class="kova-brand-wordmark">Kova<span>PDF</span></div>
+          <span class="kova-brand-tag">v2.0</span>
         </a>
 
-        <nav class="tb-links">
-          <a href="#edicion">Edición Quirúrgica</a>
-          <a href="#imagenes">Imágenes y Firmas</a>
-          <a href="#windows-default">Icono en Windows</a>
-          <a href="#herramientas">Herramientas</a>
-          <a href="#comparativa">Comparativa</a>
-          <a href="#pruebas">Documentos de Prueba</a>
-          <a href="#mac" class="nav-mac-pill">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.38c.62-.75 1.04-1.8 0.92-2.88-.9.04-1.99.6-2.63 1.35-.58.67-1.09 1.74-.95 2.78 1 .08 2.04-.5 2.66-1.25z"/>
-            </svg>
-            <span>Mac (Próximamente)</span>
-          </a>
+        <nav class="kova-nav-links">
+          <a href="#ingenieria" data-i18n="nav_engineering">Ingeniería</a>
+          <a href="#herramientas" data-i18n="nav_suite">16 Herramientas</a>
+          <a href="#windows" data-i18n="nav_windows">Windows 11</a>
+          <a href="#comparativa" data-i18n="nav_compare">Comparativa</a>
+          <a href="#pruebas" data-i18n="nav_samples">Auditoría Real</a>
+          <a href="#faq">FAQ</a>
         </nav>
 
-        <div class="tb-nav-cta">
+        <div class="kova-nav-actions">
+          <div class="lang-switcher" role="group" aria-label="Language switcher">
+            <button type="button" class="lang-btn active" data-lang="es">ES</button>
+            <button type="button" class="lang-btn" data-lang="en">EN</button>
+          </div>
           <a
             id="nav-download-btn"
-            href="https://github.com/Lycar-Desarrollos/PDF-LEF/releases/download/v1.0.0/PDF-LEF_1.0.0_x64-setup.exe"
-            class="btn-download-sm"
+            href="https://github.com/Lycar-Desarrollos/PDF-LEF/releases/latest"
+            class="btn-nav-download"
           >
-            Descargar gratis (.exe)
+            <span data-i18n="nav_cta">Descargar (.exe)</span>
           </a>
         </div>
       </div>
     </header>
 
-    <!-- THUNDERBIRD-INSPIRED DEEP OBSIDIAN HERO -->
-    <section class="tb-hero">
-      <div class="tb-container tb-hero-grid">
-        <div class="tb-hero-copy">
-          <div class="tb-eyebrow">
-            <span class="dot-online"></span>
-            WINDOWS 10 &amp; 11 · 100% LOCAL Y PRIVADO · PRÓXIMAMENTE EN MAC
-          </div>
-          <h1>
-            <span class="text-gradient">Edición real de PDF</span> sin suscripciones ni diseños rotos.
+    <!-- HERO SECTION -->
+    <section class="kova-hero">
+      <div class="kova-container kova-hero-grid">
+        <div>
+          <p class="hero-kicker" data-i18n="hero_kicker">
+            KOVA STUDIO &nbsp;/&nbsp; WINDOWS 10 &amp; 11 (X64) &nbsp;/&nbsp; ARQUITECTURA 100% LOCAL
+          </p>
+          <h1 data-i18n-html="hero_title">
+            Precisión editorial para tus documentos <em>PDF</em>, directo en tu equipo.
           </h1>
-          <p class="tb-hero-lead">
-            ¿Cansado de pagar más de <strong>$240 USD al año por Acrobat</strong> o arriesgar documentos
-            confidenciales en páginas web dudosas? <strong>PDF-LEF</strong> une el poder de edición de Acrobat con
-            la sobriedad de Thunderbird en solo 9 MB: edita textos existentes sin que se desborden de la hoja,
-            alinea con guías magnéticas, pega fotos sin fondos blancos y conviértela en tu visor predeterminado
-            ultra rápido.
+          <p class="hero-lead" data-i18n="hero_lead">
+            Edita títulos a color y encabezados sobre fondos oscuros sin superposiciones, convierte documentos a Word editable (.docx) y Excel (.csv), elimina o recorta páginas, comprime archivos y estampa firmas transparentes sin exponer información confidencial en portales externos.
           </p>
 
-          <div class="tb-cta-group">
+          <div class="hero-cta-row">
             <a
               id="hero-download-exe"
-              href="https://github.com/Lycar-Desarrollos/PDF-LEF/releases/download/v1.0.0/PDF-LEF_1.0.0_x64-setup.exe"
-              class="btn-download-hero"
+              href="https://github.com/Lycar-Desarrollos/PDF-LEF/releases/latest"
+              class="btn-primary-exe"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" />
               </svg>
               <span>
-                <strong>Descargar PDF-LEF para Windows</strong>
-                <small>Instalador Nativo (.exe · 64-bit · Gratis)</small>
-              </span>
-            </a>
-
-            <a
-              href="#mac"
-              class="btn-mac-hero"
-              title="Versión nativa para macOS en desarrollo activo"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.38c.62-.75 1.04-1.8 0.92-2.88-.9.04-1.99.6-2.63 1.35-.58.67-1.09 1.74-.95 2.78 1 .08 2.04-.5 2.66-1.25z"/>
-              </svg>
-              <span class="mac-copy">
-                <strong>macOS <span class="mac-pill">Próximamente</span></strong>
-                <small>Apple Silicon (M1-M4) &amp; Intel</small>
+                <strong data-i18n="hero_btn_exe_main">Descargar Kova PDF para Windows</strong>
+                <small id="hero-exe-sub" data-i18n="hero_btn_exe_sub">Instalador Nativo v2.0 (.exe · 64-bit · Gratis)</small>
               </span>
             </a>
 
             <a
               id="hero-download-msi"
-              href="https://github.com/Lycar-Desarrollos/PDF-LEF/releases/download/v1.0.0/PDF-LEF_1.0.0_x64_en-US.msi"
-              class="btn-secondary-hero"
+              href="https://github.com/Lycar-Desarrollos/PDF-LEF/releases/latest"
+              class="btn-secondary-msi"
+              data-i18n="hero_btn_msi"
             >
-              Instalador MSI
+              Paquete Empresarial (.msi)
             </a>
           </div>
 
-          <div id="release-version-meta" class="tb-os-meta">
-            <span class="tb-os-meta-item">✓ Motor nativo ultraligero (~9 MB)</span>
-            <span class="tb-os-meta-item">✓ 100% Offline (Tus archivos jamás salen de tu PC)</span>
-            <span class="tb-os-meta-item">✓ Cero suscripciones · Abre en 0.3 s</span>
+          <div id="release-version-meta" class="hero-telemetry-specs">
+            <span><b data-i18n="spec_1_b">v2.0.0 Estable</b> · Rust + Tauri</span>
+            <span><b data-i18n="spec_2_b">0 Bytes en Nube</b> · <span data-i18n="spec_2_t">Privacidad Total</span></span>
+            <span><b data-i18n="spec_3_b">High-DPI Ready</b> · <span data-i18n="spec_3_t">Sin Suscripciones</span></span>
           </div>
         </div>
 
-        <!-- CLEAN DESKTOP WINDOW PREVIEW (THUNDERBIRD SPACES RAIL + ACROBAT PLUS STAGE) -->
-        <div class="tb-hero-visual">
-          <div class="win11-mockup-card">
-            <div class="win11-titlebar">
-              <div class="win11-brand">
-                <img src="assets/logo-mark.svg" alt="PDF-LEF" />
-                <span>PDF<b>LEF</b></span>
-                <span class="win11-tab active">Propuesta_Ejecutiva_2026.pdf</span>
-                <span class="win11-tab">Acuerdo_Marco.pdf</span>
-              </div>
-              <div class="win11-dots">
-                <span>—</span><span>▢</span><span>✕</span>
-              </div>
+        <!-- INTERACTIVE LIVE STUDIO WINDOW -->
+        <div class="studio-window" aria-label="Vista interactiva de Kova PDF">
+          <div class="studio-titlebar">
+            <div class="studio-titlebar-left">
+              <img src="assets/logo-mark.svg" alt="Kova PDF" />
+              <span class="studio-app-label">Kova PDF</span>
+              <span class="studio-tab" id="studio-active-doc">06_Portafolio_Obra_Proyectos.pdf</span>
             </div>
-
-            <div class="win11-mode-bar">
-              <button type="button" class="mode-btn active" data-mode="text">Editar y Mover Texto</button>
-              <button type="button" class="mode-btn" data-mode="images">Imágenes y Logos</button>
-              <button type="button" class="mode-btn" data-mode="sign">Firmar y Sellar</button>
-              <button type="button" class="mode-btn" data-mode="winicon">Icono en Windows</button>
-            </div>
-
-            <div class="win11-workspace">
-              <aside class="win11-spaces-rail" aria-hidden="true">
-                <span class="rail-dot active"></span>
-                <span class="rail-dot"></span>
-                <span class="rail-dot"></span>
-                <span class="rail-dot"></span>
-              </aside>
-              <div class="win11-body" id="hero-interactive-stage">
-                <!-- Populated by website/app.js -->
-              </div>
+            <div class="studio-win-controls" aria-hidden="true">
+              <span>—</span><span>▢</span><span>✕</span>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div class="tb-diagonal-divider">
-        <svg viewBox="0 0 1440 76" preserveAspectRatio="none">
-          <polygon fill="#ffffff" points="0,76 1440,0 1440,76" />
-        </svg>
+          <div class="studio-mode-strip" role="tablist">
+            <button type="button" class="studio-mode-btn active" data-mode="chromatic" data-i18n="mode_1">
+              Edición Cromática
+            </button>
+            <button type="button" class="studio-mode-btn" data-mode="convert" data-i18n="mode_2">
+              Word &amp; Excel
+            </button>
+            <button type="button" class="studio-mode-btn" data-mode="pages" data-i18n="mode_3">
+              Páginas &amp; Recorte
+            </button>
+            <button type="button" class="studio-mode-btn" data-mode="sign" data-i18n="mode_4">
+              Firma &amp; Sellos
+            </button>
+          </div>
+
+          <div class="studio-canvas-wrap" id="hero-interactive-stage">
+            <!-- Dynamically rendered by app.js -->
+          </div>
+        </div>
       </div>
     </section>
 
-    <!-- SECTION 1: PRECISION TEXT EDITING & MAGNETIC ALIGNMENT -->
-    <section id="edicion" class="tb-section-light">
-      <div class="tb-container">
-        <div class="section-heading">
-          <span class="section-tag">PRECISIÓN QUIRÚRGICA</span>
-          <h2>Edita cualquier texto del PDF sin dañar su diseño original</h2>
-          <p>
-            Basta de convertir a Word para que todo se mueva de lugar o de pegar parches blancos que se notan.
-            Haz clic sobre cualquier línea existente y corrígela en su lugar con tipografía y color exactos.
+    <!-- SECTION 1: 4 ENGINEERING PILLARS -->
+    <section id="ingenieria" class="kova-section chalk">
+      <div class="kova-container">
+        <div class="section-header-split">
+          <div>
+            <span class="section-eyebrow" data-i18n="eng_eyebrow">INGENIERÍA VISUAL CALIBRADA</span>
+            <h2 class="section-title" data-i18n="eng_title">
+              Diseñado para documentos complejos del mundo real.
+            </h2>
+          </div>
+          <p class="section-subtitle" data-i18n="eng_sub">
+            Desde portafolios de arquitectura con encabezados oscuros hasta facturas fiscales y contratos legales de múltiples páginas.
           </p>
         </div>
 
-        <div class="feature-cards-4">
-          <article class="f-card">
-            <div class="f-icon sapphire">Aa</div>
-            <h3>Edición directa sobre el papel</h3>
-            <p>
-              Cambia palabras, fechas o importes directamente en el documento. Nuestro motor calcula el límite
-              inteligente al margen derecho para que párrafos largos jamás se desborden ni rompan el formato.
+        <div class="pillars-grid">
+          <article class="pillar-card">
+            <span class="pillar-num">01 / COLOR &amp; FONDO</span>
+            <h3 data-i18n="p1_title">Escáner Cromático Inteligente</h3>
+            <p data-i18n="p1_desc">
+              Detecta automáticamente el color real de la tipografía y del fondo perimetral. Edita textos blancos sobre cintillos gris carbón o títulos en terracota conservando su estética exacta.
             </p>
           </article>
 
-          <article class="f-card">
-            <div class="f-icon indigo">┼</div>
-            <h3>Guías magnéticas inteligentes</h3>
-            <p>
-              Al arrastrar un texto o una cifra, guías magnéticas en vivo lo alinean automáticamente con las
-              filas, columnas y márgenes de la página. Nada queda desemparejado ni un solo milímetro.
+          <article class="pillar-card">
+            <span class="pillar-num">02 / INTERLINEADO PURO</span>
+            <h3 data-i18n="p2_title">Cero Superposición ni Recortes</h3>
+            <p data-i18n="p2_desc">
+              Delimitación vertical sensible a renglones vecinos y fusión de líneas justificadas. Reemplaza cifras o párrafos cerrados sin mordisquear letras superiores ni mostrar subrayados rojos.
             </p>
           </article>
 
-          <article class="f-card">
-            <div class="f-icon sky">IMG</div>
-            <h3 id="imagenes">Imágenes y firmas sin fondo blanco</h3>
-            <p>
-              Pega cualquier imagen con <code>Ctrl+V</code> totalmente limpia —sin bordes ni etiquetas—.
-              Si tienes tu firma fotografiada en papel, elimina el fondo blanco en 1 clic y déjala transparente.
+          <article class="pillar-card">
+            <span class="pillar-num">03 / CONVERSIÓN REAL</span>
+            <h3 data-i18n="p3_title">Word (.docx) y Excel (.csv)</h3>
+            <p data-i18n="p3_desc">
+              Genera documentos Word OOXML editables con tablas estructuradas y hojas de cálculo UTF-8 listas para análisis financiero sin depender de convertidores en internet.
             </p>
           </article>
 
-          <article class="f-card">
-            <div class="f-icon sapphire">⚡</div>
-            <h3>Inicio instantáneo en menos de 0.4 s</h3>
-            <p>
-              Olvídate de esperar 15 segundos mientras un lector pesado carga barras de herramientas que no
-              necesitas. PDF-LEF abre al instante con un consumo mínimo de memoria RAM en tu computadora.
+          <article class="pillar-card">
+            <span class="pillar-num">04 / INTERFAZ ADAPTATIVA</span>
+            <h3 data-i18n="p4_title">Calibración High-DPI Windows 11</h3>
+            <p data-i18n="p4_desc">
+              Maximizado automático al iniciar, paneles laterales fluidos e inspector colapsable en un clic para aprovechar cada píxel en laptops con escalado 125%–150% y monitores 4K.
             </p>
           </article>
         </div>
       </div>
     </section>
 
-    <!-- SECTION 2: DEFAULT WINDOWS PDF APP + EXCLUSIVE DOCUMENT ICON -->
-    <section id="windows-default" class="tb-section-subtle">
-      <div class="tb-container">
-        <div class="showcase-split">
-          <div class="showcase-copy">
-            <span class="section-tag">INTEGRACIÓN NATIVA WINDOWS 10 / 11</span>
-            <h3>Tu aplicación PDF predeterminada con icono exclusivo para cada documento</h3>
-            <p>
-              Al instalar PDF-LEF y elegirla como tu aplicación predeterminada, todos los archivos
-              <code>.pdf</code> de tu Escritorio y Explorador de Windows adoptan un icono minimalista de
-              alta definición (16 px a 256 px), diseñado especialmente para distinguirse al instante en
-              fondos claros y oscuros.
-            </p>
-            <ul class="clean-checklist">
-              <li>Asociación oficial <code>PDFLEF.Document</code> integrada en el instalador de Windows.</li>
-              <li>Botón directo dentro de la app para activarla como predeterminada en 1 solo clic.</li>
-              <li>Apertura con doble clic instantánea sin pantallas de carga pesadas.</li>
-              <li>Sin íconos en blanco ni conflictos de caché en el Explorador de Windows.</li>
-            </ul>
+    <!-- SECTION 2: COMPLETE 16-TOOL SUITE -->
+    <section id="herramientas" class="kova-section">
+      <div class="kova-container">
+        <div class="section-header-split">
+          <div>
+            <span class="section-eyebrow" data-i18n="suite_eyebrow">SUITE INTEGRAL DE 16 HERRAMIENTAS</span>
+            <h2 class="section-title" data-i18n="suite_title">
+              Todo el flujo documental esencial en una sola aplicación local.
+            </h2>
           </div>
-
-          <div class="explorer-preview-card">
-            <div class="explorer-topbar">
-              <span>Explorador de archivos · Documentos</span>
-              <span class="explorer-pill">Abrir con: PDF-LEF</span>
-            </div>
-            <div class="explorer-grid">
-              <div class="explorer-file selected">
-                <img src="assets/pdf-doc-icon.svg" alt="Icono PDF-LEF" />
-                <strong>Contrato_Servicios.pdf</strong>
-                <small>Documento PDF-LEF · 420 KB</small>
-              </div>
-              <div class="explorer-file">
-                <img src="assets/pdf-doc-icon.svg" alt="Icono PDF-LEF" />
-                <strong>Cotizacion_Anual.pdf</strong>
-                <small>Documento PDF-LEF · 185 KB</small>
-              </div>
-              <div class="explorer-file">
-                <img src="assets/pdf-doc-icon.svg" alt="Icono PDF-LEF" />
-                <strong>Reporte_Mensual.pdf</strong>
-                <small>Documento PDF-LEF · 1.2 MB</small>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- SECTION 3: ALL ESSENTIAL ACROBAT PLUS TOOLS -->
-    <section id="herramientas" class="tb-section-light">
-      <div class="tb-container">
-        <div class="section-heading">
-          <span class="section-tag">TODO EN UN SOLO LUGAR</span>
-          <h2>Todas las herramientas de Acrobat Pro que necesitas a diario</h2>
-          <p>
-            Una interfaz clara estilo Acrobat Plus inspirada en Thunderbird Supernova: sin menús escondidos ni
-            funciones bloqueadas detrás de pagos sorpresa.
+          <p class="section-subtitle" data-i18n="suite_sub">
+            Ejecuta cualquier herramienta directamente desde la pantalla de inicio o sobre un documento abierto, sin límites de peso ni colas de espera.
           </p>
         </div>
 
-        <div class="tools-grid-4">
-          <div class="tool-tile">
-            <strong>Firmas transparentes</strong>
-            <p>Dibuja con caligrafía fluida o sube una foto en papel; el fondo blanco desaparece automáticamente.</p>
+        <div class="suite-filter-bar" role="tablist">
+          <button type="button" class="suite-filter-btn active" data-cat="all" data-i18n="cat_all">Todas (16)</button>
+          <button type="button" class="suite-filter-btn" data-cat="edit" data-i18n="cat_edit">Editar y Firmar</button>
+          <button type="button" class="suite-filter-btn" data-cat="org" data-i18n="cat_org">Organizar y Optimizar</button>
+          <button type="button" class="suite-filter-btn" data-cat="conv" data-i18n="cat_conv">Convertir Formatos</button>
+          <button type="button" class="suite-filter-btn" data-cat="sec" data-i18n="cat_sec">Seguridad y Legal</button>
+        </div>
+
+        <div class="suite-tools-grid" id="suite-tools-container">
+          <!-- Populated dynamically in ES / EN by app.js -->
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: WINDOWS 11 NATIVE INTEGRATION + SMART AUTO-UPDATES -->
+    <section id="windows" class="kova-section obsidian">
+      <div class="kova-container win-integration-grid">
+        <div>
+          <span class="section-eyebrow" data-i18n="win_eyebrow">INTEGRACIÓN NATIVA &amp; DESPLIEGUE CONTINUO</span>
+          <h2 class="section-title" data-i18n="win_title">
+            Tu visor y estudio predeterminado en Windows, siempre actualizado.
+          </h2>
+          <ul class="obsidian-feature-list">
+            <li>
+              <span class="check-dot">✓</span>
+              <span data-i18n-html="win_li_1">
+                <b>Asociación oficial KovaPDF.Document:</b> Icono arquitectónico de alta definición (16 px a 256 px) para todos tus archivos <code>.pdf</code> en el Escritorio y Explorador.
+              </span>
+            </li>
+            <li>
+              <span class="check-dot">✓</span>
+              <span data-i18n-html="win_li_2">
+                <b>Apertura instantánea al doble clic:</b> Binario compilado en Rust que inicia en una fracción de segundo con consumo mínimo de memoria RAM.
+              </span>
+            </li>
+            <li>
+              <span class="check-dot">✓</span>
+              <span data-i18n-html="win_li_3">
+                <b>Actualizaciones en todos tus equipos:</b> El verificador integrado detecta cada nueva versión publicada y permite actualizar cualquier computadora en 1 clic conservando firmas y ajustes.
+              </span>
+            </li>
+            <li>
+              <span class="check-dot">✓</span>
+              <span data-i18n-html="win_li_4">
+                <b>Despliegue empresarial (.exe y .msi):</b> Compatible con instalación silenciosa por políticas de grupo (GPO / Intune) para equipos corporativos.
+              </span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="explorer-showcase-box">
+          <div class="explorer-bar">
+            <span data-i18n="exp_title">Explorador de Windows 11 · Documentos Corporativos</span>
+            <span>KovaPDF.Document</span>
           </div>
-          <div class="tool-tile">
-            <strong>Sellos y anotaciones</strong>
-            <p>Sellos ejecutivos (Aprobado, Pagado, Confidencial), notas adhesivas, formas geométricas y censura permanente.</p>
+          <div class="explorer-files-row">
+            <div class="explorer-item active">
+              <img src="assets/pdf-doc-icon.svg" alt="Kova PDF Document Icon" />
+              <strong>Portafolio_Obra.pdf</strong>
+              <small>Kova PDF · 2 págs</small>
+            </div>
+            <div class="explorer-item">
+              <img src="assets/pdf-doc-icon.svg" alt="Kova PDF Document Icon" />
+              <strong>Factura_CFDI.pdf</strong>
+              <small>Kova PDF · 184 KB</small>
+            </div>
+            <div class="explorer-item">
+              <img src="assets/pdf-doc-icon.svg" alt="Kova PDF Document Icon" />
+              <strong>Contrato_Marco.pdf</strong>
+              <small>Kova PDF · 412 KB</small>
+            </div>
           </div>
-          <div class="tool-tile">
-            <strong>Unir, dividir y rotar</strong>
-            <p>Combina múltiples documentos PDF en segundos, reordena hojas arrastrando o extrae rangos específicos.</p>
-          </div>
-          <div class="tool-tile">
-            <strong>Tablas a Excel (.csv)</strong>
-            <p>Extrae tablas financieras y balances a formato Excel con codificación UTF-8 compatible con Windows.</p>
+          <div class="update-banner-strip">
+            <span data-i18n="upd_strip_text">✓ Canal de actualizaciones automáticas v2.0 activo en Configuración</span>
+            <strong style="font-family:var(--font-mono);font-size:11px;">v2.0.0 READY</strong>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- SECTION 4: CLEAN COMPARISON -->
-    <section id="comparativa" class="tb-section-subtle">
-      <div class="tb-container">
-        <div class="section-heading">
-          <span class="section-tag">LIGERO, RÁPIDO Y PRIVADO</span>
-          <h2>¿Por qué miles de usuarios eligen PDF-LEF?</h2>
-          <p>Compara tú mismo las ventajas frente a las suites pesadas y los editores web.</p>
+    <!-- SECTION 4: ARCHITECTURAL COMPARISON MATRIX -->
+    <section id="comparativa" class="kova-section chalk">
+      <div class="kova-container">
+        <div class="section-header-split">
+          <div>
+            <span class="section-eyebrow" data-i18n="cmp_eyebrow">TRANSPARENCIA TÉCNICA</span>
+            <h2 class="section-title" data-i18n="cmp_title">
+              Por qué los equipos profesionales migran a Kova PDF.
+            </h2>
+          </div>
+          <p class="section-subtitle" data-i18n="cmp_sub">
+            Comparativa directa frente a convertidores web en la nube y suites tradicionales de suscripción obligatoria.
+          </p>
         </div>
 
-        <div class="comp-table-wrap">
-          <table class="comp-table">
+        <div class="matrix-wrap">
+          <table class="matrix-table">
             <thead>
               <tr>
-                <th>Característica</th>
-                <th class="highlight-col">PDF-LEF</th>
-                <th>Adobe Acrobat Pro DC</th>
-                <th>Editores Web (iLovePDF / Smallpdf)</th>
+                <th data-i18n="cmp_h_crit">Criterio Técnico</th>
+                <th class="kova-col">Kova PDF v2.0</th>
+                <th data-i18n="cmp_h_cloud">Portales PDF en la Nube</th>
+                <th data-i18n="cmp_h_legacy">Suites por Suscripción Anual</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td><strong>Costo anual</strong></td>
-                <td class="highlight-col"><strong>$0 (Gratis · Cero suscripción)</strong></td>
-                <td>Más de $239.88 USD al año</td>
-                <td>Planes de pago para funciones completas</td>
+                <td><strong data-i18n="cmp_r1_c">Privacidad de documentos</strong></td>
+                <td class="kova-col"><strong data-i18n="cmp_r1_k">100% Local Offline (Jamás salen de tu PC)</strong></td>
+                <td data-i18n="cmp_r1_w">Subida obligatoria a servidores externos</td>
+                <td data-i18n="cmp_r1_l">Sincronización y cuenta en nube requerida</td>
               </tr>
               <tr>
-                <td><strong>Peso de instalación</strong></td>
-                <td class="highlight-col"><strong>~9 MB</strong></td>
-                <td>Más de 1,500 MB (1.5 GB)</td>
-                <td>Sin app (requiere subir archivos a la web)</td>
+                <td><strong data-i18n="cmp_r2_c">Edición sobre fondos oscuros y color</strong></td>
+                <td class="kova-col"><strong data-i18n="cmp_r2_k">Escáner cromático automático + selector libre</strong></td>
+                <td data-i18n="cmp_r2_w">Deja recuadros blancos visibles</td>
+                <td data-i18n="cmp_r2_l">Disponible solo bajo pago mensual</td>
               </tr>
               <tr>
-                <td><strong>Velocidad de apertura</strong></td>
-                <td class="highlight-col"><strong>Instantáneo (&lt; 0.4 s)</strong></td>
-                <td>Lento (8 a 15 segundos)</td>
-                <td>Depende del internet y tiempo de subida</td>
+                <td><strong data-i18n="cmp_r3_c">Conversión a Word (.docx) y Excel</strong></td>
+                <td class="kova-col"><strong data-i18n="cmp_r3_k">Integrada y sin límite de archivos</strong></td>
+                <td data-i18n="cmp_r3_w">Límites diarios y muros de pago</td>
+                <td data-i18n="cmp_r3_l">Licencia corporativa costosa</td>
               </tr>
               <tr>
-                <td><strong>Edición de texto en sitio</strong></td>
-                <td class="highlight-col"><strong>Con guías magnéticas y sin desbordar</strong></td>
-                <td>Solo en plan de pago obligatorio</td>
-                <td>Desalinea renglones y fuentes</td>
+                <td><strong data-i18n="cmp_r4_c">Firmas sin fondo blanco</strong></td>
+                <td class="kova-col"><strong data-i18n="cmp_r4_k">Bóveda local con limpieza en 1 clic</strong></td>
+                <td data-i18n="cmp_r4_w">Pega imágenes opacas sobre la línea</td>
+                <td data-i18n="cmp_r4_l">Flujo lento de múltiples pasos</td>
               </tr>
               <tr>
-                <td><strong>Fotos y firmas sin fondo blanco</strong></td>
-                <td class="highlight-col"><strong>1 clic (Inteligente y transparente)</strong></td>
-                <td>Complejo y manual</td>
-                <td>Pega cuadros con fondo blanco visible</td>
+                <td><strong data-i18n="cmp_r5_c">Peso e inicio en Windows 11</strong></td>
+                <td class="kova-col"><strong data-i18n="cmp_r5_k">Ultraligero (~9 MB · Abre en &lt; 0.4 s)</strong></td>
+                <td data-i18n="cmp_r5_w">Depende de tu velocidad de internet</td>
+                <td data-i18n="cmp_r5_l">Más de 1.5 GB y procesos residentes</td>
               </tr>
               <tr>
-                <td><strong>Privacidad de tus datos</strong></td>
-                <td class="highlight-col"><strong>100% Local en tu PC (Sin Nube)</strong></td>
-                <td>Obliga a sincronizar con la nube</td>
-                <td>Tus contratos viajan a servidores ajenos</td>
+                <td><strong data-i18n="cmp_r6_c">Licenciamiento</strong></td>
+                <td class="kova-col"><strong data-i18n="cmp_r6_k">Descarga directa sin suscripciones</strong></td>
+                <td data-i18n="cmp_r6_w">Suscripción recurrente para funciones pro</td>
+                <td data-i18n="cmp_r6_l">Más de $240 USD anuales por usuario</td>
               </tr>
             </tbody>
           </table>
@@ -350,208 +341,193 @@
       </div>
     </section>
 
-    <!-- SECTION 5: MAC ANNOUNCEMENT -->
-    <section id="mac" class="tb-section-light">
-      <div class="tb-container">
-        <div style="background: linear-gradient(135deg, #090d18 0%, #172554 100%); border-radius: 18px; padding: 42px 36px; color: #ffffff; display: grid; grid-template-columns: 1fr auto; gap: 32px; align-items: center; border: 1px solid rgba(56, 189, 248, 0.28); box-shadow: 0 20px 48px rgba(15, 23, 42, 0.18);">
+    <!-- SECTION 5: 6 REAL TEST DOCUMENTS -->
+    <section id="pruebas" class="kova-section">
+      <div class="kova-container">
+        <div class="section-header-split">
           <div>
-            <div style="display:inline-flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;letter-spacing:0.06em;color:#38bdf8;text-transform:uppercase;margin-bottom:10px;">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.38c.62-.75 1.04-1.8 0.92-2.88-.9.04-1.99.6-2.63 1.35-.58.67-1.09 1.74-.95 2.78 1 .08 2.04-.5 2.66-1.25z"/>
-              </svg>
-              <span>En desarrollo activo para Apple Mac</span>
-            </div>
-            <h3 style="font-family:var(--font-display);font-size:26px;font-weight:800;margin:0 0 10px;letter-spacing:-0.02em;">
-              La misma experiencia impecable llegará muy pronto a macOS
-            </h3>
-            <p style="margin:0;color:#cbd5e1;font-size:15px;line-height:1.6;max-width:640px;">
-              Estamos adaptando el motor nativo de PDF-LEF para macOS Sonoma y Sequoia. Disfrutarás de aceleración
-              nativa en chips <strong>Apple Silicon (M1, M2, M3, M4)</strong> y procesadores Intel, con la misma
-              velocidad instantánea, edición con guías magnéticas y privacidad total sin suscripciones.
-            </p>
+            <span class="section-eyebrow" data-i18n="lab_eyebrow">LABORATORIO DE AUDITORÍA DOCUMENTAL</span>
+            <h2 class="section-title" data-i18n="lab_title">
+              6 documentos corporativos reales listos para auditar.
+            </h2>
           </div>
-          <div>
-            <span style="display:inline-flex;align-items:center;gap:10px;padding:12px 22px;border-radius:12px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:#bae6fd;font-weight:600;font-size:13.5px;white-space:nowrap;">
-              <span>Próximamente en Mac App Store &amp; .dmg</span>
-            </span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- SECTION 5: REAL TEST DOCUMENTS (AUDITA TÚ MISMO) -->
-    <section id="pruebas" class="tb-section-light">
-      <div class="tb-container">
-        <div class="section-heading">
-          <span class="section-tag">AUDITA LA EDICIÓN REAL</span>
-          <h2>5 Documentos Reales Listos para Probar</h2>
-          <p>
-            Comprueba la precisión de PDF-LEF con documentos profesionales del mundo real: cotizaciones,
-            facturas fiscales con timbres del SAT, contratos legales multipágina y reportes con balances.
+          <p class="section-subtitle" data-i18n="lab_sub">
+            Descarga cualquiera de estos expedientes de prueba —o ábrelos con un clic desde la pantalla principal de Kova PDF— para comprobar su precisión.
           </p>
         </div>
 
-        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:16px;margin-bottom:28px;">
-          <div class="f-card" style="border:1px solid #e2e8f0;padding:22px;border-radius:12px;background:#ffffff;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <span style="font-size:10.5px;font-weight:700;background:#eff6ff;color:#1d4ed8;padding:3px 8px;border-radius:6px;">Cotización Hardware</span>
-              <span style="font-size:11px;color:#64748b;">3.4 KB</span>
+        <div class="samples-grid">
+          <article class="sample-doc-card">
+            <div>
+              <div class="sample-meta-top">
+                <span class="sample-cat featured" data-i18n="doc6_cat">Portafolio Obra · Nuevo</span>
+                <span>2 págs</span>
+              </div>
+              <h4 data-i18n="doc6_title">06 · Portafolio de Obra e Infraestructura</h4>
+              <p data-i18n="doc6_desc">
+                Banner oscuro (#4A4A4A) con texto blanco, títulos en naranja terracota (Proyectos / Servicios), subtítulo MetroBus L5 - CDMX y tabla de presupuestos.
+              </p>
             </div>
-            <h4 style="margin:0 0 6px;font-size:15px;color:#0f172a;">Cotización Comercial Abasteo</h4>
-            <p style="font-size:12.5px;color:#475569;line-height:1.45;margin-bottom:14px;">
-              Edita importes, cambia el total de $52,908.00 y ajusta condiciones sin desbordar el margen.
-            </p>
-            <a href="pruebas/01_Cotizacion_Comercial_Abasteo.pdf" download class="btn-subtle" style="font-size:11.5px;padding:6px 12px;border-radius:6px;display:inline-block;text-decoration:none;">
+            <a href="pruebas/06_Portafolio_Obra_Proyectos.pdf" download class="sample-download-link" data-i18n="doc_dl">
               Descargar PDF de prueba ↓
             </a>
-          </div>
+          </article>
 
-          <div class="f-card" style="border:1px solid #e2e8f0;padding:22px;border-radius:12px;background:#ffffff;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <span style="font-size:10.5px;font-weight:700;background:#f0fdf4;color:#15803d;padding:3px 8px;border-radius:6px;">CFDI 4.0 SAT</span>
-              <span style="font-size:11px;color:#64748b;">3.3 KB</span>
+          <article class="sample-doc-card">
+            <div>
+              <div class="sample-meta-top">
+                <span class="sample-cat" data-i18n="doc1_cat">Cotización TI</span>
+                <span>1 pág</span>
+              </div>
+              <h4 data-i18n="doc1_title">01 · Cotización Comercial Hardware</h4>
+              <p data-i18n="doc1_desc">
+                Partidas con precios unitarios, desglose de IVA 16% ($52,908.00) y condiciones comerciales para auditar edición numérica y exportación a Excel.
+              </p>
             </div>
-            <h4 style="margin:0 0 6px;font-size:15px;color:#0f172a;">Factura Fiscal Electrónica</h4>
-            <p style="font-size:12.5px;color:#475569;line-height:1.45;margin-bottom:14px;">
-              Emisor, receptor, desglose de IVA y timbre digital. Prueba modificar conceptos o extraer a Excel.
-            </p>
-            <a href="pruebas/02_Factura_Fiscal_CFDI.pdf" download class="btn-subtle" style="font-size:11.5px;padding:6px 12px;border-radius:6px;display:inline-block;text-decoration:none;">
+            <a href="pruebas/01_Cotizacion_Comercial_Abasteo.pdf" download class="sample-download-link" data-i18n="doc_dl">
               Descargar PDF de prueba ↓
             </a>
-          </div>
+          </article>
 
-          <div class="f-card" style="border:1px solid #e2e8f0;padding:22px;border-radius:12px;background:#ffffff;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <span style="font-size:10.5px;font-weight:700;background:#f5f3ff;color:#6d28d9;padding:3px 8px;border-radius:6px;">Contrato Legal</span>
-              <span style="font-size:11px;color:#64748b;">2 págs · 4.2 KB</span>
+          <article class="sample-doc-card">
+            <div>
+              <div class="sample-meta-top">
+                <span class="sample-cat" data-i18n="doc2_cat">Fiscal CFDI 4.0</span>
+                <span>1 pág</span>
+              </div>
+              <h4 data-i18n="doc2_title">02 · Factura Electrónica CFDI 4.0</h4>
+              <p data-i18n="doc2_desc">
+                Comprobante fiscal con emisor, receptor, UUID y sellos digitales. Ideal para probar sellos ejecutivos, conversión a Word y limpieza de metadatos.
+              </p>
             </div>
-            <h4 style="margin:0 0 6px;font-size:15px;color:#0f172a;">Contrato Marco de Servicios</h4>
-            <p style="font-size:12.5px;color:#475569;line-height:1.45;margin-bottom:14px;">
-              Cláusulas legales y bloques de firmas ejecutivas en pág. 2. Prueba insertar firmas transparentes.
-            </p>
-            <a href="pruebas/03_Contrato_Prestacion_Servicios.pdf" download class="btn-subtle" style="font-size:11.5px;padding:6px 12px;border-radius:6px;display:inline-block;text-decoration:none;">
+            <a href="pruebas/02_Factura_Fiscal_CFDI.pdf" download class="sample-download-link" data-i18n="doc_dl">
               Descargar PDF de prueba ↓
             </a>
-          </div>
+          </article>
 
-          <div class="f-card" style="border:1px solid #e2e8f0;padding:22px;border-radius:12px;background:#ffffff;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <span style="font-size:10.5px;font-weight:700;background:#fffbeb;color:#b45309;padding:3px 8px;border-radius:6px;">Finanzas</span>
-              <span style="font-size:11px;color:#64748b;">3.1 KB</span>
+          <article class="sample-doc-card">
+            <div>
+              <div class="sample-meta-top">
+                <span class="sample-cat" data-i18n="doc3_cat">Legal Multipágina</span>
+                <span>2 págs</span>
+              </div>
+              <h4 data-i18n="doc3_title">03 · Contrato Marco de Servicios</h4>
+              <p data-i18n="doc3_desc">
+                Clausulado jurídico completo y bloques de firma dual en página 2 para probar firmas caligráficas transparentes, numeración Bates y división.
+              </p>
             </div>
-            <h4 style="margin:0 0 6px;font-size:15px;color:#0f172a;">Informe Ejecutivo con KPIs</h4>
-            <p style="font-size:12.5px;color:#475569;line-height:1.45;margin-bottom:14px;">
-              Tarjetas de métricas ($24.8M USD) y tabla por regiones operativas para pruebas de edición y análisis.
-            </p>
-            <a href="pruebas/04_Reporte_Financiero_Ejecutivo.pdf" download class="btn-subtle" style="font-size:11.5px;padding:6px 12px;border-radius:6px;display:inline-block;text-decoration:none;">
+            <a href="pruebas/03_Contrato_Prestacion_Servicios.pdf" download class="sample-download-link" data-i18n="doc_dl">
               Descargar PDF de prueba ↓
             </a>
-          </div>
+          </article>
 
-          <div class="f-card" style="border:1px solid #e2e8f0;padding:22px;border-radius:12px;background:#ffffff;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <span style="font-size:10.5px;font-weight:700;background:#fdf2f8;color:#be185d;padding:3px 8px;border-radius:6px;">RH y Nómina</span>
-              <span style="font-size:11px;color:#64748b;">3.1 KB</span>
+          <article class="sample-doc-card">
+            <div>
+              <div class="sample-meta-top">
+                <span class="sample-cat" data-i18n="doc4_cat">Finanzas &amp; KPIs</span>
+                <span>1 pág</span>
+              </div>
+              <h4 data-i18n="doc4_title">04 · Informe Financiero Ejecutivo</h4>
+              <p data-i18n="doc4_desc">
+                Encabezado institucional marino con texto blanco, tarjetas de EBITDA ($24.8M USD) y balance comparativo regional Q3/Q4.
+              </p>
             </div>
-            <h4 style="margin:0 0 6px;font-size:15px;color:#0f172a;">Constancia Laboral y Nómina</h4>
-            <p style="font-size:12.5px;color:#475569;line-height:1.45;margin-bottom:14px;">
-              Percepciones, deducciones y sello digital corporativo. Prueba modificar sueldos y estampar sellos.
-            </p>
-            <a href="pruebas/05_Certificado_Laboral_Nomina.pdf" download class="btn-subtle" style="font-size:11.5px;padding:6px 12px;border-radius:6px;display:inline-block;text-decoration:none;">
+            <a href="pruebas/04_Reporte_Financiero_Ejecutivo.pdf" download class="sample-download-link" data-i18n="doc_dl">
               Descargar PDF de prueba ↓
             </a>
-          </div>
+          </article>
+
+          <article class="sample-doc-card">
+            <div>
+              <div class="sample-meta-top">
+                <span class="sample-cat" data-i18n="doc5_cat">Capital Humano</span>
+                <span>1 pág</span>
+              </div>
+              <h4 data-i18n="doc5_title">05 · Constancia Laboral y Nómina</h4>
+              <p data-i18n="doc5_desc">
+                 Columnas paralelas de percepciones y deducciones, sueldo neto y certificación laboral lista para firma y sello institucional.
+              </p>
+            </div>
+            <a href="pruebas/05_Certificado_Laboral_Nomina.pdf" download class="sample-download-link" data-i18n="doc_dl">
+              Descargar PDF de prueba ↓
+            </a>
+          </article>
         </div>
       </div>
     </section>
 
     <!-- SECTION 6: FAQ -->
-    <section class="tb-section-subtle">
-      <div class="tb-container">
-        <div class="section-heading">
-          <span class="section-tag">RESPUESTAS CLARAS</span>
-          <h2>Preguntas Frecuentes</h2>
-          <p>Todo lo que necesitas saber antes de descargar PDF-LEF.</p>
+    <section id="faq" class="kova-section chalk">
+      <div class="kova-container">
+        <div class="section-header-split">
+          <div>
+            <span class="section-eyebrow" data-i18n="faq_eyebrow">PREGUNTAS FRECUENTES</span>
+            <h2 class="section-title" data-i18n="faq_title">Respuestas claras sobre Kova PDF.</h2>
+          </div>
         </div>
 
-        <div class="faq-grid">
-          <div class="faq-card">
-            <h4>¿Por qué PDF-LEF no cobra suscripción mensual?</h4>
-            <p>
-              Creemos que leer, editar un texto o firmar un contrato en tu propia computadora no debería costar más de
-              $20 dólares al mes de por vida. PDF-LEF corre 100% en tu procesador local, por lo que no gastamos en
-              costosos servidores de nube ni te cobramos cuotas recurrentes.
+        <div class="faq-grid-2">
+          <div class="faq-item">
+            <h4 data-i18n="faq_q1">¿Mis documentos se suben a internet al editar o convertir a Word?</h4>
+            <p data-i18n="faq_a1">
+              Jamás. Tanto la edición de texto como la conversión a Word (.docx), Excel (.csv), compresión, recorte y OCR se procesan 100% en la memoria local de tu computadora. Funciona incluso sin conexión a internet.
             </p>
           </div>
 
-          <div class="faq-card">
-            <h4>¿Mis archivos PDF están seguros y privados?</h4>
-            <p>
-              Totalmente. A diferencia de las páginas web que te piden subir tus contratos o estados de cuenta a
-              servidores externos, en PDF-LEF tus documentos jamás salen de tu computadora. Puedes usar la app en modo
-              avión o sin conexión a internet con total tranquilidad.
+          <div class="faq-item">
+            <h4 data-i18n="faq_q2">¿Cómo respeta los textos de colores y encabezados con fondo oscuro?</h4>
+            <p data-i18n="faq_a2">
+              Kova PDF analiza en tiempo real los píxeles del perímetro y del interior de cada letra antes de abrir el editor. Así conserva automáticamente letras blancas sobre banners oscuros o títulos corporativos en color, además de ofrecer selectores manuales en la barra rápida.
             </p>
           </div>
 
-          <div class="faq-card">
-            <h4>¿Cómo evita PDF-LEF que el texto se desempareje?</h4>
-            <p>
-              El motor de PDF-LEF detecta el tamaño de la tipografía y calcula el límite exacto respecto al margen
-              derecho de la hoja. Al escribir un párrafo largo, el texto se ajusta automáticamente en varias líneas y
-              las guías magnéticas lo imantan con el resto de filas para que el diseño quede perfecto.
+          <div class="faq-item">
+            <h4 data-i18n="faq_q3">¿Cómo se actualizan los equipos que ya tienen la aplicación instalada?</h4>
+            <p data-i18n="faq_a3">
+              En Configuración encontrarás el módulo de Actualizaciones de Kova PDF, que consulta la última versión oficial publicada y descarga el instalador actualizado en un clic. En redes empresariales también puedes desplegar el paquete .msi mediante Intune o GPO.
             </p>
           </div>
 
-          <div class="faq-card">
-            <h4>¿Cómo la convierto en mi lector predeterminado en Windows?</h4>
-            <p>
-              Durante la instalación, el instalador registra automáticamente la asociación oficial
-              <code>PDFLEF.Document</code>. Además, dentro de la aplicación puedes presionar el botón «Establecer como
-              predeterminada» en cualquier momento para que todos tus archivos .pdf se abran con doble clic.
+          <div class="faq-item">
+            <h4 data-i18n="faq_q4">¿Se adapta bien a pantallas de laptops con escalado al 125% o 150%?</h4>
+            <p data-i18n="faq_a4">
+              Sí. La versión 2.0 inicia maximizada automáticamente, ajusta el ancho de sus paneles según la resolución disponible y permite colapsar el inspector derecho para maximizar el área de lectura y edición del documento.
             </p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- MINIMALIST DARK FOOTER -->
-    <footer class="tb-footer">
-      <div class="tb-container">
-        <div class="tb-footer-cta">
+    <!-- FOOTER -->
+    <footer class="kova-footer">
+      <div class="kova-container">
+        <div class="footer-cta-panel">
           <div>
-            <h3>Empieza a editar tus documentos hoy mismo sin pagar suscripciones</h3>
-            <p>Instalación limpia en segundos para Windows 10 y Windows 11 (64 bits). Próximamente en macOS.</p>
+            <h3 data-i18n="ft_title">Instala Kova PDF v2.0 en tu equipo Windows hoy mismo.</h3>
+            <p data-i18n="ft_sub">
+              Descarga directa del instalador oficial firmado para Windows 10 y Windows 11 (64-bit). 100% local, privado y sin suscripciones.
+            </p>
           </div>
-          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
             <a
               id="footer-download-exe"
-              href="https://github.com/Lycar-Desarrollos/PDF-LEF/releases/download/v1.0.0/PDF-LEF_1.0.0_x64-setup.exe"
-              class="btn-download-hero"
+              href="https://github.com/Lycar-Desarrollos/PDF-LEF/releases/latest"
+              class="btn-primary-exe"
             >
               <span>
-                <strong>Descargar PDF-LEF (.exe)</strong>
-                <small>Gratis · 100% Local · Sin anuncios</small>
-              </span>
-            </a>
-            <a href="#mac" class="btn-mac-hero" style="height:52px;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.38c.62-.75 1.04-1.8 0.92-2.88-.9.04-1.99.6-2.63 1.35-.58.67-1.09 1.74-.95 2.78 1 .08 2.04-.5 2.66-1.25z"/>
-              </svg>
-              <span class="mac-copy">
-                <strong>Próximamente en Mac</strong>
-                <small>macOS Apple Silicon &amp; Intel</small>
+                <strong data-i18n="ft_btn_exe">Descargar Kova PDF (.exe)</strong>
+                <small data-i18n="ft_btn_sub">Windows 10 / 11 · x64 · Gratis</small>
               </span>
             </a>
           </div>
         </div>
 
-        <div class="tb-footer-bottom">
-          <div class="tb-brand">
-            <img src="assets/logo-mark.svg" alt="PDF-LEF" class="tb-brand-logo" />
-            <span class="tb-brand-name">PDF<span>LEF</span></span>
-            <span class="footer-by">por Lycar Desarrollos</span>
+        <div class="footer-bottom-bar">
+          <div class="kova-brand footer-brand-dark">
+            <img src="assets/logo-mark.svg" alt="Kova PDF" class="kova-brand-logo" />
+            <div class="kova-brand-wordmark">Kova<span>PDF</span></div>
           </div>
-          <span>© 2026 Lycar Desarrollos · Software nativo 100% offline para Windows · Próximamente para macOS.</span>
+          <span data-i18n="ft_copy">© 2026 Kova Studio · Ingeniería documental 100% local para Windows. Todos los derechos reservados.</span>
         </div>
       </div>
     </footer>

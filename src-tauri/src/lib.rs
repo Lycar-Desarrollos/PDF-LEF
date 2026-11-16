@@ -52,17 +52,17 @@ fn register_default_pdf_app(_app: tauri::AppHandle) -> Result<String, String> {
         let open_icon = format!("{},0", exe_str);
 
         let reg_commands: Vec<Vec<&str>> = vec![
-            vec!["add", r"HKCU\Software\Classes\PDFLEF.Document", "/ve", "/d", "Documento PDF (PDF-LEF)", "/f"],
-            vec!["add", r"HKCU\Software\Classes\PDFLEF.Document", "/v", "FriendlyTypeName", "/d", "Documento PDF (PDF-LEF)", "/f"],
-            vec!["add", r"HKCU\Software\Classes\PDFLEF.Document\DefaultIcon", "/ve", "/d", &doc_icon_str, "/f"],
-            vec!["add", r"HKCU\Software\Classes\PDFLEF.Document\shell\open", "/ve", "/d", "Abrir con PDF-LEF", "/f"],
-            vec!["add", r"HKCU\Software\Classes\PDFLEF.Document\shell\open", "/v", "Icon", "/d", &open_icon, "/f"],
-            vec!["add", r"HKCU\Software\Classes\PDFLEF.Document\shell\open\command", "/ve", "/d", &open_cmd, "/f"],
-            vec!["add", r"HKCU\Software\Classes\.pdf\OpenWithProgids", "/v", "PDFLEF.Document", "/t", "REG_NONE", "/f"],
-            vec!["add", r"HKCU\Software\PDF-LEF\Capabilities", "/v", "ApplicationName", "/d", "PDF-LEF", "/f"],
-            vec!["add", r"HKCU\Software\PDF-LEF\Capabilities", "/v", "ApplicationDescription", "/d", "Suite PDF Nativa 100% Local para Windows", "/f"],
-            vec!["add", r"HKCU\Software\PDF-LEF\Capabilities\FileAssociations", "/v", ".pdf", "/d", "PDFLEF.Document", "/f"],
-            vec!["add", r"HKCU\Software\RegisteredApplications", "/v", "PDF-LEF", "/d", r"Software\PDF-LEF\Capabilities", "/f"],
+            vec!["add", r"HKCU\Software\Classes\KovaPDF.Document", "/ve", "/d", "Documento PDF (Kova PDF)", "/f"],
+            vec!["add", r"HKCU\Software\Classes\KovaPDF.Document", "/v", "FriendlyTypeName", "/d", "Documento PDF (Kova PDF)", "/f"],
+            vec!["add", r"HKCU\Software\Classes\KovaPDF.Document\DefaultIcon", "/ve", "/d", &doc_icon_str, "/f"],
+            vec!["add", r"HKCU\Software\Classes\KovaPDF.Document\shell\open", "/ve", "/d", "Abrir con Kova PDF", "/f"],
+            vec!["add", r"HKCU\Software\Classes\KovaPDF.Document\shell\open", "/v", "Icon", "/d", &open_icon, "/f"],
+            vec!["add", r"HKCU\Software\Classes\KovaPDF.Document\shell\open\command", "/ve", "/d", &open_cmd, "/f"],
+            vec!["add", r"HKCU\Software\Classes\.pdf\OpenWithProgids", "/v", "KovaPDF.Document", "/t", "REG_NONE", "/f"],
+            vec!["add", r"HKCU\Software\KovaPDF\Capabilities", "/v", "ApplicationName", "/d", "Kova PDF", "/f"],
+            vec!["add", r"HKCU\Software\KovaPDF\Capabilities", "/v", "ApplicationDescription", "/d", "Estudio PDF Nativo 100% Local para Windows", "/f"],
+            vec!["add", r"HKCU\Software\KovaPDF\Capabilities\FileAssociations", "/v", ".pdf", "/d", "KovaPDF.Document", "/f"],
+            vec!["add", r"HKCU\Software\RegisteredApplications", "/v", "Kova PDF", "/d", r"Software\KovaPDF\Capabilities", "/f"],
         ];
 
         for args in reg_commands {
@@ -72,17 +72,17 @@ fn register_default_pdf_app(_app: tauri::AppHandle) -> Result<String, String> {
         // Refresh Windows Explorer icon cache immediately
         let _ = Command::new("ie4uinit.exe").arg("-show").spawn();
 
-        // Open Windows 10/11 Default Apps panel directly so user confirms PDF-LEF in 1 click
+        // Open Windows 10/11 Default Apps panel directly so user confirms Kova PDF in 1 click
         let _ = Command::new("cmd")
             .args(["/C", "start", "", "ms-settings:defaultapps"])
             .spawn();
 
-        return Ok("Icono oficial PDF-LEF registrado. Selecciona PDF-LEF para archivos .pdf en la ventana de Windows.".to_string());
+        return Ok("Icono oficial Kova PDF registrado. Selecciona Kova PDF para archivos .pdf en la ventana de Windows.".to_string());
     }
 
     #[cfg(not(target_os = "windows"))]
     {
-        Ok("En Windows 10/11, este botón registra el icono oficial de documento PDF-LEF y abre Aplicaciones Predeterminadas.".to_string())
+        Ok("En Windows 10/11, este botón registra el icono oficial de documento Kova PDF y abre Aplicaciones Predeterminadas.".to_string())
     }
 }
 
@@ -98,5 +98,5 @@ pub fn run() {
             register_default_pdf_app
         ])
         .run(tauri::generate_context!())
-        .expect("Error al iniciar PDF-LEF");
+        .expect("Error al iniciar Kova PDF");
 }

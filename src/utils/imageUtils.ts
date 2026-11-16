@@ -133,11 +133,12 @@ export function removeSignatureBackground(
 export async function convertImagesToPdfBytes(
   files: File[],
   pagePreset: 'a4' | 'letter' | 'fit' = 'a4',
-  marginPt = 28
+  marginPt = 28,
+  orientation: 'auto' | 'portrait' | 'landscape' = 'auto'
 ): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
-  pdfDoc.setCreator('PDF-LEF');
-  pdfDoc.setProducer('PDF-LEF Native Engine');
+  pdfDoc.setCreator('Kova PDF');
+  pdfDoc.setProducer('Kova PDF Native Engine');
 
   for (const file of files) {
     const dataUrl = await fileToDataUrl(file);
@@ -155,7 +156,12 @@ export async function convertImagesToPdfBytes(
       });
     } else {
       const [pw, ph] = pagePreset === 'a4' ? [595.28, 841.89] : [612, 792];
-      const isLandscape = dims.width > dims.height * 1.15;
+      const isLandscape =
+        orientation === 'landscape'
+          ? true
+          : orientation === 'portrait'
+          ? false
+          : dims.width > dims.height * 1.12;
       const finalW = isLandscape ? ph : pw;
       const finalH = isLandscape ? pw : ph;
       const page = pdfDoc.addPage([finalW, finalH]);
@@ -175,5 +181,5 @@ export async function convertImagesToPdfBytes(
     }
   }
 
-  return pdfDoc.save();
+  return pdfDoc.save({ useObjectStreams: true });
 }

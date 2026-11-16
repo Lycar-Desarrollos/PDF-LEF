@@ -1,5 +1,4 @@
-# Configuración oficial de Netlify para PDF-LEF
-# Carpeta de publicación estática para el sitio web
+# Configuración oficial de despliegue estático para Kova PDF
 [build]
   publish = "website"
 

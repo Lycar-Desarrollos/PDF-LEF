@@ -39,7 +39,8 @@ export function getPdfJsProxy(
   const loadingTask = pdfjsLib.getDocument({
     data: cloned,
     useSystemFonts: isBrowser,
-    disableFontFace: !isBrowser,
+    disableFontFace: false,
+    fontExtraProperties: true,
     ...(nodeFontsPath ? { standardFontDataUrl: nodeFontsPath } : {}),
   });
   const promise = loadingTask.promise;
@@ -121,8 +122,9 @@ function guessFontChoice(fontName: string): {
 }
 
 /**
- * Extracts real existing text runs from a PDF page and merges adjacent words on the same baseline
- * so the user can directly click, edit, move, resize, or delete ANY existing text in the PDF!
+ * Extracts real existing text runs from a PDF page, merges adjacent words on the same baseline,
+ * auto-samples exact background & ink foreground colors from the rendered page bitmap,
+ * and clamps patch bounds cleanly between neighboring lines so zero ghosting or clipping occurs.
  */
 export async function extractNativeEditableTexts(
   sourceId: string,
@@ -137,25 +139,30 @@ export async function extractNativeEditableTexts(
   const viewport = page.getViewport({ scale: 1, rotation: totalRotation });
   const textContent = await page.getTextContent();
 
-  // Optional subtle background color sampling at 0.5x scale when DOM canvas is available
-  const sampleScale = 0.5;
-  let sampleCanvas: HTMLCanvasElement | null = null;
-  let sCtx: CanvasRenderingContext2D | null = null;
-  if (typeof document !== 'undefined') {
-    sampleCanvas = document.createElement('canvas');
-    const sampleVp = page.getViewport({ scale: sampleScale, rotation: totalRotation });
-    sampleCanvas.width = Math.max(1, Math.floor(sampleVp.width));
-    sampleCanvas.height = Math.max(1, Math.floor(sampleVp.height));
-    sCtx = sampleCanvas.getContext('2d', { willReadFrequently: true });
+  // Render 1.0x offscreen bitmap once per page for fast CPU pixel color & glyph-edge scanning
+  let cw = 0;
+  let ch = 0;
+  let pagePixels: Uint8ClampedArray | null = null;
+  if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
+    const sampleCanvas = document.createElement('canvas');
+    cw = Math.max(1, Math.floor(viewport.width));
+    ch = Math.max(1, Math.floor(viewport.height));
+    sampleCanvas.width = cw;
+    sampleCanvas.height = ch;
+    const sCtx = sampleCanvas.getContext('2d', { willReadFrequently: true });
     if (sCtx) {
       sCtx.fillStyle = '#ffffff';
-      sCtx.fillRect(0, 0, sampleCanvas.width, sampleCanvas.height);
-      await page.render({ canvasContext: sCtx, canvas: sampleCanvas, viewport: sampleVp }).promise;
+      sCtx.fillRect(0, 0, cw, ch);
+      await page.render({ canvasContext: sCtx, canvas: sampleCanvas, viewport }).promise;
+      pagePixels = sCtx.getImageData(0, 0, cw, ch).data;
     }
+  } else {
+    await page.getOperatorList();
   }
 
   interface RawFragment {
     left: number;
+    baselineY: number;
     top: number;
     width: number;
     height: number;
@@ -171,15 +178,17 @@ export async function extractNativeEditableTexts(
     if (!str || !str.trim()) continue;
 
     const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
-    const fontHeight = Math.max(7, Math.hypot(tx[2], tx[3]));
+    const fontHeight = Math.max(6.5, Math.hypot(tx[2], tx[3]));
     const left = tx[4];
     const baselineY = tx[5];
-    const top = baselineY - fontHeight * 0.86;
-    const width = Math.max(8, item.width * viewport.scale || str.length * fontHeight * 0.52);
-    const height = fontHeight * 1.18;
+    const top = baselineY - fontHeight * 0.94;
+    const rawW = item.width * viewport.scale || str.length * fontHeight * 0.53;
+    const width = Math.max(6, rawW + fontHeight * 0.06);
+    const height = fontHeight * 1.24;
 
     fragments.push({
       left,
+      baselineY,
       top,
       width,
       height,
@@ -189,24 +198,28 @@ export async function extractNativeEditableTexts(
     });
   }
 
-  // Sort top-to-bottom, left-to-right and merge same-line adjacent runs
-  fragments.sort((a, b) => (Math.abs(a.top - b.top) > 3 ? a.top - b.top : a.left - b.left));
+  // Sort top-to-bottom by baseline, then left-to-right
+  fragments.sort((a, b) =>
+    Math.abs(a.baselineY - b.baselineY) > 3 ? a.baselineY - b.baselineY : a.left - b.left
+  );
 
   const merged: RawFragment[] = [];
   for (const frag of fragments) {
     const prev = merged[merged.length - 1];
+    const maxHorizGap = Math.min(34, Math.max(prev ? prev.fontSize * 2.55 : 0, 14));
     if (
       prev &&
-      Math.abs(prev.top - frag.top) <= Math.max(3, prev.fontSize * 0.28) &&
+      Math.abs(prev.baselineY - frag.baselineY) <= Math.max(2.6, prev.fontSize * 0.24) &&
       Math.abs(prev.fontSize - frag.fontSize) <= 2.2 &&
       frag.left >= prev.left - 2 &&
-      frag.left - (prev.left + prev.width) <= prev.fontSize * 1.65
+      frag.left - (prev.left + prev.width) <= maxHorizGap
     ) {
       const gap = frag.left - (prev.left + prev.width);
       const needsSpace =
-        gap > prev.fontSize * 0.14 && !prev.str.endsWith(' ') && !frag.str.startsWith(' ');
+        gap > prev.fontSize * 0.13 && !prev.str.endsWith(' ') && !frag.str.startsWith(' ');
       prev.str = `${prev.str}${needsSpace ? ' ' : ''}${frag.str}`;
       prev.width = Math.max(prev.width, frag.left + frag.width - prev.left);
+      prev.top = Math.min(prev.top, frag.top);
       prev.height = Math.max(prev.height, frag.height);
     } else {
       merged.push({ ...frag });
@@ -216,29 +229,173 @@ export async function extractNativeEditableTexts(
   const vw = Math.max(1, viewport.width);
   const vh = Math.max(1, viewport.height);
 
+  const toHex = (r: number, g: number, b: number) =>
+    `#${[r, g, b].map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('')}`;
+
+  const getPixel = (x: number, y: number): [number, number, number] => {
+    if (!pagePixels || cw <= 0 || ch <= 0) return [255, 255, 255];
+    const px = Math.max(0, Math.min(cw - 1, Math.round(x)));
+    const py = Math.max(0, Math.min(ch - 1, Math.round(y)));
+    const off = (py * cw + px) * 4;
+    return [pagePixels[off], pagePixels[off + 1], pagePixels[off + 2]];
+  };
+
   return merged.map((m, idx) => {
-    const normX = Math.max(0, Math.min(0.98, m.left / vw));
-    const normY = Math.max(0, Math.min(0.98, m.top / vh));
-    const normW = Math.max(0.02, Math.min(1 - normX, (m.width + 4) / vw));
-    const normH = Math.max(0.014, Math.min(1 - normY, (m.height + 2) / vh));
+    // 1. Clamp vertical bounds cleanly against overlapping neighbor lines above/below
+    let minAllowedTop = Math.max(0, m.top - m.fontSize * 0.16);
+    let maxAllowedBottom = Math.min(vh, m.top + m.height + m.fontSize * 0.14);
+
+    for (let j = 0; j < merged.length; j++) {
+      if (j === idx) continue;
+      const other = merged[j];
+      const horizOverlap =
+        other.left <= m.left + m.width + 6 && other.left + other.width >= m.left - 6;
+      if (!horizOverlap) continue;
+
+      if (other.baselineY < m.baselineY - m.fontSize * 0.35) {
+        const otherApproxBottom = other.baselineY + other.fontSize * 0.24;
+        const mid = (otherApproxBottom + m.top) * 0.5;
+        if (mid < m.baselineY - m.fontSize * 0.45) {
+          minAllowedTop = Math.max(minAllowedTop, mid);
+        }
+      } else if (other.baselineY > m.baselineY + m.fontSize * 0.35) {
+        const otherApproxTop = other.baselineY - other.fontSize * 0.88;
+        const mid = (m.top + m.height + otherApproxTop) * 0.5;
+        if (mid > m.baselineY + m.fontSize * 0.04) {
+          maxAllowedBottom = Math.min(maxAllowedBottom, mid);
+        }
+      }
+    }
+
+    let boxLeft = Math.max(0, m.left - 1.5);
+    let boxRight = Math.min(vw, m.left + m.width + 2.5);
+    let boxTop = Math.max(minAllowedTop, m.top);
+    let boxBottom = Math.min(maxAllowedBottom, m.top + m.height);
 
     let bgPatchColor = '#ffffff';
     let textColor = '#14161a';
-    if (sCtx && sampleCanvas) {
-      // Sample corner pixel slightly outside glyph bounding box for exact paper tint
-      const sx = Math.max(0, Math.min(sampleCanvas.width - 1, Math.floor((m.left - 2) * sampleScale)));
-      const sy = Math.max(0, Math.min(sampleCanvas.height - 1, Math.floor((m.top - 2) * sampleScale)));
-      const px = sCtx.getImageData(sx, sy, 1, 1).data;
-      bgPatchColor = `#${[px[0], px[1], px[2]]
-        .map((v) => v.toString(16).padStart(2, '0'))
-        .join('')}`;
-      const lum = 0.299 * px[0] + 0.587 * px[1] + 0.114 * px[2];
-      if (lum < 95) {
+
+    if (pagePixels && cw > 0 && ch > 0) {
+      // 2. Sample 16 perimeter points around text box & pick median-luminance RGB for solid background patch
+      const perimSamples: Array<{ r: number; g: number; b: number; lum: number }> = [];
+      const xA = boxLeft - 3;
+      const xB = boxRight + 3;
+      const yA = Math.max(minAllowedTop, boxTop - 2);
+      const yB = Math.min(maxAllowedBottom, boxBottom + 2);
+
+      for (let t = 0; t <= 1; t += 0.25) {
+        const sx = xA + (xB - xA) * t;
+        const [r1, g1, b1] = getPixel(sx, yA);
+        perimSamples.push({ r: r1, g: g1, b: b1, lum: 0.299 * r1 + 0.587 * g1 + 0.114 * b1 });
+        const [r2, g2, b2] = getPixel(sx, yB);
+        perimSamples.push({ r: r2, g: g2, b: b2, lum: 0.299 * r2 + 0.587 * g2 + 0.114 * b2 });
+      }
+      for (const sy of [yA + (yB - yA) * 0.33, yA + (yB - yA) * 0.66]) {
+        const [r1, g1, b1] = getPixel(xA, sy);
+        perimSamples.push({ r: r1, g: g1, b: b1, lum: 0.299 * r1 + 0.587 * g1 + 0.114 * b1 });
+        const [r2, g2, b2] = getPixel(xB, sy);
+        perimSamples.push({ r: r2, g: g2, b: b2, lum: 0.299 * r2 + 0.587 * g2 + 0.114 * b2 });
+      }
+      perimSamples.sort((a, b) => a.lum - b.lum);
+      const medBg = perimSamples[Math.floor(perimSamples.length * 0.6)] || {
+        r: 255,
+        g: 255,
+        b: 255,
+        lum: 255,
+      };
+      bgPatchColor = toHex(medBg.r, medBg.g, medBg.b);
+
+      // 3. Scan interior & 4px margin to capture tall ascenders/descenders & exact ink foreground RGB
+      const scanX0 = Math.max(0, Math.floor(boxLeft - 3));
+      const scanX1 = Math.min(cw - 1, Math.ceil(boxRight + 4));
+      const scanY0 = Math.max(0, Math.floor(minAllowedTop));
+      const scanY1 = Math.min(ch - 1, Math.ceil(maxAllowedBottom));
+
+      const inkPixels: Array<{ r: number; g: number; b: number; dist: number }> = [];
+      let inkMinX = boxRight;
+      let inkMaxX = boxLeft;
+      let inkMinY = boxBottom;
+      let inkMaxY = boxTop;
+
+      const stepX = scanX1 - scanX0 > 260 ? 2 : 1;
+      for (let py = scanY0; py <= scanY1; py++) {
+        const rowOff = py * cw * 4;
+        for (let px = scanX0; px <= scanX1; px += stepX) {
+          const off = rowOff + px * 4;
+          const r = pagePixels[off];
+          const g = pagePixels[off + 1];
+          const b = pagePixels[off + 2];
+          const dist = Math.hypot(r - medBg.r, g - medBg.g, b - medBg.b);
+          if (dist > 44) {
+            if (px < inkMinX) inkMinX = px;
+            if (px > inkMaxX) inkMaxX = px;
+            if (py < inkMinY) inkMinY = py;
+            if (py > inkMaxY) inkMaxY = py;
+            inkPixels.push({ r, g, b, dist });
+          }
+        }
+      }
+
+      if (inkPixels.length > 0) {
+        // Expand box to enclose detected glyph ink (with 1.5px breathing room inside neighbor clamps)
+        boxLeft = Math.min(boxLeft, Math.max(0, inkMinX - 1.5));
+        boxRight = Math.max(boxRight, Math.min(vw, inkMaxX + 2));
+        boxTop = Math.max(minAllowedTop, Math.min(boxTop, inkMinY - 1));
+        boxBottom = Math.min(maxAllowedBottom, Math.max(boxBottom, inkMaxY + 1.5));
+
+        // Core glyph ink color = median RGB of top 18% highest-contrast pixels (avoids AA fringe)
+        inkPixels.sort((a, b) => b.dist - a.dist);
+        const coreCount = Math.max(1, Math.ceil(inkPixels.length * 0.18));
+        const core = inkPixels.slice(0, coreCount);
+        const rs = core.map((c) => c.r).sort((a, b) => a - b);
+        const gs = core.map((c) => c.g).sort((a, b) => a - b);
+        const bs = core.map((c) => c.b).sort((a, b) => a - b);
+        const mid = Math.floor(core.length / 2);
+        textColor = toHex(rs[mid], gs[mid], bs[mid]);
+      } else if (medBg.lum < 110) {
         textColor = '#ffffff';
       }
     }
 
-    const fontInfo = guessFontChoice(m.fontName);
+    const normX = Math.max(0, Math.min(0.985, boxLeft / vw));
+    const normY = Math.max(0, Math.min(0.985, boxTop / vh));
+    const normW = Math.max(0.018, Math.min(1 - normX, (boxRight - boxLeft) / vw));
+    const normH = Math.max(0.012, Math.min(1 - normY, (boxBottom - boxTop) / vh));
+
+    const styleMeta = (
+      textContent.styles as Record<string, { fontFamily?: string }> | undefined
+    )?.[m.fontName];
+    const commonObjs = (
+      page as unknown as {
+        commonObjs?: {
+          has: (id: string) => boolean;
+          get: (id: string) => {
+            name?: string;
+            bold?: boolean;
+            black?: boolean;
+            italic?: boolean;
+            fallbackName?: string;
+          };
+        };
+      }
+    ).commonObjs;
+    const fontObj =
+      commonObjs && m.fontName && commonObjs.has(m.fontName)
+        ? commonObjs.get(m.fontName)
+        : null;
+
+    const fontInfo = guessFontChoice(`${fontObj?.name || ''} ${m.fontName}`);
+    const familyHint = `${fontObj?.name || ''} ${m.fontName} ${styleMeta?.fontFamily || ''} ${fontObj?.fallbackName || ''}`.toLowerCase();
+    const resolvedFamily =
+      familyHint.includes('mono') || familyHint.includes('courier')
+        ? 'mono'
+        : familyHint.includes('serif') && !familyHint.includes('sans')
+          ? 'serif'
+          : fontInfo.family;
+    const resolvedWeight: 'normal' | 'bold' =
+      fontObj?.bold || fontObj?.black || fontInfo.weight === 'bold' ? 'bold' : 'normal';
+    const resolvedStyle: 'normal' | 'italic' =
+      fontObj?.italic || fontInfo.style === 'italic' ? 'italic' : 'normal';
 
     return {
       id: `ntxt_${pageDesc.id}_${idx}`,
@@ -254,9 +411,9 @@ export async function extractNativeEditableTexts(
       originalText: m.str,
       text: m.str,
       fontSizePt: Math.round(m.fontSize * 10) / 10,
-      fontFamily: fontInfo.family,
-      fontWeight: fontInfo.weight,
-      fontStyle: fontInfo.style,
+      fontFamily: resolvedFamily,
+      fontWeight: resolvedWeight,
+      fontStyle: resolvedStyle,
       color: textColor,
       bgPatchColor,
       deleted: false,
@@ -279,8 +436,8 @@ export async function loadPdfIntoTabDocument(
     author: '',
     subject: '',
     keywords: '',
-    creator: 'PDF-LEF',
-    producer: 'PDF-LEF Native Engine',
+    creator: 'Kova PDF',
+    producer: 'Kova PDF Native Engine',
   };
 
   try {
@@ -291,8 +448,8 @@ export async function loadPdfIntoTabDocument(
       author: info.Author || '',
       subject: info.Subject || '',
       keywords: info.Keywords || '',
-      creator: info.Creator || 'PDF-LEF',
-      producer: info.Producer || 'PDF-LEF Native Engine',
+      creator: info.Creator || 'Kova PDF',
+      producer: info.Producer || 'Kova PDF Native Engine',
     };
   } catch {
     // Ignore malformed PDF metadata
@@ -338,7 +495,7 @@ export async function loadPdfIntoTabDocument(
       headerLeft: '',
       headerRight: '',
       footerCenterPattern: 'page-of-total',
-      batesPrefix: 'LEF-',
+      batesPrefix: 'KOVA-',
       batesStart: 1,
       customFooter: '',
       fontSizePt: 9.5,
@@ -498,10 +655,10 @@ export async function createBlankPdfBytes(
  */
 export async function generateShowcaseSamplePdf(): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
-  doc.setTitle('Propuesta Ejecutiva y Acuerdo de Servicios — PDF-LEF');
-  doc.setAuthor('Lycar Desarrollos');
+  doc.setTitle('Propuesta Ejecutiva y Acuerdo de Servicios — Kova PDF');
+  doc.setAuthor('Kova Studio');
   doc.setSubject('Documento ejecutivo editable');
-  doc.setCreator('PDF-LEF');
+  doc.setCreator('Kova PDF');
 
   const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
   const fontReg = await doc.embedFont(StandardFonts.Helvetica);
@@ -515,7 +672,7 @@ export async function generateShowcaseSamplePdf(): Promise<Uint8Array> {
   // PAGE 1: Clean Executive Proposal & Editable Summary Table
   const p1 = doc.addPage([595.28, 841.89]);
   p1.drawRectangle({ x: 52, y: 760, width: 5, height: 38, color: sapphire });
-  p1.drawText('PDF-LEF · DOCUMENTO EJECUTIVO INTERACTIVO', {
+  p1.drawText('KOVA PDF · DOCUMENTO EJECUTIVO INTERACTIVO', {
     x: 68,
     y: 785,
     size: 9.5,
@@ -529,7 +686,7 @@ export async function generateShowcaseSamplePdf(): Promise<Uint8Array> {
     font: fontBold,
     color: dark,
   });
-  p1.drawText('Folio: LEF-2026-0190   |   Fecha: 13 de Noviembre de 2026', {
+  p1.drawText('Folio: KOVA-2026-0190   |   Fecha: 15 de Noviembre de 2026', {
     x: 52,
     y: 730,
     size: 10,
@@ -665,16 +822,16 @@ export async function generateShowcaseSamplePdf(): Promise<Uint8Array> {
     color: dark,
   });
   p2.drawText(
-    'Todos los archivos abiertos y editados en PDF-LEF permanecen al 100% en tu computadora.',
+    'Todos los archivos abiertos y editados en Kova PDF permanecen al 100% en tu computadora.',
     { x: 52, y: 734, size: 10.5, font: fontReg, color: muted }
   );
 
   const specs = [
-    '1. Edición directa de textos existentes conservando la alineación y limpieza de la página.',
+    '1. Edición directa de textos existentes conservando la alineación y el color original.',
     '2. Inserción limpia de imágenes, fotografías y logotipos con eliminación de fondo blanco.',
     '3. Firmas manuscritas sin fondo, sellos rápidos, resaltado, notas y censura confidencial.',
-    '4. Organización visual de páginas: unir varios PDFs, dividir, rotar, numerar y exportar.',
-    '5. Icono oficial PDF-LEF para todos tus documentos .pdf al usarla como app predeterminada.',
+    '4. Suite integral offline: unir, dividir, eliminar páginas, comprimir y convertir a Word/Excel.',
+    '5. Icono nativo de documento en Windows 10 y 11 al establecerla como app predeterminada.',
   ];
   let sy = 690;
   for (const line of specs) {
@@ -825,4 +982,135 @@ export async function extractTabTablesToCsv(
   }
 
   return `\uFEFF${csvLines.join('\r\n')}`;
+}
+
+export interface StructuredPageLine {
+  y: number;
+  fontSize: number;
+  bold: boolean;
+  cells: string[];
+}
+
+export async function extractStructuredPageLines(
+  tab: PdfTabDocument
+): Promise<StructuredPageLine[][]> {
+  const allPages: StructuredPageLine[][] = [];
+
+  for (let idx = 0; idx < tab.pages.length; idx++) {
+    const pd = tab.pages[idx];
+    if (!pd) continue;
+
+    interface LineToken {
+      x: number;
+      y: number;
+      width: number;
+      fontSize: number;
+      bold: boolean;
+      text: string;
+    }
+
+    const tokens: LineToken[] = [];
+    const pageEdits = Object.values(tab.nativeTextEdits).filter(
+      (nt) => nt.pageId === pd.id && (nt.modified || nt.deleted)
+    );
+
+    if (pd.sourceId !== 'blank' && tab.sourceBuffers[pd.sourceId]) {
+      const pdf = await getPdfJsProxy(pd.sourceId, tab.sourceBuffers[pd.sourceId]);
+      const page = await pdf.getPage(pd.sourcePageIndex + 1);
+      const vp = page.getViewport({ scale: 1, rotation: (page.rotate + pd.rotation) % 360 });
+      const tc = await page.getTextContent();
+
+      for (const item of tc.items) {
+        if (!('str' in item) || !item.str.trim()) continue;
+        const tx = pdfjsLib.Util.transform(vp.transform, item.transform);
+        const fontSize = Math.max(7, Math.hypot(tx[2], tx[3]));
+        const nx = tx[4] / Math.max(1, vp.width);
+        const ny = (tx[5] - fontSize * 0.5) / Math.max(1, vp.height);
+        const overridden = pageEdits.some(
+          (nt) =>
+            nx >= nt.origX - 0.01 &&
+            nx <= nt.origX + nt.origWidth + 0.01 &&
+            ny >= nt.origY - 0.012 &&
+            ny <= nt.origY + nt.origHeight + 0.016
+        );
+        if (!overridden) {
+          const fname = (item.fontName || '').toLowerCase();
+          tokens.push({
+            x: tx[4],
+            y: tx[5],
+            width: item.width * vp.scale || item.str.length * fontSize * 0.5,
+            fontSize,
+            bold: fname.includes('bold') || fname.includes('black'),
+            text: item.str.trim(),
+          });
+        }
+      }
+
+      for (const nt of pageEdits) {
+        if (!nt.deleted && nt.text.trim()) {
+          tokens.push({
+            x: nt.x * vp.width,
+            y: nt.y * vp.height + (nt.fontSizePt || 10.5) * 0.86,
+            width: nt.width * vp.width,
+            fontSize: nt.fontSizePt || 10.5,
+            bold: nt.fontWeight === 'bold',
+            text: nt.text.trim(),
+          });
+        }
+      }
+    }
+
+    for (const el of tab.elements) {
+      if (el.pageId === pd.id && el.text && el.text.trim()) {
+        tokens.push({
+          x: el.x * pd.widthPt,
+          y: el.y * pd.heightPt + (el.fontSizePt || 11),
+          width: el.width * pd.widthPt,
+          fontSize: el.fontSizePt || 11,
+          bold: el.fontWeight === 'bold',
+          text: el.text.trim(),
+        });
+      }
+    }
+
+    tokens.sort((a, b) => (Math.abs(a.y - b.y) > 4.5 ? a.y - b.y : a.x - b.x));
+
+    const rowGroups: LineToken[][] = [];
+    for (const tok of tokens) {
+      const last = rowGroups[rowGroups.length - 1];
+      if (last && Math.abs(last[0].y - tok.y) <= 4.5) {
+        last.push(tok);
+      } else {
+        rowGroups.push([tok]);
+      }
+    }
+
+    const pageLines: StructuredPageLine[] = rowGroups.map((grp) => {
+      grp.sort((a, b) => a.x - b.x);
+      const cells: string[] = [];
+      let prevRight = -999;
+      let maxFont = 10;
+      let anyBold = false;
+      for (const item of grp) {
+        if (item.fontSize > maxFont) maxFont = item.fontSize;
+        if (item.bold) anyBold = true;
+        if (cells.length > 0 && item.x - prevRight < Math.max(24, item.fontSize * 2.2)) {
+          cells[cells.length - 1] = `${cells[cells.length - 1]} ${item.text}`;
+        } else {
+          cells.push(item.text);
+        }
+        prevRight = item.x + item.width;
+      }
+      return {
+        y: grp[0].y,
+        fontSize: Math.round(maxFont * 2) / 2,
+        bold: anyBold,
+        cells,
+      };
+    });
+
+    allPages.push(pageLines);
+  }
+
+  return allPages;
 }

@@ -9,7 +9,7 @@ import {
 import JSZip from 'jszip';
 import type { FontFamilyChoice, PdfTabDocument } from '../types/pdf';
 import { normalizeImageToPngBytes } from './imageUtils';
-import { renderPageToCanvas } from './pdfEngine';
+import { extractStructuredPageLines, renderPageToCanvas } from './pdfEngine';
 
 function hexToPdfRgb(hex?: string, fallback = '#111318') {
   const raw = (hex && hex.startsWith('#') ? hex : fallback).replace('#', '');
@@ -237,18 +237,19 @@ export async function compileTabToPdfBytes(
     const pw = rotAngle === 90 || rotAngle === 270 ? rawH : rawW;
     const ph = rotAngle === 90 || rotAngle === 270 ? rawW : rawH;
 
-    // Optional page crop
-    if (pd.crop) {
+    // Optional page crop (CropBox + TrimBox for universal PDF viewer support)
+    if (
+      pd.crop &&
+      (pd.crop.left > 0 || pd.crop.right > 0 || pd.crop.top > 0 || pd.crop.bottom > 0)
+    ) {
       const cLeft = pd.crop.left * rawW;
       const cRight = pd.crop.right * rawW;
       const cTop = pd.crop.top * rawH;
       const cBottom = pd.crop.bottom * rawH;
-      pdfPage.setCropBox(
-        cLeft,
-        cBottom,
-        Math.max(50, rawW - cLeft - cRight),
-        Math.max(50, rawH - cTop - cBottom)
-      );
+      const cropW = Math.max(50, rawW - cLeft - cRight);
+      const cropH = Math.max(50, rawH - cTop - cBottom);
+      pdfPage.setCropBox(cLeft, cBottom, cropW, cropH);
+      pdfPage.setTrimBox(cLeft, cBottom, cropW, cropH);
     }
 
     // 1. Apply Native Existing-Text Edits / Moves / Deletions on this page!
@@ -257,18 +258,19 @@ export async function compileTabToPdfBytes(
     );
 
     for (const nt of nativeEdits) {
-      // Cover original text run cleanly with sampled paper background color
-      const patchX = Math.max(0, nt.origX * pw - 2.5);
-      const patchW = Math.min(pw - patchX, nt.origWidth * pw + 5);
-      const patchH = nt.origHeight * ph + 3.5;
-      const patchY = Math.max(0, ph - (nt.origY * ph + nt.origHeight * ph) - 1.5);
+      // Cover original text run cleanly with sampled background color (respecting neighbor line clamps)
+      const patchX = Math.max(0, nt.origX * pw - 2);
+      const patchW = Math.min(pw - patchX, nt.origWidth * pw + 4);
+      const patchH = nt.origHeight * ph + 1.8;
+      const patchY = Math.max(0, ph - (nt.origY * ph + nt.origHeight * ph) - 0.9);
+      const patchRgb = hexToPdfRgb(nt.bgPatchColor, '#ffffff');
 
       pdfPage.drawRectangle({
         x: patchX,
         y: patchY,
         width: patchW,
         height: patchH,
-        color: hexToPdfRgb(nt.bgPatchColor, '#ffffff'),
+        color: patchRgb,
       });
 
       if (!nt.deleted && nt.text.trim()) {
@@ -276,6 +278,24 @@ export async function compileTabToPdfBytes(
         const fSize = Math.max(6, nt.fontSizePt || 11);
         const maxNativeW = Math.max(40, (0.972 - nt.x) * pw);
         const lines = wrapPdfTextToWidth(nt.text, chosenFont, fSize, maxNativeW);
+
+        // If edited text is wider than original patch or wraps, paint clean solid background under new glyphs
+        if (lines.length > 0) {
+          const widestLine = Math.max(
+            ...lines.map((ln) => chosenFont.widthOfTextAtSize(ln, fSize))
+          );
+          const totalBlockH = lines.length * fSize * 1.18;
+          const newBoxX = Math.max(0, nt.x * pw - 1.5);
+          const newBoxTopFromBottom = ph - nt.y * ph + 1;
+          pdfPage.drawRectangle({
+            x: newBoxX,
+            y: Math.max(0, newBoxTopFromBottom - totalBlockH - 1),
+            width: Math.min(pw - newBoxX, widestLine + 3.5),
+            height: totalBlockH + 2,
+            color: patchRgb,
+          });
+        }
+
         let lineY = ph - nt.y * ph - fSize * 0.88;
         for (const line of lines) {
           if (lineY < 8) break;
@@ -743,7 +763,7 @@ export async function compileTabToPdfBytes(
         footerLabel = `${num}`;
       } else if (hf.footerCenterPattern === 'bates') {
         const batesNum = String((hf.batesStart || 1) + pageIdx).padStart(5, '0');
-        footerLabel = `${hf.batesPrefix || 'LEF-'}${batesNum}`;
+        footerLabel = `${hf.batesPrefix || 'KOVA-'}${batesNum}`;
       } else {
         footerLabel = hf.customFooter
           .replace(/\{page\}/g, String(num))
@@ -770,8 +790,8 @@ export async function compileTabToPdfBytes(
     outDoc.setAuthor('');
     outDoc.setSubject('');
     outDoc.setKeywords([]);
-    outDoc.setCreator('PDF-LEF');
-    outDoc.setProducer('PDF-LEF Local Engine');
+    outDoc.setCreator('Kova PDF');
+    outDoc.setProducer('Kova PDF Local Engine');
   } else {
     outDoc.setTitle(tab.metadata.title || '');
     outDoc.setAuthor(tab.metadata.author || '');
@@ -784,8 +804,8 @@ export async function compileTabToPdfBytes(
             .filter(Boolean)
         : []
     );
-    outDoc.setCreator(tab.metadata.creator || 'PDF-LEF');
-    outDoc.setProducer('PDF-LEF Native Engine');
+    outDoc.setCreator(tab.metadata.creator || 'Kova PDF');
+    outDoc.setProducer('Kova PDF Native Engine');
   }
 
   return outDoc.save({ useObjectStreams: true });
@@ -795,7 +815,8 @@ export async function mergeMultiplePdfBuffers(
   items: Array<{ fileName: string; bytes: Uint8Array }>
 ): Promise<Uint8Array> {
   const merged = await PDFDocument.create();
-  merged.setCreator('PDF-LEF');
+  merged.setCreator('Kova PDF');
+  merged.setProducer('Kova PDF Native Engine');
   for (const item of items) {
     const cloned = new Uint8Array(item.bytes.byteLength);
     cloned.set(item.bytes);
@@ -844,6 +865,302 @@ export async function extractSelectedPagesAsPdf(
     pages: subsetPages,
   };
   return compileTabToPdfBytes(subTab);
+}
+
+/**
+ * Splits a PDF into multiple separate PDF files (every `pagesPerFile` pages) packaged in a .zip
+ */
+export async function splitPdfIntoZip(
+  tab: PdfTabDocument,
+  pagesPerFile = 1
+): Promise<Blob> {
+  const zip = new JSZip();
+  const step = Math.max(1, Math.floor(pagesPerFile));
+  const baseName = tab.fileName.replace(/\.pdf$/i, '');
+
+  for (let start = 0; start < tab.pages.length; start += step) {
+    const indices: number[] = [];
+    for (let k = start; k < Math.min(tab.pages.length, start + step); k++) {
+      indices.push(k);
+    }
+    const partBytes = await extractSelectedPagesAsPdf(tab, indices);
+    const label =
+      indices.length === 1
+        ? `pagina_${String(indices[0] + 1).padStart(3, '0')}`
+        : `paginas_${String(indices[0] + 1).padStart(3, '0')}-${String(
+            indices[indices.length - 1] + 1
+          ).padStart(3, '0')}`;
+    zip.file(`${baseName}_${label}.pdf`, partBytes);
+  }
+
+  return zip.generateAsync({ type: 'blob' });
+}
+
+/**
+ * Compresses or flattens a PDF locally with 3 selectable levels:
+ * - 'lossless': Vector object-stream optimization + metadata cleanup (100% vector sharpness)
+ * - 'balanced': Smart 144 DPI JPEG stream optimization (shrinks heavy scans/images dramatically)
+ * - 'extreme': 102 DPI high-ratio JPEG optimization for strict upload portals
+ * If `flattenReadOnly` is true, flattens all pages into non-editable secure rasterized pages.
+ */
+export type CompressionLevel = 'lossless' | 'balanced' | 'extreme';
+
+export async function compressPdfDocument(
+  tab: PdfTabDocument,
+  level: CompressionLevel = 'balanced',
+  flattenReadOnly = false
+): Promise<{ bytes: Uint8Array; originalBytes: number; compressedBytes: number }> {
+  const originalBytes = Math.max(
+    tab.fileSize || 0,
+    Object.values(tab.sourceBuffers).reduce((acc, b) => acc + b.byteLength, 0)
+  );
+
+  // Always compile clean vector object-stream version first
+  const losslessBytes = await compileTabToPdfBytes(tab, { cleanMetadata: true });
+
+  if ((level === 'lossless' && !flattenReadOnly) || typeof document === 'undefined') {
+    return {
+      bytes: losslessBytes,
+      originalBytes: Math.max(originalBytes, losslessBytes.byteLength),
+      compressedBytes: losslessBytes.byteLength,
+    };
+  }
+
+  // Rasterized JPEG recompression / flattening when DOM canvas is available
+  const dpi = flattenReadOnly && level === 'lossless' ? 200 : level === 'balanced' ? 144 : 102;
+  const jpegQuality =
+    flattenReadOnly && level === 'lossless' ? 0.85 : level === 'balanced' ? 0.74 : 0.56;
+  const scale = dpi / 72;
+
+  const rasterDoc = await PDFDocument.create();
+  rasterDoc.setCreator('Kova PDF');
+  rasterDoc.setProducer('Kova PDF Optimizer');
+
+  const tempSourceId = `opt_${Date.now()}`;
+  for (let i = 0; i < tab.pages.length; i++) {
+    const pd = tab.pages[i];
+    const canvas = document.createElement('canvas');
+    await renderPageToCanvas(
+      tempSourceId,
+      losslessBytes,
+      {
+        id: `opt_p_${i}`,
+        sourceId: tempSourceId,
+        sourcePageIndex: i,
+        rotation: 0,
+        widthPt: pd.widthPt,
+        heightPt: pd.heightPt,
+      },
+      canvas,
+      scale,
+      false
+    );
+    const dataUrl = canvas.toDataURL('image/jpeg', jpegQuality);
+    const base64 = dataUrl.split(',')[1] || '';
+    const bin = atob(base64);
+    const jpgBytes = new Uint8Array(bin.length);
+    for (let k = 0; k < bin.length; k++) jpgBytes[k] = bin.charCodeAt(k);
+
+    const jpgEmbed = await rasterDoc.embedJpg(jpgBytes);
+    const rot = ((pd.rotation % 360) + 360) % 360;
+    const pw = rot === 90 || rot === 270 ? pd.heightPt : pd.widthPt;
+    const ph = rot === 90 || rot === 270 ? pd.widthPt : pd.heightPt;
+    const outPage = rasterDoc.addPage([pw, ph]);
+    outPage.drawImage(jpgEmbed, { x: 0, y: 0, width: pw, height: ph });
+  }
+
+  const rasterBytes = await rasterDoc.save({ useObjectStreams: true });
+
+  // Unless user explicitly requested read-only flattening, never return a file larger than lossless!
+  const chosen =
+    flattenReadOnly || rasterBytes.byteLength < losslessBytes.byteLength
+      ? rasterBytes
+      : losslessBytes;
+
+  return {
+    bytes: chosen,
+    originalBytes: Math.max(originalBytes, chosen.byteLength),
+    compressedBytes: chosen.byteLength,
+  };
+}
+
+function escapeXml(str: string): string {
+  return (str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+/**
+ * Exports all text & edits from the active PDF into clean UTF-8 plain text (.txt)
+ */
+export async function exportTabToPlainText(tab: PdfTabDocument): Promise<string> {
+  const pages = await extractStructuredPageLines(tab);
+  return pages
+    .map((lines, idx) => {
+      const header = pages.length > 1 ? `=== Página ${idx + 1} ===\n` : '';
+      const body = lines.map((ln) => ln.cells.join('    ')).join('\n');
+      return `${header}${body}`;
+    })
+    .join('\n\n');
+}
+
+/**
+ * Generates a genuine, standards-compliant Microsoft Word (.docx) OOXML package locally using JSZip,
+ * preserving headings, bold emphasis, multi-column tables (<w:tbl>), edited texts, and page breaks!
+ */
+export async function exportTabToDocxBlob(tab: PdfTabDocument): Promise<Blob> {
+  const pages = await extractStructuredPageLines(tab);
+  const zip = new JSZip();
+
+  zip.file(
+    '[Content_Types].xml',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+</Types>`
+  );
+
+  zip.file(
+    '_rels/.rels',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`
+  );
+
+  zip.file(
+    'word/_rels/document.xml.rels',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`
+  );
+
+  zip.file(
+    'word/styles.xml',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:docDefaults>
+    <w:rPrDefault>
+      <w:rPr>
+        <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/>
+        <w:sz w:val="22"/>
+        <w:color w:val="111827"/>
+      </w:rPr>
+    </w:rPrDefault>
+  </w:docDefaults>
+</w:styles>`
+  );
+
+  const bodyParts: string[] = [];
+
+  pages.forEach((lines, pageIdx) => {
+    let i = 0;
+    while (i < lines.length) {
+      const ln = lines[i];
+
+      // Group consecutive multi-column lines into a clean Word Table (<w:tbl>)
+      if (ln.cells.length >= 2) {
+        const tableRows: typeof lines = [];
+        while (i < lines.length && lines[i].cells.length >= 2) {
+          tableRows.push(lines[i]);
+          i++;
+        }
+        const maxCols = Math.max(...tableRows.map((r) => r.cells.length));
+        const colTwips = Math.floor(9360 / Math.max(1, maxCols));
+        const trXml = tableRows
+          .map((row, rIdx) => {
+            const padded = [...row.cells];
+            while (padded.length < maxCols) padded.push('');
+            const isHeader = rIdx === 0 && row.bold;
+            const cellsXml = padded
+              .map(
+                (cellText) => `<w:tc>
+              <w:tcPr>
+                <w:tcW w:w="${colTwips}" w:type="dxa"/>
+                ${isHeader ? '<w:shd w:val="clear" w:color="auto" w:fill="F1F5F9"/>' : ''}
+              </w:tcPr>
+              <w:p>
+                <w:pPr><w:spacing w:before="60" w:after="60"/></w:pPr>
+                <w:r>
+                  <w:rPr>
+                    ${row.bold ? '<w:b/>' : ''}
+                    <w:sz w:val="${Math.round(Math.max(18, Math.min(32, row.fontSize * 2)))}"/>
+                  </w:rPr>
+                  <w:t xml:space="preserve">${escapeXml(cellText)}</w:t>
+                </w:r>
+              </w:p>
+            </w:tc>`
+              )
+              .join('');
+            return `<w:tr>${cellsXml}</w:tr>`;
+          })
+          .join('');
+
+        bodyParts.push(`<w:tbl>
+          <w:tblPr>
+            <w:tblW w:w="9360" w:type="dxa"/>
+            <w:tblBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+              <w:insideH w:val="single" w:sz="4" w:space="0" w:color="E2E8F0"/>
+              <w:insideV w:val="single" w:sz="4" w:space="0" w:color="E2E8F0"/>
+            </w:tblBorders>
+          </w:tblPr>
+          ${trXml}
+        </w:tbl>
+        <w:p><w:pPr><w:spacing w:after="120"/></w:pPr></w:p>`);
+        continue;
+      }
+
+      // Standard paragraph or heading
+      const halfPts = Math.round(Math.max(18, Math.min(56, ln.fontSize * 2)));
+      const text = ln.cells[0] || '';
+      const spacingAfter = ln.fontSize >= 14 ? 160 : 90;
+      bodyParts.push(`<w:p>
+        <w:pPr><w:spacing w:after="${spacingAfter}"/></w:pPr>
+        <w:r>
+          <w:rPr>
+            ${ln.bold || ln.fontSize >= 15 ? '<w:b/>' : ''}
+            <w:sz w:val="${halfPts}"/>
+          </w:rPr>
+          <w:t xml:space="preserve">${escapeXml(text)}</w:t>
+        </w:r>
+      </w:p>`);
+      i++;
+    }
+
+    if (pageIdx < pages.length - 1) {
+      bodyParts.push(`<w:p><w:r><w:br w:type="page"/></w:r></w:p>`);
+    }
+  });
+
+  zip.file(
+    'word/document.xml',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    ${bodyParts.join('\n')}
+    <w:sectPr>
+      <w:pgSz w:w="11906" w:h="16838"/>
+      <w:pgMar w:top="1080" w:right="1080" w:bottom="1080" w:left="1080"/>
+    </w:sectPr>
+  </w:body>
+</w:document>`
+  );
+
+  return zip.generateAsync({
+    type: 'blob',
+    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  });
 }
 
 export async function exportTabPagesToImagesZip(

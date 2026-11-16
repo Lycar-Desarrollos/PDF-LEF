@@ -3,18 +3,22 @@ import {
   ArrowUpRight,
   BookOpen,
   Building2,
+  Calculator,
   CheckCheck,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   Circle,
   Columns2,
+  Crop,
   Download,
   Eye,
   EyeOff,
   FileCheck2,
+  FileDown,
   FileOutput,
   FileSpreadsheet,
+  FileText,
   Grid2x2,
   Hand,
   Hash,
@@ -24,6 +28,7 @@ import {
   Maximize2,
   MessageSquarePlus,
   MousePointer,
+  PanelRight,
   PenTool,
   Pencil,
   Printer,
@@ -36,6 +41,7 @@ import {
   Square,
   Stamp,
   Strikethrough,
+  Trash2,
   Type,
   Underline,
   Undo2,
@@ -58,6 +64,8 @@ interface RibbonToolbarProps {
   activeTool: ActiveTool;
   splitCompareTabId: string | null;
   availableTabsCount: number;
+  inspectorOpen?: boolean;
+  onToggleInspector?: () => void;
   onChangeMode: (mode: WorkspaceMode) => void;
   onSelectTool: (tool: ActiveTool) => void;
   onTriggerAddImage: () => void;
@@ -81,12 +89,12 @@ const QUICK_STAMPS = [
   { label: 'APROBADO', color: '#0D7A5F' },
   { label: 'PAGADO', color: '#0D7A5F' },
   { label: 'RECIBIDO', color: '#2563EB' },
-  { label: 'REVISADO', color: '#4F46E5' },
+  { label: 'REVISADO', color: '#0369A1' },
   { label: 'CONFIDENCIAL', color: '#DC2626' },
   { label: 'URGENTE', color: '#B45309' },
 ];
 
-const ZOOM_PRESETS = [50, 75, 90, 100, 105, 115, 125, 150, 175, 200, 250];
+const ZOOM_PRESETS = [50, 75, 90, 100, 110, 125, 150, 175, 200, 250];
 
 export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
   tab,
@@ -94,6 +102,8 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
   activeTool,
   splitCompareTabId,
   availableTabsCount,
+  inspectorOpen,
+  onToggleInspector,
   onChangeMode,
   onSelectTool,
   onTriggerAddImage,
@@ -151,7 +161,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
 
   return (
     <div className="studio-header">
-      {/* Primary Minimalist Acrobat + Thunderbird Mode Bar */}
+      {/* Primary Kova PDF Contextual Mode Bar */}
       <div className="mode-bar">
         <div className="toolbar-group">
           <div className="mode-pills">
@@ -224,7 +234,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
                 fontWeight: 600,
                 fontFamily: 'var(--font-mono)',
                 padding: '0 4px',
-                minWidth: 56,
+                minWidth: 52,
                 textAlign: 'center',
               }}
             >
@@ -359,7 +369,9 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
                   position: 'absolute',
                   right: 0,
                   top: 'calc(100% + 6px)',
-                  width: 268,
+                  width: 284,
+                  maxHeight: '76vh',
+                  overflowY: 'auto',
                   background: 'var(--bg-surface-elevated)',
                   border: '1px solid var(--border-strong)',
                   borderRadius: 'var(--radius-md)',
@@ -369,23 +381,28 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
                 }}
               >
                 {[
-                  { kind: 'logos' as ToolModalKind, icon: <Building2 size={14} />, label: 'Mis Logos Guardados' },
                   { kind: 'merge' as ToolModalKind, icon: <FileCheck2 size={14} />, label: 'Unir varios PDFs' },
-                  { kind: 'split' as ToolModalKind, icon: <Scissors size={14} />, label: 'Dividir o extraer páginas' },
-                  { kind: 'watermark' as ToolModalKind, icon: <Sparkles size={14} />, label: 'Marca de agua' },
-                  { kind: 'numbering' as ToolModalKind, icon: <Hash size={14} />, label: 'Numerar páginas' },
-                  { kind: 'images-to-pdf' as ToolModalKind, icon: <ImagePlus size={14} />, label: 'Imágenes a PDF' },
+                  { kind: 'split' as ToolModalKind, icon: <Scissors size={14} />, label: 'Dividir o separar páginas' },
+                  { kind: 'remove-pages' as ToolModalKind, icon: <Trash2 size={14} />, label: 'Eliminar páginas del PDF' },
+                  { kind: 'crop' as ToolModalKind, icon: <Crop size={14} />, label: 'Recortar márgenes PDF' },
+                  { kind: 'optimize' as ToolModalKind, icon: <FileDown size={14} />, label: 'Comprimir / Reducir peso' },
+                  { kind: 'pdf-to-word' as ToolModalKind, icon: <FileText size={14} />, label: 'PDF a Word editable (.docx)' },
+                  { kind: 'export-csv' as ToolModalKind, icon: <FileSpreadsheet size={14} />, label: 'PDF a Excel (.csv)' },
                   { kind: 'pdf-to-images' as ToolModalKind, icon: <FileOutput size={14} />, label: 'PDF a Imágenes PNG/JPG' },
-                  { kind: 'export-csv' as ToolModalKind, icon: <FileSpreadsheet size={14} />, label: 'Extraer tablas a Excel (.csv)' },
-                  { kind: 'ocr' as ToolModalKind, icon: <ScanText size={14} />, label: 'Extraer texto (OCR)' },
-                  { kind: 'metadata' as ToolModalKind, icon: <ShieldAlert size={14} />, label: 'Propiedades del documento' },
+                  { kind: 'images-to-pdf' as ToolModalKind, icon: <ImagePlus size={14} />, label: 'Imágenes JPG/PNG a PDF' },
+                  { kind: 'watermark' as ToolModalKind, icon: <Sparkles size={14} />, label: 'Marca de agua' },
+                  { kind: 'numbering' as ToolModalKind, icon: <Hash size={14} />, label: 'Numerar páginas y Bates' },
+                  { kind: 'logos' as ToolModalKind, icon: <Building2 size={14} />, label: 'Mis Logos Guardados' },
+                  { kind: 'calculator' as ToolModalKind, icon: <Calculator size={14} />, label: 'Calculadora contable / IVA' },
+                  { kind: 'ocr' as ToolModalKind, icon: <ScanText size={14} />, label: 'Extraer texto escaneado (OCR)' },
+                  { kind: 'metadata' as ToolModalKind, icon: <ShieldAlert size={14} />, label: 'Propiedades y privacidad' },
                 ].map((item) => (
                   <button
                     key={item.kind}
                     type="button"
                     role="menuitem"
                     className="btn"
-                    style={{ width: '100%', justifyContent: 'flex-start', height: 32 }}
+                    style={{ width: '100%', justifyContent: 'flex-start', height: 31 }}
                     onClick={() => {
                       setProMenuOpen(false);
                       onOpenToolModal(item.kind);
@@ -403,7 +420,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
                   style={{
                     width: '100%',
                     justifyContent: 'flex-start',
-                    height: 34,
+                    height: 33,
                     color: 'var(--accent)',
                     fontWeight: 600,
                   }}
@@ -413,7 +430,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
                   }}
                 >
                   <CheckCheck size={14} />
-                  <span>Usar como App PDF Predeterminada</span>
+                  <span>Usar Kova PDF como Predeterminada</span>
                 </button>
               </div>
             )}
@@ -428,6 +445,17 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
             <Printer size={15} />
           </button>
 
+          {workspaceMode === 'edit' && onToggleInspector && (
+            <button
+              type="button"
+              className={`btn icon-only ${inspectorOpen ? 'active' : ''}`}
+              onClick={onToggleInspector}
+              title={inspectorOpen ? 'Ocultar panel lateral derecho' : 'Mostrar panel de propiedades'}
+            >
+              <PanelRight size={15} />
+            </button>
+          )}
+
           <button
             type="button"
             id="save-export-pdf-btn"
@@ -441,7 +469,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
         </div>
       </div>
 
-      {/* Unified General-Purpose Acrobat Pro Plus Edit Bar */}
+      {/* Unified Precision Edit Bar */}
       {workspaceMode === 'edit' && (
         <div className="edit-subbar">
           <div className="toolbar-group" style={{ flexWrap: 'wrap' }}>
@@ -472,7 +500,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
                 activeTool === 'edit-pdf-text' ? 'active' : ''
               }`}
               onClick={() => onSelectTool('edit-pdf-text')}
-              title="Edita o mueve cualquier texto que ya tiene el PDF sin dañar nada"
+              title="Edita o mueve cualquier texto que ya tiene el PDF respetando color y fondo"
             >
               <Pencil size={13.5} />
               <span>Editar / Mover Texto PDF</span>
@@ -495,7 +523,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
               title="Insertar imagen limpia o pegar desde portapapeles (Ctrl+V)"
             >
               <ImagePlus size={14} />
-              <span>Subir Imagen</span>
+              <span>Imagen</span>
             </button>
 
             <button
@@ -591,6 +619,26 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
             >
               <EyeOff size={14} />
               <span>Censurar</span>
+            </button>
+
+            <button
+              type="button"
+              className="tool-chip"
+              onClick={() => onOpenToolModal('crop')}
+              title="Recortar márgenes del PDF"
+            >
+              <Crop size={13.5} />
+              <span>Recortar</span>
+            </button>
+
+            <button
+              type="button"
+              className="tool-chip"
+              onClick={() => onOpenToolModal('remove-pages')}
+              title="Eliminar páginas seleccionadas"
+            >
+              <Trash2 size={13.5} />
+              <span>Eliminar págs.</span>
             </button>
 
             {/* Quick Stamps Dropdown */}

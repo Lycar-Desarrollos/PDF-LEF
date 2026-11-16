@@ -5,10 +5,10 @@ import type {
   SavedSignature,
 } from '../types/pdf';
 
-const SETTINGS_KEY = 'pdf_lef_settings_v3';
-const SIGNATURES_KEY = 'pdf_lef_signatures_v1';
-const LOGOS_KEY = 'pdf_lef_logos_v1';
-const RECENTS_KEY = 'pdf_lef_recents_v1';
+const SETTINGS_KEY = 'kova_pdf_settings_v2';
+const SIGNATURES_KEY = 'kova_pdf_signatures_v2';
+const LOGOS_KEY = 'kova_pdf_logos_v2';
+const RECENTS_KEY = 'kova_pdf_recents_v2';
 
 export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'light',
@@ -18,14 +18,14 @@ export const DEFAULT_SETTINGS: AppSettings = {
   showStatusBar: true,
   smoothAnimations: true,
 
-  defaultZoom: 1.05,
+  defaultZoom: 1.0,
   defaultViewLayout: 'continuous',
   defaultPaperFilter: 'original',
   defaultLeftPanel: 'thumbnails',
   hiDpiRendering: true,
 
-  authorName: 'Usuario PDF-LEF',
-  companyName: 'Lycar Desarrollos',
+  authorName: 'Ejecutivo',
+  companyName: 'Dirección Corporativa',
   defaultTaxRatePct: 16,
   currencySymbol: '$',
   defaultFontFamily: 'sans',

@@ -3,13 +3,18 @@ import {
   Building2,
   CheckCheck,
   Clock,
+  Crop,
+  FileDown,
+  FileOutput,
   FilePlus2,
   FileSpreadsheet,
   FileStack,
+  FileText,
   FolderOpen,
   ImagePlus,
   Pencil,
   Pin,
+  Scissors,
   ShieldCheck,
   Signature,
   Sparkles,
@@ -40,49 +45,58 @@ function formatBytes(bytes: number): string {
 
 const TEST_DOCUMENTS = [
   {
+    filename: '06_Portafolio_Obra_Proyectos.pdf',
+    badge: 'Arquitectura y Obra',
+    badgeBg: 'rgba(217, 121, 59, 0.14)',
+    badgeColor: '#C25E24',
+    size: '2 págs · 4.8 KB',
+    title: 'Portafolio de Proyectos e Ingeniería',
+    desc: 'Encabezado oscuro, títulos en color terracota y párrafos densos para probar detección cromática exacta.',
+  },
+  {
     filename: '01_Cotizacion_Comercial_Abasteo.pdf',
     badge: 'Cotización TI',
     badgeBg: 'rgba(37, 99, 235, 0.12)',
-    badgeColor: '#2563eb',
+    badgeColor: '#2563EB',
     size: '1 pág · 3.4 KB',
-    title: 'Cotización Abasteo Hardware',
-    desc: 'Laptops HP Victus e importes. Prueba editar importes y condiciones sin desbordar el margen.',
+    title: 'Cotización Ejecutiva de Hardware',
+    desc: 'Partidas tabulares e importes. Prueba editar precios y condiciones respetando la alineación.',
   },
   {
     filename: '02_Factura_Fiscal_CFDI.pdf',
-    badge: 'CFDI 4.0 SAT',
-    badgeBg: 'rgba(16, 185, 129, 0.12)',
-    badgeColor: '#059669',
+    badge: 'CFDI 4.0 Fiscal',
+    badgeBg: 'rgba(13, 122, 95, 0.12)',
+    badgeColor: '#0D7A5F',
     size: '1 pág · 3.3 KB',
-    title: 'Factura Fiscal con SAT',
-    desc: 'Emisor, Receptor, desglose de IVA y timbre digital. Prueba modificar conceptos o extraer a CSV.',
+    title: 'Factura Fiscal con Desglose IVA',
+    desc: 'Emisor, receptor, impuestos y sello digital. Prueba modificar conceptos o exportar tabla a Excel.',
   },
   {
     filename: '03_Contrato_Prestacion_Servicios.pdf',
     badge: 'Contrato Legal',
-    badgeBg: 'rgba(139, 92, 246, 0.12)',
-    badgeColor: '#7c3aed',
+    badgeBg: 'rgba(3, 105, 161, 0.12)',
+    badgeColor: '#0369A1',
     size: '2 págs · 4.2 KB',
     title: 'Contrato Marco de Servicios',
-    desc: 'Cláusulas legales y bloques de firmas ejecutivas en pág. 2. Prueba insertar firmas transparentes.',
+    desc: 'Cláusulas jurídicas y bloques de firmas en pág. 2. Prueba estampar firmas transparentes o eliminar hoja.',
   },
   {
     filename: '04_Reporte_Financiero_Ejecutivo.pdf',
     badge: 'Finanzas',
-    badgeBg: 'rgba(245, 158, 11, 0.12)',
-    badgeColor: '#d97706',
+    badgeBg: 'rgba(180, 83, 9, 0.12)',
+    badgeColor: '#B45309',
     size: '1 pág · 3.1 KB',
-    title: 'Informe Ejecutivo con KPIs',
-    desc: 'Tarjetas de métricas ($24.8M USD) y tabla por regiones operativas para pruebas de edición.',
+    title: 'Informe Ejecutivo de Indicadores',
+    desc: 'Tarjetas de métricas ($24.8M USD) y resultados por región listos para convertir a Word o Excel.',
   },
   {
     filename: '05_Certificado_Laboral_Nomina.pdf',
-    badge: 'RH y Nómina',
-    badgeBg: 'rgba(236, 72, 153, 0.12)',
-    badgeColor: '#db2777',
+    badge: 'Capital Humano',
+    badgeBg: 'rgba(200, 30, 50, 0.11)',
+    badgeColor: '#C81E32',
     size: '1 pág · 3.1 KB',
     title: 'Constancia Laboral y Nómina',
-    desc: 'Percepciones, deducciones y sello digital corporativo. Prueba modificar sueldos y agregar sellos.',
+    desc: 'Percepciones, deducciones y validación oficial. Prueba colocar sellos, logos o marcas de agua.',
   },
 ];
 
@@ -124,7 +138,7 @@ export const HomeHub: React.FC<HomeHubProps> = ({
       }}
     >
       <div className="home-container">
-        {/* Minimalist Thunderbird-Style Hero Launch Card */}
+        {/* Architectural Hero Launchpad */}
         <section
           className="home-hero"
           style={{
@@ -133,7 +147,7 @@ export const HomeHub: React.FC<HomeHubProps> = ({
             flexWrap: 'wrap',
           }}
         >
-          <div style={{ maxWidth: 600 }}>
+          <div style={{ maxWidth: 610 }}>
             <div
               style={{
                 display: 'inline-flex',
@@ -148,12 +162,12 @@ export const HomeHub: React.FC<HomeHubProps> = ({
               }}
             >
               <ShieldCheck size={14} />
-              <span>Nativo en Windows 10 &amp; 11 · 100% Local · Próximamente macOS</span>
+              <span>Kova Studio · Arquitectura Nativa Windows · 100% Local y Privado</span>
             </div>
             <h1
               style={{
                 fontFamily: 'var(--font-display)',
-                fontSize: 27,
+                fontSize: 28,
                 fontWeight: 800,
                 letterSpacing: '-0.03em',
                 margin: '0 0 8px',
@@ -164,10 +178,10 @@ export const HomeHub: React.FC<HomeHubProps> = ({
             >
               <img
                 src="/brand/logo-mark.svg"
-                alt="PDF-LEF"
+                alt="Kova PDF"
                 style={{ width: 34, height: 34, borderRadius: 8 }}
               />
-              <span>PDF-LEF</span>
+              <span>Kova PDF</span>
             </h1>
             <p
               style={{
@@ -177,8 +191,10 @@ export const HomeHub: React.FC<HomeHubProps> = ({
                 color: 'var(--text-secondary)',
               }}
             >
-              El poder de edición real de Adobe Acrobat con la ligereza de Thunderbird. <strong>Edita y mueve textos originales</strong> sin
-              dañar el formato, inserta <strong>imágenes y firmas transparentes</strong>, y organiza páginas con precisión quirúrgica.
+              Estación profesional de ingeniería documental sin nube ni suscripciones.{' '}
+              <strong>Edita textos nativos</strong> respetando tipografía, color y fondo,{' '}
+              <strong>une, divide, elimina páginas, comprime</strong> y convierte a{' '}
+              <strong>Word o Excel</strong> al instante en tu equipo.
             </p>
           </div>
 
@@ -201,12 +217,12 @@ export const HomeHub: React.FC<HomeHubProps> = ({
               onClick={onLoadShowcaseDemo}
             >
               <Sparkles size={14} style={{ color: 'var(--accent)' }} />
-              <span>Probar Documento Ejemplo</span>
+              <span>Probar Documento Interactivo</span>
             </button>
           </div>
         </section>
 
-        {/* Windows Default App & Official PDF-LEF Document Icon Banner */}
+        {/* Windows Default App & Official Kova PDF Document Icon Banner */}
         <section
           style={{
             display: 'flex',
@@ -214,7 +230,7 @@ export const HomeHub: React.FC<HomeHubProps> = ({
             justifyContent: 'space-between',
             flexWrap: 'wrap',
             gap: 16,
-            padding: '16px 22px',
+            padding: '15px 22px',
             marginBottom: 26,
             borderRadius: 'var(--radius-lg)',
             background: 'var(--bg-surface)',
@@ -224,16 +240,16 @@ export const HomeHub: React.FC<HomeHubProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <img
               src="/brand/pdf-doc-icon.svg"
-              alt="Icono de Documento PDF-LEF"
-              style={{ width: 48, height: 48, flexShrink: 0 }}
+              alt="Icono de Documento Kova PDF"
+              style={{ width: 46, height: 46, flexShrink: 0 }}
             />
             <div>
               <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 2 }}>
-                Diseño Oficial de Documentos PDF en Windows
+                Visor y Editor Predeterminado en Windows 10 y 11
               </div>
               <div style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
-                Aplica <strong>PDF-LEF</strong> como tu aplicación predeterminada para que todos tus archivos{' '}
-                <code>.pdf</code> luzcan con este icono exclusivo y abran al instante con doble clic.
+                Establece <strong>Kova PDF</strong> como tu aplicación predeterminada para abrir cualquier archivo{' '}
+                <code>.pdf</code> al instante con doble clic y total privacidad local.
               </div>
             </div>
           </div>
@@ -249,7 +265,7 @@ export const HomeHub: React.FC<HomeHubProps> = ({
           </button>
         </section>
 
-        {/* Clean General-Purpose Acrobat Plus Tools */}
+        {/* Complete Offline PDF Toolkit Grid */}
         <div
           style={{
             fontSize: 11.5,
@@ -260,37 +276,17 @@ export const HomeHub: React.FC<HomeHubProps> = ({
             marginBottom: 12,
           }}
         >
-          Herramientas Esenciales PDF
+          Suite Completa de Herramientas PDF (100% Local)
         </div>
 
         <section className="home-actions-grid">
-          <button type="button" className="action-card" onClick={onLoadShowcaseDemo}>
+          <button type="button" className="action-card" onClick={onOpenPdfDialog}>
             <div className="action-icon-box">
               <Pencil size={18} />
             </div>
-            <div className="action-card-title">Editar y Mover Textos</div>
+            <div className="action-card-title">Editar Texto PDF</div>
             <div className="action-card-desc">
-              Corrige cualquier texto que ya tenga tu PDF o muévelo con guías magnéticas sin desemparejar líneas.
-            </div>
-          </button>
-
-          <button type="button" className="action-card" onClick={() => onOpenToolModal('logos')}>
-            <div className="action-icon-box">
-              <Building2 size={18} />
-            </div>
-            <div className="action-card-title">Imágenes y Mis Logos ({savedLogosCount})</div>
-            <div className="action-card-desc">
-              Sube fotografías o guarda tus logotipos sin fondo blanco para insertarlos limpios en 1 clic.
-            </div>
-          </button>
-
-          <button type="button" className="action-card" onClick={onOpenSignatureVault}>
-            <div className="action-icon-box">
-              <Signature size={18} />
-            </div>
-            <div className="action-card-title">Firmar y Sellar</div>
-            <div className="action-card-desc">
-              Dibuja o sube tu firma con fondo transparente y coloca sellos ejecutivos limpios en segundos.
+              Modifica textos existentes conservando su color real y fondo original sin encimar renglones.
             </div>
           </button>
 
@@ -298,19 +294,49 @@ export const HomeHub: React.FC<HomeHubProps> = ({
             <div className="action-icon-box">
               <FileStack size={18} />
             </div>
-            <div className="action-card-title">Unir y Dividir PDFs</div>
+            <div className="action-card-title">Unir PDF</div>
             <div className="action-card-desc">
-              Combina varios documentos en uno solo, reordena páginas, rota hojas o extrae rangos específicos.
+              Combina múltiples documentos PDF en el orden exacto que elijas en un solo archivo.
             </div>
           </button>
 
-          <button type="button" className="action-card" onClick={() => onOpenToolModal('images-to-pdf')}>
+          <button type="button" className="action-card" onClick={() => onOpenToolModal('split')}>
             <div className="action-icon-box">
-              <ImagePlus size={18} />
+              <Scissors size={18} />
             </div>
-            <div className="action-card-title">Convertir Imágenes a PDF</div>
+            <div className="action-card-title">Dividir PDF</div>
             <div className="action-card-desc">
-              Transforma fotos PNG/JPG o escaneos en un documento PDF limpio y perfectamente encuadrado.
+              Extrae rangos de páginas o separa cada N hojas en archivos PDF independientes (.zip).
+            </div>
+          </button>
+
+          <button type="button" className="action-card" onClick={() => onOpenToolModal('remove-pages')}>
+            <div className="action-icon-box">
+              <Trash2 size={18} />
+            </div>
+            <div className="action-card-title">Eliminar Páginas</div>
+            <div className="action-card-desc">
+              Haz clic visualmente en las hojas sobrantes o indica rangos para suprimirlas al instante.
+            </div>
+          </button>
+
+          <button type="button" className="action-card" onClick={() => onOpenToolModal('optimize')}>
+            <div className="action-icon-box">
+              <FileDown size={18} />
+            </div>
+            <div className="action-card-title">Comprimir PDF</div>
+            <div className="action-card-desc">
+              Reduce el peso en megabytes con 3 niveles de optimización y opción de aplanado seguro.
+            </div>
+          </button>
+
+          <button type="button" className="action-card" onClick={() => onOpenToolModal('pdf-to-word')}>
+            <div className="action-icon-box">
+              <FileText size={18} />
+            </div>
+            <div className="action-card-title">PDF a Word (.docx)</div>
+            <div className="action-card-desc">
+              Convierte documentos PDF a Microsoft Word editable respetando títulos, negritas y tablas.
             </div>
           </button>
 
@@ -318,24 +344,71 @@ export const HomeHub: React.FC<HomeHubProps> = ({
             <div className="action-icon-box">
               <FileSpreadsheet size={18} />
             </div>
-            <div className="action-card-title">Extraer Tablas a Excel</div>
+            <div className="action-card-title">PDF a Excel (.csv)</div>
             <div className="action-card-desc">
-              Convierte tablas contenidas dentro de cualquier PDF en un archivo .CSV listo para abrir en Excel.
+              Extrae estados de cuenta, facturas y presupuestos directamente a tablas limpias para Excel.
             </div>
           </button>
 
-          <button type="button" className="action-card" onClick={onCreateBlankPdf}>
+          <button type="button" className="action-card" onClick={onOpenSignatureVault}>
             <div className="action-icon-box">
-              <FilePlus2 size={18} />
+              <Signature size={18} />
             </div>
-            <div className="action-card-title">Nuevo PDF en Blanco</div>
+            <div className="action-card-title">Firmar y Sellar PDF</div>
             <div className="action-card-desc">
-              Crea una hoja A4 limpia desde cero para redactar notas, colocar imágenes, logos y firmas.
+              Dibuja, escribe o sube tu firma eliminando el fondo blanco automáticamente en 1 clic.
+            </div>
+          </button>
+
+          <button type="button" className="action-card" onClick={() => onOpenToolModal('pdf-to-images')}>
+            <div className="action-icon-box">
+              <FileOutput size={18} />
+            </div>
+            <div className="action-card-title">PDF a JPG / PNG</div>
+            <div className="action-card-desc">
+              Exporta todas las páginas en imágenes de 150, 300 o 600 DPI listas para presentación.
+            </div>
+          </button>
+
+          <button type="button" className="action-card" onClick={() => onOpenToolModal('images-to-pdf')}>
+            <div className="action-icon-box">
+              <ImagePlus size={18} />
+            </div>
+            <div className="action-card-title">JPG / PNG a PDF</div>
+            <div className="action-card-desc">
+              Convierte fotografías o escaneos a PDF con control de orientación y márgenes limpios.
+            </div>
+          </button>
+
+          <button type="button" className="action-card" onClick={() => onOpenToolModal('crop')}>
+            <div className="action-icon-box">
+              <Crop size={18} />
+            </div>
+            <div className="action-card-title">Recortar y Numerar</div>
+            <div className="action-card-desc">
+              Ajusta márgenes en milímetros, agrega marcas de agua o inserta folios consecutivos Bates.
+            </div>
+          </button>
+
+          <button type="button" className="action-card" onClick={() => onOpenToolModal('logos')}>
+            <div className="action-icon-box">
+              <Building2 size={18} />
+            </div>
+            <div className="action-card-title">Logos ({savedLogosCount}) y Hoja Nueva</div>
+            <div className="action-card-desc">
+              Administra tus logotipos corporativos sin fondo o crea un PDF A4 en blanco.
             </div>
           </button>
         </section>
 
-        {/* 5 Real Test Documents Showcase (Pruebas de Edición In Situ) */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -18, marginBottom: 24 }}>
+          <button type="button" className="btn btn-subtle" onClick={onCreateBlankPdf}>
+            <FilePlus2 size={14} />
+            <span>Crear PDF en Blanco A4</span>
+          </button>
+        </div>
+
+        {/* 6 Real Test Documents Showcase */}
         {onLoadSamplePdf && (
           <div style={{ marginBottom: 28 }}>
             <div
@@ -351,16 +424,16 @@ export const HomeHub: React.FC<HomeHubProps> = ({
                 alignItems: 'center',
               }}
             >
-              <span>📁 Suite de Pruebas: 5 Documentos Reales</span>
+              <span>Laboratorio de Validación: 6 Documentos Reales</span>
               <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', textTransform: 'none' }}>
-                Carpeta /pruebas integrada
+                Clic para abrir y auditar en vivo
               </span>
             </div>
 
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))',
                 gap: 12,
               }}
             >
@@ -369,16 +442,17 @@ export const HomeHub: React.FC<HomeHubProps> = ({
                   key={doc.filename}
                   type="button"
                   className="action-card"
-                  style={{ textAlign: 'left', padding: '13px 15px', cursor: 'pointer' }}
+                  style={{ textAlign: 'left', padding: '14px 16px', cursor: 'pointer' }}
                   onClick={() => onLoadSamplePdf(doc.filename)}
-                  title={`Abrir ${doc.title} para probar edición in situ`}
+                  title={`Abrir ${doc.title} para probar edición directa`}
                 >
                   <div
                     style={{
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
-                      marginBottom: 7,
+                      width: '100%',
+                      marginBottom: 6,
                     }}
                   >
                     <span
@@ -397,11 +471,11 @@ export const HomeHub: React.FC<HomeHubProps> = ({
                   </div>
                   <div
                     className="action-card-title"
-                    style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}
+                    style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 4 }}
                   >
                     {doc.title}
                   </div>
-                  <div className="action-card-desc" style={{ fontSize: 11.5, lineHeight: 1.42 }}>
+                  <div className="action-card-desc" style={{ fontSize: 11.5, lineHeight: 1.45 }}>
                     {doc.desc}
                   </div>
                 </button>
@@ -463,7 +537,7 @@ export const HomeHub: React.FC<HomeHubProps> = ({
               }}
             >
               Arrastra cualquier archivo PDF aquí o haz clic en{' '}
-              <strong style={{ color: 'var(--text-primary)' }}>Probar Documento Ejemplo</strong> para comenzar.
+              <strong style={{ color: 'var(--text-primary)' }}>Probar Documento Interactivo</strong> para comenzar.
             </div>
           ) : (
             <div>

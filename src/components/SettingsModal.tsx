@@ -33,6 +33,25 @@ interface SettingsModalProps {
 
 type SettingsSection = 'appearance' | 'viewer' | 'editor' | 'privacy' | 'shortcuts' | 'updates';
 
+const CURRENT_APP_VERSION = '2.0.0';
+
+function parseSemver(v: string): number[] {
+  return v
+    .replace(/^v/i, '')
+    .split('.')
+    .map((n) => parseInt(n, 10) || 0);
+}
+
+function isNewerVersion(remoteTag: string, localVer: string): boolean {
+  const r = parseSemver(remoteTag);
+  const l = parseSemver(localVer);
+  for (let i = 0; i < 3; i++) {
+    if ((r[i] || 0) > (l[i] || 0)) return true;
+    if ((r[i] || 0) < (l[i] || 0)) return false;
+  }
+  return false;
+}
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
   onChangeSettings,
@@ -52,18 +71,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setCheckingUpdate(true);
     setUpdateResult(null);
     try {
-      const res = await fetch('https://api.github.com/repos/Lycar-Desarrollos/PDF-LEF/releases/latest');
-      if (!res.ok) throw new Error('No se pudo consultar el servidor de actualizaciones');
+      const releaseEndpoint =
+        'https://api.github.com/repos/Lycar-Desarrollos/PDF-LEF/releases/latest';
+      const res = await fetch(releaseEndpoint);
+      if (!res.ok) throw new Error('No se pudo consultar el canal de actualizaciones');
       const release = await res.json();
-      const latestTag = release.tag_name || 'v1.0.0';
+      const latestTag = String(release.tag_name || `v${CURRENT_APP_VERSION}`);
       const exeAsset = Array.isArray(release.assets)
         ? release.assets.find((a: { name?: string }) => a.name?.toLowerCase().endsWith('.exe'))
         : null;
 
-      if (latestTag === 'v1.0.0') {
+      if (!isNewerVersion(latestTag, CURRENT_APP_VERSION)) {
         setUpdateResult({
           status: 'latest',
-          version: latestTag,
+          version: `v${CURRENT_APP_VERSION}`,
         });
       } else {
         setUpdateResult({
@@ -88,7 +109,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const blob = new Blob([JSON.stringify(settings, null, 2)], {
       type: 'application/json',
     });
-    downloadBlobInBrowser(blob, 'PDF-LEF-Configuracion.json');
+    downloadBlobInBrowser(blob, 'Kova-PDF-Configuracion.json');
     onNotify('Perfil de configuración exportado.');
   };
 
@@ -115,7 +136,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       >
         <div className="modal-header">
           <div className="modal-title">
-            <span>Configuración y Preferencias — PDF-LEF</span>
+            <span>Configuración y Preferencias — Kova PDF</span>
           </div>
           <button type="button" className="btn icon-only" onClick={onClose}>
             <X size={16} />
@@ -205,7 +226,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div style={{ display: 'flex', gap: 8 }}>
                     {(
                       [
-                        { id: 'cobalt', hex: '#2563EB', label: 'Zafiro PDF-LEF' },
+                        { id: 'cobalt', hex: '#2563EB', label: 'Zafiro Kova' },
                         { id: 'emerald', hex: '#0F766E', label: 'Esmeralda' },
                         { id: 'ruby', hex: '#C81E32', label: 'Rubí' },
                         { id: 'graphite', hex: '#1F232B', label: 'Monocromo' },
@@ -306,9 +327,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     onChange={(e) => update('defaultZoom', Number(e.target.value))}
                   >
                     <option value="0.9">90%</option>
-                    <option value="1">100%</option>
-                    <option value="1.05">105% (Recomendado)</option>
-                    <option value="1.15">115%</option>
+                    <option value="1">100% (Recomendado)</option>
+                    <option value="1.1">110%</option>
                     <option value="1.25">125%</option>
                     <option value="1.5">150%</option>
                   </select>
@@ -375,7 +395,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div>
                 <div className="setting-card">
                   <div>
-                    <div className="setting-card-title">Organización o Empresa (Opcional)</div>
+                    <div className="setting-card-title">Organización o Área (Opcional)</div>
                     <div className="setting-card-desc">
                       Se utiliza como referencia opcional en sellos rápidos y propiedades del PDF.
                     </div>
@@ -442,7 +462,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div>
                     <div className="setting-card-title">Guías Magnéticas de Alineación</div>
                     <div className="setting-card-desc">
-                      Alinea automáticamente columnas, renglones y centro de página al mover textos o imágenes para que nada se desempareje.
+                      Alinea automáticamente columnas, renglones y centro de página al mover textos o imágenes.
                     </div>
                   </div>
                   <button
@@ -539,10 +559,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   }}
                 >
                   <strong style={{ color: 'var(--text-primary)' }}>
-                    App PDF Predeterminada en Windows 10 / 11:
+                    Integración Nativa en Windows 10 y 11:
                   </strong>{' '}
-                  El instalador oficial <code>PDF-LEF_1.0.0_x64-setup.exe</code> registra{' '}
-                  <code>PDFLEF.Document</code> con el icono de documento oficial PDF-LEF para abrir
+                  El instalador oficial de <strong>Kova PDF</strong> registra{' '}
+                  <code>KovaPDF.Document</code> con el icono geométrico oficial para abrir
                   cualquier archivo <code>.pdf</code> con doble clic 100% sin conexión.
                 </div>
               </div>
@@ -624,7 +644,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div>
                     <div className="setting-card-title">Versión Instalada</div>
                     <div className="setting-card-desc">
-                      PDF-LEF v1.0.0 (Edición Nativa 64-bit para Windows 10 y Windows 11).
+                      Kova PDF v{CURRENT_APP_VERSION} · Kova Studio (Edición Nativa 64-bit para Windows 10 y 11).
                     </div>
                   </div>
                   <button
@@ -634,7 +654,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     onClick={checkUpdates}
                   >
                     <RefreshCw size={14} className={checkingUpdate ? 'spin-icon' : ''} />
-                    <span>{checkingUpdate ? 'Consultando servidor…' : 'Buscar actualizaciones'}</span>
+                    <span>{checkingUpdate ? 'Consultando canal…' : 'Buscar actualizaciones'}</span>
                   </button>
                 </div>
 
@@ -646,16 +666,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       borderRadius: 'var(--radius-md)',
                       background:
                         updateResult.status === 'latest'
-                          ? 'rgba(16, 185, 129, 0.08)'
+                          ? 'rgba(13, 122, 95, 0.08)'
                           : updateResult.status === 'available'
                           ? 'rgba(37, 99, 235, 0.08)'
-                          : 'rgba(239, 68, 68, 0.08)',
+                          : 'rgba(220, 38, 38, 0.08)',
                       border: `1px solid ${
                         updateResult.status === 'latest'
-                          ? 'rgba(16, 185, 129, 0.3)'
+                          ? 'rgba(13, 122, 95, 0.3)'
                           : updateResult.status === 'available'
                           ? 'rgba(37, 99, 235, 0.3)'
-                          : 'rgba(239, 68, 68, 0.3)'
+                          : 'rgba(220, 38, 38, 0.3)'
                       }`,
                     }}
                   >
@@ -663,9 +683,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--success)' }}>
                         <CheckCircle2 size={18} />
                         <div>
-                          <strong>¡Estás en la versión más reciente ({updateResult.version})!</strong>
+                          <strong>Estás en la versión oficial más reciente ({updateResult.version}).</strong>
                           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                            Tu equipo cuenta con la versión oficial estable más reciente de PDF-LEF.
+                            Tu estación cuenta con las últimas mejoras del motor gráfico y tipográfico de Kova PDF.
                           </div>
                         </div>
                       </div>
@@ -675,7 +695,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                           <strong style={{ color: 'var(--accent)' }}>
-                            🎉 ¡Nueva versión disponible: {updateResult.version}!
+                            Nueva actualización disponible: {updateResult.version}
                           </strong>
                           {updateResult.downloadUrl && (
                             <a
@@ -686,19 +706,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               style={{ height: 28, fontSize: 11.5 }}
                             >
                               <Download size={13} />
-                              <span>Descargar e Instalar</span>
+                              <span>Descargar Instalador</span>
                             </a>
                           )}
                         </div>
                         <div style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
-                          {updateResult.notes || 'Mejoras de rendimiento y correcciones automáticas.'}
+                          {updateResult.notes || 'Mejoras de rendimiento, precisión tipográfica y seguridad.'}
                         </div>
                       </div>
                     )}
 
                     {updateResult.status === 'error' && (
                       <div style={{ color: 'var(--danger)', fontSize: 12.5 }}>
-                        No se pudo conectar con el servidor de actualizaciones de GitHub. Revisa tu conexión a internet.
+                        No se pudo conectar con el servidor de distribución. Verifica tu conexión a internet.
                       </div>
                     )}
                   </div>
@@ -714,11 +734,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   }}
                 >
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
-                    ¿Cómo se distribuyen las actualizaciones a todos los equipos?
+                    Canal Oficial de Distribución Automática
                   </div>
                   <div style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--text-secondary)' }}>
-                    Cada vez que publicas una nueva versión en GitHub con una etiqueta (ejemplo <code>v1.0.1</code>), GitHub Actions compila automáticamente el nuevo ejecutable <code>.exe</code> y <code>.msi</code>.
-                    Todas las computadoras con PDF-LEF instalado detectan automáticamente la actualización directamente desde el repositorio oficial sin intermediarios.
+                    Cada nueva versión publicada genera automáticamente instaladores verificados <code>.exe</code> y <code>.msi</code> de 64 bits.
+                    Todos los equipos con <strong>Kova PDF</strong> pueden actualizarse en un clic conservando sus preferencias, logos y firmas locales.
                   </div>
                 </div>
               </div>

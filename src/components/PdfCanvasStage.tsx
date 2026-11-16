@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ArrowDown,
   ArrowUp,
+  Bold,
   Copy,
   GripHorizontal,
   RotateCcw,
@@ -882,6 +883,27 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
           <div className="snap-guide-h" style={{ top: `${snapH * 100}%` }} />
         )}
 
+        {/* Live Crop Margin Trim Mask Preview */}
+        {pageDesc.crop &&
+          (pageDesc.crop.top > 0 ||
+            pageDesc.crop.right > 0 ||
+            pageDesc.crop.bottom > 0 ||
+            pageDesc.crop.left > 0) && (
+            <div
+              style={{
+                position: 'absolute',
+                top: `${pageDesc.crop.top * 100}%`,
+                right: `${pageDesc.crop.right * 100}%`,
+                bottom: `${pageDesc.crop.bottom * 100}%`,
+                left: `${pageDesc.crop.left * 100}%`,
+                border: '1.5px dashed var(--accent)',
+                boxShadow: '0 0 0 9999px rgba(15, 23, 42, 0.24)',
+                pointerEvents: 'none',
+                zIndex: 18,
+              }}
+            />
+          )}
+
         {/* 1. Original Position Cover Patches for Modified/Moved/Deleted/Active Native PDF Texts */}
         {mergedNativeItems
           .filter(
@@ -894,10 +916,10 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
               key={`patch_${nt.id}`}
               className="native-text-patch"
               style={{
-                left: `calc(${nt.origX * 100}% - 3px)`,
-                top: `calc(${nt.origY * 100}% - 2px)`,
-                width: `calc(${nt.origWidth * 100}% + 6px)`,
-                height: `calc(${nt.origHeight * 100}% + 4px)`,
+                left: `calc(${nt.origX * 100}% - 2px)`,
+                top: `calc(${nt.origY * 100}% - 1px)`,
+                width: `calc(${nt.origWidth * 100}% + 4px)`,
+                height: `calc(${nt.origHeight * 100}% + 2px)`,
                 backgroundColor: nt.bgPatchColor || '#ffffff',
               }}
             />
@@ -912,7 +934,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
             const scaledFontPx = Math.max(8, nt.fontSizePt * tab.zoom);
             const maxAvailPx = Math.max(48, (0.972 - nt.x) * boxSize.w);
             const desiredPx = Math.max(
-              nt.text.length * scaledFontPx * 0.56 + 16,
+              nt.text.length * scaledFontPx * 0.56 + 14,
               nt.width * boxSize.w
             );
             const finalWidthPx = Math.min(maxAvailPx, desiredPx);
@@ -956,7 +978,8 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
             }
 
             // Case B: Actively selected for editing OR Modified text item
-            const isNearTop = nt.y < 0.06;
+            const isNearTop = nt.y < 0.095;
+            const isNearRight = nt.x > 0.54;
             const bgSolid = nt.bgPatchColor || '#ffffff';
 
             return (
@@ -982,17 +1005,18 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                 {isSelected && isEditTool && (
                   <div
                     className={`object-quickbar ${isNearTop ? 'placed-bottom' : ''}`}
+                    style={isNearRight ? { left: 'auto', right: 0 } : undefined}
                     onMouseDown={(e) => e.stopPropagation()}
                   >
                     <button
                       type="button"
                       className="btn"
-                      style={{ height: 24, padding: '0 7px', fontSize: 11, cursor: 'grab' }}
+                      style={{ height: 24, padding: '0 6px', fontSize: 11, cursor: 'grab' }}
                       onMouseDown={(e) => startMoveNativeText(e, nt)}
                       title="Arrastra para mover con alineación magnética"
                     >
                       <GripHorizontal size={13} />
-                      <span>Mover alineado</span>
+                      <span>Mover</span>
                     </button>
 
                     <div style={{ width: 1, height: 16, background: 'var(--border-subtle)', margin: '0 2px' }} />
@@ -1011,8 +1035,8 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                     >
                       A-
                     </button>
-                    <span style={{ fontSize: 10.5, fontWeight: 600, padding: '0 4px', color: 'var(--text-muted)' }}>
-                      {nt.fontSizePt} pt
+                    <span style={{ fontSize: 10.5, fontWeight: 600, padding: '0 3px', color: 'var(--text-muted)' }}>
+                      {nt.fontSizePt}pt
                     </span>
                     <button
                       type="button"
@@ -1029,13 +1053,90 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                       A+
                     </button>
 
+                    <button
+                      type="button"
+                      className={`btn icon-only ${nt.fontWeight === 'bold' ? 'active' : ''}`}
+                      style={{ width: 22, height: 22 }}
+                      onClick={() =>
+                        onUpdateNativeTextItem(
+                          {
+                            ...nt,
+                            fontWeight: nt.fontWeight === 'bold' ? 'normal' : 'bold',
+                            modified: true,
+                          },
+                          true
+                        )
+                      }
+                      title="Alternar negrita"
+                    >
+                      <Bold size={11.5} />
+                    </button>
+
+                    <label
+                      title="Color del texto"
+                      style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: '50%',
+                        backgroundColor: nt.color,
+                        border: '1.5px solid rgba(15,23,42,0.28)',
+                        cursor: 'pointer',
+                        display: 'inline-block',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        margin: '0 2px',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <input
+                        type="color"
+                        value={nt.color}
+                        onChange={(e) =>
+                          onUpdateNativeTextItem(
+                            { ...nt, color: e.target.value, modified: true },
+                            true
+                          )
+                        }
+                        style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer' }}
+                      />
+                    </label>
+
+                    <label
+                      title="Color del fondo (parche)"
+                      style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: 4,
+                        backgroundColor: bgSolid,
+                        border: '1.5px dashed rgba(15,23,42,0.38)',
+                        cursor: 'pointer',
+                        display: 'inline-block',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        margin: '0 2px',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <input
+                        type="color"
+                        value={bgSolid}
+                        onChange={(e) =>
+                          onUpdateNativeTextItem(
+                            { ...nt, bgPatchColor: e.target.value, modified: true },
+                            true
+                          )
+                        }
+                        style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer' }}
+                      />
+                    </label>
+
                     <div style={{ width: 1, height: 16, background: 'var(--border-subtle)', margin: '0 2px' }} />
 
                     {nt.modified && (
                       <button
                         type="button"
                         className="btn icon-only"
-                        style={{ width: 24, height: 24 }}
+                        style={{ width: 22, height: 22 }}
                         onClick={() => onResetNativeTextItem(nt.id)}
                         title="Restaurar texto original"
                       >
@@ -1045,7 +1146,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                     <button
                       type="button"
                       className="btn icon-only"
-                      style={{ width: 24, height: 24, color: 'var(--danger)' }}
+                      style={{ width: 22, height: 22, color: 'var(--danger)' }}
                       onClick={() =>
                         onUpdateNativeTextItem(
                           { ...nt, deleted: true, modified: true },
@@ -1068,12 +1169,15 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                   </div>
                 )}
 
-                {/* If selected in edit mode: Editable Textarea */}
+                {/* If selected in edit mode: Editable Textarea (No Spellcheck Squiggles!) */}
                 {isSelected && isEditTool ? (
                   <textarea
                     rows={visualRows}
                     className="native-text-editor"
                     autoFocus
+                    spellCheck={false}
+                    autoCorrect="off"
+                    autoCapitalize="off"
                     value={nt.text}
                     onFocus={() => {
                       onSelectNativeText(nt.id);
@@ -1231,6 +1335,8 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                 (isInlineEditing ? (
                   <textarea
                     autoFocus
+                    spellCheck={false}
+                    autoCorrect="off"
                     value={el.text || ''}
                     onChange={(e) =>
                       onUpdateOverlayElement(el.id, { text: e.target.value }, true)

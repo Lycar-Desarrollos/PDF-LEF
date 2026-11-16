@@ -1,36 +1,40 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <defs>
-    <linearGradient id="tileBg" x1="64" y1="32" x2="448" y2="480" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#111827"/>
-      <stop offset="55%" stop-color="#0F172A"/>
-      <stop offset="100%" stop-color="#1E1B4B"/>
+    <linearGradient id="kovaBg" x1="64" y1="32" x2="448" y2="480" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="55%" stop-color="#0B1120"/>
+      <stop offset="100%" stop-color="#090D16"/>
     </linearGradient>
-    <radialGradient id="tileGlow" cx="50%" cy="28%" r="62%">
-      <stop offset="0%" stop-color="#2563EB" stop-opacity="0.28"/>
-      <stop offset="100%" stop-color="#0F172A" stop-opacity="0"/>
+    <radialGradient id="kovaGlow" cx="50%" cy="22%" r="65%">
+      <stop offset="0%" stop-color="#2563EB" stop-opacity="0.26"/>
+      <stop offset="100%" stop-color="#0B1120" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="foxCrown" x1="136" y1="108" x2="376" y2="388" gradientUnits="userSpaceOnUse">
+    <linearGradient id="kovaSpine" x1="144" y1="120" x2="212" y2="392" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E2E8F0"/>
+    </linearGradient>
+    <linearGradient id="kovaUpperWing" x1="216" y1="122" x2="378" y2="262" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#38BDF8"/>
-      <stop offset="48%" stop-color="#2563EB"/>
-      <stop offset="100%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="kovaLowerWing" x1="224" y1="246" x2="380" y2="392" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#1E40AF"/>
     </linearGradient>
   </defs>
 
-  <!-- Minimalist Native Squircle Tile -->
-  <rect x="28" y="28" width="456" height="456" rx="112" fill="url(#tileBg)"/>
-  <rect x="28" y="28" width="456" height="456" rx="112" fill="url(#tileGlow)"/>
-  <rect x="30" y="30" width="452" height="452" rx="110" stroke="#60A5FA" stroke-opacity="0.22" stroke-width="4"/>
+  <!-- Architectural Obsidian Squircle -->
+  <rect x="28" y="28" width="456" height="456" rx="108" fill="url(#kovaBg)"/>
+  <rect x="28" y="28" width="456" height="456" rx="108" fill="url(#kovaGlow)"/>
+  <rect x="30" y="30" width="452" height="452" rx="106" stroke="#93C5FD" stroke-opacity="0.18" stroke-width="4"/>
 
-  <!-- Ultra-Minimalist Symmetrical Fox Silhouette -->
-  <path d="M148 118C149.5 107 162.5 102.5 170.5 110.5L228 168C246 164 266 164 284 168L341.5 110.5C349.5 102.5 362.5 107 364 118L380 242C384 274 368 308 338 336L268 394C261 399.8 251 399.8 244 394L174 336C144 308 128 274 132 242L148 118Z" fill="url(#foxCrown)"/>
+  <!-- Precision Kova Architectural Prism Monogram -->
+  <!-- Left Pure Paper Spine -->
+  <rect x="142" y="120" width="66" height="272" rx="20" fill="url(#kovaSpine)"/>
 
-  <!-- Subtle Inner Ear Triangles -->
-  <path d="M167 138L208 179L161 196L167 138Z" fill="#BAE6FD" opacity="0.42"/>
-  <path d="M345 138L304 179L351 196L345 138Z" fill="#BAE6FD" opacity="0.42"/>
+  <!-- Lower Sapphire Folded Plane -->
+  <path d="M226 256L302 256L374 358C382.5 370 373.9 392 358 392H296C287.5 392 279.6 387.7 274.8 380.6L214 290L226 256Z" fill="url(#kovaLowerWing)"/>
 
-  <!-- Crisp Pure White Cheeks Forming Negative-Space V Bridge -->
-  <path d="M132 254C178 252 220 282 256 352C292 282 334 252 380 254C379 284 363 313 338 336L268 394C261 399.8 251 399.8 244 394L174 336C149 313 133 284 132 254Z" fill="#FFFFFF"/>
-
-  <!-- Minimalist Rounded Triangle Nose -->
-  <path d="M241 372H271L258.5 391C257.3 392.8 254.7 392.8 253.5 391L241 372Z" fill="#0F172A"/>
+  <!-- Upper Ice-Sapphire Folded Sheet Wing -->
+  <path d="M296 120H358C373.9 120 382.5 142 374 154L276 286C271.2 292.5 263.6 296 255.5 296H214V238L280.6 129.4C284 123.6 290.2 120 296 120Z" fill="url(#kovaUpperWing)"/>
 </svg>

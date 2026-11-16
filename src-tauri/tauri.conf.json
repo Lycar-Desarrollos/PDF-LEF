@@ -1,9 +1,9 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "PDF-LEF",
-  "mainBinaryName": "PDF-LEF",
-  "version": "1.0.0",
-  "identifier": "com.lycar.pdflef",
+  "productName": "Kova PDF",
+  "mainBinaryName": "KovaPDF",
+  "version": "2.0.0",
+  "identifier": "studio.kova.pdf",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -14,11 +14,12 @@
     "windows": [
       {
         "label": "main",
-        "title": "PDF-LEF",
-        "width": 1380,
-        "height": 880,
-        "minWidth": 960,
-        "minHeight": 640,
+        "title": "Kova PDF",
+        "width": 1200,
+        "height": 740,
+        "minWidth": 840,
+        "minHeight": 560,
+        "maximized": true,
         "center": true,
         "decorations": false,
         "resizable": true
@@ -41,14 +42,14 @@
     "resources": [
       "icons/pdf-document.ico"
     ],
-    "publisher": "Lycar Desarrollos",
-    "shortDescription": "Suite PDF Nativa 100% Local para Windows",
-    "longDescription": "PDF-LEF: Lector y editor PDF nativo 100% local para Windows con edicion directa de textos, imagenes, firmas y diseno exclusivo de documentos PDF.",
+    "publisher": "Kova Studio",
+    "shortDescription": "Estudio PDF Nativo 100% Local para Windows",
+    "longDescription": "Kova PDF: Estudio profesional de lectura, edicion in-situ, conversion y firma de documentos PDF 100% local para Windows 10 y Windows 11.",
     "fileAssociations": [
       {
         "ext": ["pdf"],
-        "name": "PDFLEF.Document",
-        "description": "Documento PDF (PDF-LEF)",
+        "name": "KovaPDF.Document",
+        "description": "Documento PDF (Kova PDF)",
         "role": "Editor",
         "mimeType": "application/pdf"
       }

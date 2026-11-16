@@ -56,12 +56,12 @@ export const TitleBar: React.FC<TitleBarProps> = ({
       <div
         className="win-brand"
         onClick={onSelectHome}
-        title="Inicio de PDF-LEF"
+        title="Inicio de Kova PDF"
         id="titlebar-brand-home"
       >
-        <img src="/brand/logo-mark.svg" alt="PDF-LEF" className="win-brand-icon" />
+        <img src="/brand/logo-mark.svg" alt="Kova PDF" className="win-brand-icon" />
         <div className="win-brand-title">
-          PDF<span>LEF</span>
+          Kova<span>PDF</span>
         </div>
       </div>
 
@@ -70,7 +70,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           type="button"
           id="tab-home-btn"
           className={`doc-tab ${workspaceMode === 'home' ? 'active' : ''}`}
-          style={{ minWidth: 88, maxWidth: 105 }}
+          style={{ minWidth: 84, maxWidth: 102 }}
           onClick={onSelectHome}
         >
           <Home size={13.5} />
@@ -121,7 +121,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           title="Paleta de comandos rápida (Ctrl+K)"
         >
           <Command size={12.5} />
-          <span>Comandos y herramientas…</span>
+          <span className="cmd-trigger-label">Comandos…</span>
           <span className="kbd-badge">Ctrl K</span>
         </button>
 
@@ -131,7 +131,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           className="btn icon-only"
           style={{ height: 28, width: 28 }}
           onClick={onToggleThemeQuick}
-          title={isDark ? 'Cambiar a Modo Claro Editorial' : 'Cambiar a Modo Oscuro Grafito'}
+          title={isDark ? 'Cambiar a Modo Claro Editorial' : 'Cambiar a Modo Oscuro Obsidiana'}
         >
           {isDark ? <Sun size={14.5} /> : <Moon size={14.5} />}
         </button>
@@ -142,7 +142,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           className="btn icon-only"
           style={{ height: 28, width: 28 }}
           onClick={onOpenSettings}
-          title="Configuración y Preferencias Pro (Ctrl+,)"
+          title="Configuración y Preferencias (Ctrl+,)"
         >
           <Settings size={14.5} />
         </button>
@@ -160,7 +160,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             type="button"
             className="win-cap-btn"
             onClick={toggleMaximizeNativeWindow}
-            title="Maximizar / Pantalla completa"
+            title="Maximizar / Restaurar ventana"
           >
             <Square size={12} />
           </button>

@@ -90,6 +90,9 @@ export const App: React.FC = () => {
   const [leftPanel, setLeftPanel] = useState<
     'thumbnails' | 'outline' | 'search' | 'layers' | 'closed'
   >(() => loadSettings().defaultLeftPanel);
+  const [inspectorOpen, setInspectorOpen] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 1020 : true
+  );
 
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [selectedNativeTextId, setSelectedNativeTextId] = useState<string | null>(null);
@@ -262,7 +265,7 @@ export const App: React.FC = () => {
       }
       if (imgs.length > 0) {
         const converted = await convertImagesToPdfBytes(imgs, 'a4', 28);
-        await openBytesAsNewTab('Imagenes_Importadas.pdf', converted, undefined, 'edit');
+        await openBytesAsNewTab('Imagenes_Importadas_Kova.pdf', converted, undefined, 'edit');
         notify(`${imgs.length} imagen(es) convertidas a PDF automáticamente.`);
       }
     },
@@ -272,7 +275,7 @@ export const App: React.FC = () => {
   const handleLoadShowcaseDemo = useCallback(async () => {
     const demoBytes = await generateShowcaseSamplePdf();
     await openBytesAsNewTab(
-      'Acuerdo_Ejecutivo_PDF_LEF.pdf',
+      'Acuerdo_Ejecutivo_Kova_PDF.pdf',
       demoBytes,
       undefined,
       'edit',
@@ -280,7 +283,7 @@ export const App: React.FC = () => {
     );
     setActiveTool('edit-pdf-text');
     notify(
-      'Haz clic en cualquier texto de la hoja para editarlo o arrástralo con alineación magnética.'
+      'Haz clic en cualquier texto de la hoja para editarlo respetando su color y fondo.'
     );
   }, [openBytesAsNewTab, notify]);
 
@@ -307,7 +310,7 @@ export const App: React.FC = () => {
 
   const handleCreateBlankPdf = useCallback(async () => {
     const blankBytes = await createBlankPdfBytes();
-    await openBytesAsNewTab('Nuevo_Documento_LEF.pdf', blankBytes, undefined, 'edit');
+    await openBytesAsNewTab('Nuevo_Documento_Kova.pdf', blankBytes, undefined, 'edit');
     setActiveTool('add-text');
   }, [openBytesAsNewTab]);
 
@@ -445,7 +448,7 @@ export const App: React.FC = () => {
     notify('Imagen insertada: arrástrala o usa las esquinas para ajustar su tamaño.');
   };
 
-  // Clipboard Ctrl+V Image Paste directly onto active PDF page!
+  // Clipboard Ctrl+V Image Paste directly onto active PDF page
   useEffect(() => {
     const onPaste = async (e: ClipboardEvent) => {
       if (!activeTab || workspaceMode === 'home') return;
@@ -463,7 +466,6 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('paste', onPaste);
   }, [activeTab, workspaceMode, insertImageDataUrlOnActivePage, notify]);
 
-  // Place Signature, Logo, Stamp, Engineering Title Block, or Admin Received Stamp
   const handlePlaceSignatureOnPage = useCallback(
     (dataUrl: string, signerLabel: string) => {
       if (!activeTab) return;
@@ -594,7 +596,6 @@ export const App: React.FC = () => {
     [activeTab, mutateActiveTab, notify]
   );
 
-  // Overlay & Native Text CRUD
   const handleDuplicateOverlayElement = useCallback(
     (id: string) => {
       if (!activeTab) return;
@@ -632,7 +633,6 @@ export const App: React.FC = () => {
     [mutateActiveTab, selectedElementId]
   );
 
-  // Page Organizer Operations
   const handleAppendExternalPdfToActiveTab = useCallback(async () => {
     if (!activeTab) return;
     const picked = await openPdfFilesWithDialog(true);
@@ -861,14 +861,8 @@ export const App: React.FC = () => {
       {
         id: 'demo-pdf',
         category: 'Inicio',
-        label: 'Abrir Documento Ejemplo Editable',
+        label: 'Abrir Documento Interactivo de Demostración',
         run: handleLoadShowcaseDemo,
-      },
-      {
-        id: 'default-windows-app',
-        category: 'Windows',
-        label: 'Establecer PDF-LEF como App Predeterminada de PDF en Windows',
-        run: handleSetDefaultWindowsApp,
       },
       {
         id: 'edit-native-text',
@@ -884,19 +878,58 @@ export const App: React.FC = () => {
         },
       },
       {
-        id: 'insert-image',
-        category: 'Imágenes',
-        label: 'Subir Imagen o Fotografía Limpia en la Página',
-        run: () => {
-          if (activeTab) handleTriggerAddImage();
-          else notify('Abre primero un PDF para insertar una imagen.');
-        },
+        id: 'merge-pdfs',
+        category: 'Páginas',
+        label: 'Unir varios archivos PDF…',
+        run: () => setToolModal('merge'),
       },
       {
-        id: 'logo-vault',
-        category: 'Logos',
-        label: 'Abrir Mis Logos Guardados',
-        run: () => setToolModal('logos'),
+        id: 'split-pdfs',
+        category: 'Páginas',
+        label: 'Dividir PDF o extraer rango de páginas…',
+        run: () => setToolModal('split'),
+      },
+      {
+        id: 'remove-pages',
+        category: 'Páginas',
+        label: 'Eliminar páginas seleccionadas del PDF…',
+        run: () => setToolModal('remove-pages'),
+      },
+      {
+        id: 'crop-pdf',
+        category: 'Páginas',
+        label: 'Recortar márgenes del PDF…',
+        run: () => setToolModal('crop'),
+      },
+      {
+        id: 'compress-pdf',
+        category: 'Optimizar',
+        label: 'Comprimir y reducir tamaño del PDF…',
+        run: () => setToolModal('optimize'),
+      },
+      {
+        id: 'pdf-to-word',
+        category: 'Convertir',
+        label: 'Convertir PDF a Microsoft Word (.docx)',
+        run: () => setToolModal('pdf-to-word'),
+      },
+      {
+        id: 'export-csv',
+        category: 'Convertir',
+        label: 'Convertir tablas del PDF a Excel (.csv)',
+        run: () => setToolModal('export-csv'),
+      },
+      {
+        id: 'pdf-to-images',
+        category: 'Convertir',
+        label: 'Exportar PDF a imágenes PNG/JPG (.zip)',
+        run: () => setToolModal('pdf-to-images'),
+      },
+      {
+        id: 'images-to-pdf',
+        category: 'Convertir',
+        label: 'Convertir imágenes JPG/PNG a PDF…',
+        run: () => setToolModal('images-to-pdf'),
       },
       {
         id: 'sign-doc',
@@ -904,28 +937,34 @@ export const App: React.FC = () => {
         label: 'Dibujar o Insertar Firma Transparente',
         run: () => {
           if (activeTab) setSignatureModalOpen(true);
-          else notify('Abre primero un PDF para colocar tu firma.');
+          else handleLoadShowcaseDemo().then(() => setSignatureModalOpen(true));
         },
       },
       {
-        id: 'export-csv',
-        category: 'Exportar',
-        label: 'Extraer Tablas del PDF a Excel (.csv)',
-        run: () => setToolModal('export-csv'),
+        id: 'watermark',
+        category: 'Seguridad',
+        label: 'Aplicar marca de agua al documento…',
+        run: () => setToolModal('watermark'),
+      },
+      {
+        id: 'numbering',
+        category: 'Páginas',
+        label: 'Numerar páginas y folio Bates…',
+        run: () => setToolModal('numbering'),
       },
       {
         id: 'organize-pages',
         category: 'Páginas',
-        label: 'Organizar Páginas (Reordenar, rotar y extraer)',
+        label: 'Mesa de Luz: Reordenar y rotar páginas',
         run: () => {
           if (activeTab) setWorkspaceMode('organize');
         },
       },
       {
-        id: 'merge-pdfs',
-        category: 'Herramientas',
-        label: 'Unir varios archivos PDF…',
-        run: () => setToolModal('merge'),
+        id: 'default-windows-app',
+        category: 'Windows',
+        label: 'Establecer Kova PDF como App Predeterminada en Windows',
+        run: handleSetDefaultWindowsApp,
       },
       {
         id: 'save-pdf',
@@ -958,10 +997,8 @@ export const App: React.FC = () => {
       handleOpenPdfDialog,
       handleLoadShowcaseDemo,
       handleSetDefaultWindowsApp,
-      handleTriggerAddImage,
       handleSaveExportPdf,
       handleUpdateSettings,
-      notify,
     ]
   );
 
@@ -975,7 +1012,7 @@ export const App: React.FC = () => {
     if (activeTab.nativeTextEdits[selectedNativeTextId]) {
       return activeTab.nativeTextEdits[selectedNativeTextId];
     }
-    for (const list of Object.values(activeTab.extractedPageTexts)) {
+    for (const list of Object.values(t_safe(activeTab.extractedPageTexts))) {
       const found = list.find((item) => item.id === selectedNativeTextId);
       if (found) return found;
     }
@@ -1062,6 +1099,8 @@ export const App: React.FC = () => {
             activeTool={activeTool}
             splitCompareTabId={splitCompareTabId}
             availableTabsCount={tabs.length}
+            inspectorOpen={inspectorOpen}
+            onToggleInspector={() => setInspectorOpen((v) => !v)}
             onChangeMode={(m) => {
               setWorkspaceMode(m);
               if (m === 'edit' && activeTool === 'pan') setActiveTool('select');
@@ -1118,6 +1157,16 @@ export const App: React.FC = () => {
                     next.splice(to, 0, moved);
                     return { ...t, isModified: true, pages: next };
                   }, true)
+                }
+                onReversePages={() =>
+                  mutateActiveTab(
+                    (t) => ({
+                      ...t,
+                      isModified: true,
+                      pages: [...t.pages].reverse(),
+                    }),
+                    true
+                  )
                 }
                 onRotatePages={(indices, delta) =>
                   mutateActiveTab(
@@ -1181,6 +1230,7 @@ export const App: React.FC = () => {
                   await openBytesAsNewTab(`${base}_seleccion.pdf`, bytes, undefined, 'edit');
                   notify('Páginas extraídas en una pestaña nueva.');
                 }}
+                onOpenCropModal={() => setToolModal('crop')}
                 onOpenPageInEditor={(idx) => {
                   mutateActiveTab((t) => ({ ...t, currentPageIndex: idx }));
                   setWorkspaceMode('edit');
@@ -1331,7 +1381,7 @@ export const App: React.FC = () => {
                   onChangeZoom={(z) => mutateActiveTab((t) => ({ ...t, zoom: z }))}
                 />
 
-                {workspaceMode === 'edit' && (
+                {workspaceMode === 'edit' && inspectorOpen && (
                   <ObjectInspector
                     tab={activeTab}
                     selectedElement={selectedElement}
@@ -1386,6 +1436,8 @@ export const App: React.FC = () => {
                     }}
                     onActivatePdfTextEditTool={() => setActiveTool('edit-pdf-text')}
                     onTriggerInsertImage={handleTriggerAddImage}
+                    onOpenToolModal={(k) => setToolModal(k)}
+                    onCloseInspector={() => setInspectorOpen(false)}
                   />
                 )}
               </>
@@ -1397,7 +1449,7 @@ export const App: React.FC = () => {
       {/* Status Bar */}
       {settings.showStatusBar && (
         <footer className="status-bar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div className="status-bar-left">
             {settings.strictOfflineIndicator && (
               <span className="offline-pill">
                 <ShieldCheck size={13} />
@@ -1405,14 +1457,14 @@ export const App: React.FC = () => {
               </span>
             )}
             {activeTab && workspaceMode !== 'home' && (
-              <span>
+              <span className="status-bar-doc">
                 {activeTab.fileName} · Página {activeTab.currentPageIndex + 1} de{' '}
                 {activeTab.pages.length} · Zoom {Math.round(activeTab.zoom * 100)}%
               </span>
             )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div className="status-bar-right">
             {activeTab && workspaceMode !== 'home' && (
               <span>
                 {Math.round(
@@ -1425,7 +1477,7 @@ export const App: React.FC = () => {
                 mm
               </span>
             )}
-            <span>PDF-LEF v1.0 · Edición Nativa Windows</span>
+            <span>Kova PDF v2.0 · Kova Studio</span>
           </div>
         </footer>
       )}
@@ -1451,6 +1503,7 @@ export const App: React.FC = () => {
 
       {toolModal && (
         <ToolsModal
+          key={`${toolModal}-${activeTab?.id || 'empty'}`}
           kind={toolModal}
           activeTab={activeTab}
           defaultExportDpi={settings.exportImageDpi}
@@ -1474,6 +1527,50 @@ export const App: React.FC = () => {
           onInsertAccountingSummaryOnPage={handleInsertAccountingSummaryOnPage}
           onOpenGeneratedPdfInTab={(name, bytes) =>
             openBytesAsNewTab(name, bytes, undefined, 'edit')
+          }
+          onOpenPdfForModal={async (name, bytes) => {
+            await openBytesAsNewTab(name, bytes, undefined, 'edit');
+          }}
+          onDeletePagesFromModal={(indices) =>
+            mutateActiveTab((t) => {
+              const filtered = t.pages.filter((_, i) => !indices.includes(i));
+              if (filtered.length === 0) return t;
+              return {
+                ...t,
+                isModified: true,
+                pages: filtered,
+                currentPageIndex: Math.min(t.currentPageIndex, filtered.length - 1),
+              };
+            }, true)
+          }
+          onApplyCrop={(marginsMm, scope) =>
+            mutateActiveTab((t) => {
+              const mmToPt = 72 / 25.4;
+              return {
+                ...t,
+                isModified: true,
+                pages: t.pages.map((p, idx) => {
+                  if (scope === 'current' && idx !== t.currentPageIndex) return p;
+                  const topN = Math.min(0.4, (marginsMm.top * mmToPt) / Math.max(1, p.heightPt));
+                  const bottomN = Math.min(
+                    0.4,
+                    (marginsMm.bottom * mmToPt) / Math.max(1, p.heightPt)
+                  );
+                  const leftN = Math.min(0.4, (marginsMm.left * mmToPt) / Math.max(1, p.widthPt));
+                  const rightN = Math.min(
+                    0.4,
+                    (marginsMm.right * mmToPt) / Math.max(1, p.widthPt)
+                  );
+                  const isZero = topN === 0 && rightN === 0 && bottomN === 0 && leftN === 0;
+                  return {
+                    ...p,
+                    crop: isZero
+                      ? undefined
+                      : { top: topN, right: rightN, bottom: bottomN, left: leftN },
+                  };
+                }),
+              };
+            }, true)
           }
           onUpdateWatermark={(wm: WatermarkConfig) =>
             mutateActiveTab((t) => ({ ...t, isModified: true, watermark: wm }), true)
@@ -1518,5 +1615,9 @@ export const App: React.FC = () => {
     </div>
   );
 };
+
+function t_safe<T>(record: Record<string, T> | undefined): Record<string, T> {
+  return record || {};
+}
 
 export default App;

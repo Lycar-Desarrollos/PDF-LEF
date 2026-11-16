@@ -4,36 +4,37 @@
       <stop offset="0%" stop-color="#FFFFFF"/>
       <stop offset="100%" stop-color="#F1F5F9"/>
     </linearGradient>
-    <linearGradient id="docFox" x1="168" y1="128" x2="344" y2="318" gradientUnits="userSpaceOnUse">
+    <linearGradient id="docUpperWing" x1="216" y1="122" x2="378" y2="262" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#38BDF8"/>
-      <stop offset="50%" stop-color="#2563EB"/>
-      <stop offset="100%" stop-color="#4F46E5"/>
+      <stop offset="100%" stop-color="#2563EB"/>
     </linearGradient>
-    <linearGradient id="docBadge" x1="72" y1="358" x2="440" y2="446" gradientUnits="userSpaceOnUse">
+    <linearGradient id="docLowerWing" x1="224" y1="246" x2="380" y2="392" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#1D4ED8"/>
-      <stop offset="100%" stop-color="#4F46E5"/>
+      <stop offset="100%" stop-color="#1E3A8A"/>
+    </linearGradient>
+    <linearGradient id="docBadge" x1="76" y1="358" x2="436" y2="446" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1D4ED8"/>
+      <stop offset="100%" stop-color="#1E3A8A"/>
     </linearGradient>
   </defs>
 
-  <!-- Clean Minimalist Folded Sheet -->
-  <path d="M94 50C94 35.64 105.64 24 120 24H318L426 132V462C426 476.36 414.36 488 400 488H120C105.64 488 94 476.36 94 462V50Z" fill="#0F172A" opacity="0.12" transform="translate(0, 6)"/>
+  <!-- Subtle Sheet Drop Shadow -->
+  <path d="M94 50C94 35.64 105.64 24 120 24H318L426 132V462C426 476.36 414.36 488 400 488H120C105.64 488 94 476.36 94 462V50Z" fill="#0F172A" opacity="0.11" transform="translate(0, 6)"/>
+
+  <!-- Clean Folded A4 Document Sheet -->
   <path d="M92 46C92 31.64 103.64 20 118 20H316L424 128V458C424 472.36 412.36 484 398 484H118C103.64 484 92 472.36 92 458V46Z" fill="url(#docPaper)" stroke="#94A3B8" stroke-width="6" stroke-linejoin="round"/>
 
-  <!-- Minimalist Folded Corner -->
+  <!-- Folded Top-Right Corner -->
   <path d="M316 20V104C316 117.255 326.745 128 340 128H424L316 20Z" fill="#E2E8F0" stroke="#94A3B8" stroke-width="5" stroke-linejoin="round"/>
 
-  <!-- Centered Minimalist Fox Emblem (clean, zero clutter) -->
-  <g transform="translate(115, 92) scale(0.55)">
-    <path d="M148 118C149.5 107 162.5 102.5 170.5 110.5L228 168C246 164 266 164 284 168L341.5 110.5C349.5 102.5 362.5 107 364 118L380 242C384 274 368 308 338 336L268 394C261 399.8 251 399.8 244 394L174 336C144 308 128 274 132 242L148 118Z" fill="url(#docFox)"/>
-    <path d="M167 138L208 179L161 196L167 138Z" fill="#BAE6FD" opacity="0.5"/>
-    <path d="M345 138L304 179L351 196L345 138Z" fill="#BAE6FD" opacity="0.5"/>
-    <path d="M132 254C178 252 220 282 256 352C292 282 334 252 380 254C379 284 363 313 338 336L268 394C261 399.8 251 399.8 244 394L174 336C149 313 133 284 132 254Z" fill="#DBEAFE"/>
-    <path d="M241 372H271L258.5 391C257.3 392.8 254.7 392.8 253.5 391L241 372Z" fill="#1E3A8A"/>
+  <!-- Centered Kova Architectural Monogram -->
+  <g transform="translate(120, 88) scale(0.53)">
+    <rect x="142" y="120" width="66" height="272" rx="20" fill="#0F172A"/>
+    <path d="M226 256L302 256L374 358C382.5 370 373.9 392 358 392H296C287.5 392 279.6 387.7 274.8 380.6L214 290L226 256Z" fill="url(#docLowerWing)"/>
+    <path d="M296 120H358C373.9 120 382.5 142 374 154L276 286C271.2 292.5 263.6 296 255.5 296H214V238L280.6 129.4C284 123.6 290.2 120 296 120Z" fill="url(#docUpperWing)"/>
   </g>
 
-  <!-- Minimalist Clean PDF·LEF Pill Badge -->
-  <rect x="68" y="356" width="376" height="90" rx="20" fill="url(#docBadge)"/>
-  <text x="206" y="418" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-weight="800" font-size="56" letter-spacing="2" fill="#FFFFFF">PDF</text>
-  <line x1="296" y1="376" x2="296" y2="426" stroke="#93C5FD" stroke-opacity="0.45" stroke-width="3" stroke-linecap="round"/>
-  <text x="364" y="413" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-weight="700" font-size="34" letter-spacing="2" fill="#DBEAFE">LEF</text>
+  <!-- Clean Universal PDF Pill Badge -->
+  <rect x="76" y="358" width="360" height="86" rx="18" fill="url(#docBadge)"/>
+  <text x="256" y="418" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-weight="800" font-size="52" letter-spacing="4" fill="#FFFFFF">PDF</text>
 </svg>

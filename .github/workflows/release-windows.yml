@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   build-windows:
-    name: Compilar Instalador Nativo Windows (.exe)
+    name: Compilar Instalador Nativo Kova PDF Windows (.exe / .msi)
     runs-on: windows-latest
 
     steps:
@@ -49,13 +49,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'PDF-LEF ${{ github.ref_name }}'
+          releaseName: 'Kova PDF ${{ github.ref_name }}'
           releaseBody: |
-            ## PDF-LEF para Windows 10 y Windows 11
-            Descarga el instalador oficial **`PDF-LEF_1.0.0_x64-setup.exe`** abajo e instálalo en segundos.
-            - **100% Local Offline:** Tus documentos jamás salen de tu PC.
-            - **Edición directa:** Edita y mueve textos existentes del PDF con guías magnéticas, inserta imágenes sin recuadros, firma sin fondo blanco y organiza páginas.
-            - **App predeterminada e icono PDF propio:** Registra `PDFLEF.Document` en Windows 10/11 con diseño exclusivo para todos tus archivos `.pdf`.
+            ## Kova PDF ${{ github.ref_name }} — Windows 10 & Windows 11 (x64)
+            Descarga el instalador oficial `.exe` (NSIS) o `.msi` abajo e instálalo en segundos.
+            - **100% Local & Privado:** Tus documentos jamás salen de tu equipo.
+            - **Edición Tipográfica de Alta Precisión:** Detección inteligente de colores de texto y fondos oscuros/claros, cero superposición de glifos y corrección sin subrayados ortográficos.
+            - **Suite Completa:** Editar PDF, Firmar, Eliminar páginas, Unir, Dividir (ZIP), Comprimir, Recortar márgenes, PDF a Word (.docx), PDF a Excel (.csv), PDF ↔ Imágenes, OCR local, Numeración Bates y Limpiador de Metadatos.
+            - **Ventana Adaptativa High-DPI:** Maximizado automático y paneles adaptativos para laptops Windows 11 (125%–150% DPI) y monitores 4K.
           releaseDraft: false
           prerelease: false
           args: --target x86_64-pc-windows-msvc
@@ -67,10 +68,10 @@ jobs:
       - name: Subir Instalador .exe y .msi como Artefacto Descargable
         uses: actions/upload-artifact@v4
         with:
-          name: PDF-LEF-Windows-Installer-x64
+          name: Kova-PDF-Windows-Installer-x64
           path: |
             src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
             src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
-            src-tauri/target/x86_64-pc-windows-msvc/release/PDF-LEF.exe
-            src-tauri/target/x86_64-pc-windows-msvc/release/pdf-lef.exe
+            src-tauri/target/x86_64-pc-windows-msvc/release/KovaPDF.exe
+            src-tauri/target/x86_64-pc-windows-msvc/release/kova-pdf.exe
           if-no-files-found: warn

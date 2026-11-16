@@ -1,6 +1,6 @@
 /* ==========================================================================
-   PDF-LEF STUDIO PRO — WINDOWS 11 PRO MINIMALIST DESIGN SYSTEM
-   Pure Editorial Light / Deep Graphite Dark + Precision Ruby Accent
+   KOVA PDF — ARCHITECTURAL DESKTOP DESIGN SYSTEM (KOVA STUDIO)
+   Editorial Daylight & Deep Obsidian Dark + Cobalt Precision Accent
    ========================================================================== */
 
 :root {
@@ -10,7 +10,7 @@
   --font-mono: 'Cascadia Code', Consolas, 'Courier New', monospace;
   --font-script: 'Segoe Script', 'Lucida Handwriting', 'Brush Script MT', Georgia, cursive;
 
-  /* Default Light Theme (Thunderbird Supernova Daylight + Crisp Slate) */
+  /* Default Light Theme (Warm Architectural Daylight) */
   --bg-chrome: #eef2f7;
   --bg-surface: #ffffff;
   --bg-surface-elevated: #ffffff;
@@ -29,13 +29,13 @@
   --border-strong: rgba(15, 23, 42, 0.16);
   --border-focus: rgba(37, 99, 235, 0.45);
 
-  /* Thunderbird Sapphire-Indigo Accent (Default) */
+  /* Kova Cobalt-Sapphire Precision Accent (Zero Purple) */
   --accent: #2563eb;
   --accent-hover: #1d4ed8;
   --accent-soft: rgba(37, 99, 235, 0.09);
   --accent-soft-hover: rgba(37, 99, 235, 0.15);
   --accent-border: rgba(37, 99, 235, 0.28);
-  --accent-gradient: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+  --accent-gradient: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 
   /* Semantic Status */
   --success: #0d7a5f;
@@ -58,25 +58,25 @@
   --radius-lg: 14px;
   --radius-xl: 18px;
 
-  /* Density Controls */
+  /* Fluid High-DPI Safe Dimensions */
   --titlebar-h: 40px;
-  --toolbar-h: 46px;
-  --control-h: 32px;
-  --sidebar-w: 242px;
-  --inspector-w: 272px;
+  --toolbar-h: 44px;
+  --control-h: 31px;
+  --sidebar-w: clamp(192px, 18vw, 236px);
+  --inspector-w: clamp(224px, 20vw, 266px);
   --transition-fast: 140ms cubic-bezier(0.2, 0, 0, 1);
   --transition-med: 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Dark Theme — Thunderbird Midnight Obsidian Studio */
+/* Dark Theme — Kova Deep Obsidian Studio */
 html[data-theme='dark'] {
-  --bg-chrome: #0a0e1a;
-  --bg-surface: #111625;
-  --bg-surface-elevated: #181f33;
-  --bg-surface-subtle: #0d1220;
+  --bg-chrome: #0a0e17;
+  --bg-surface: #101624;
+  --bg-surface-elevated: #171f31;
+  --bg-surface-subtle: #0d121d;
   --bg-surface-hover: rgba(255, 255, 255, 0.06);
   --bg-surface-active: rgba(255, 255, 255, 0.11);
-  --bg-canvas: #070a12;
+  --bg-canvas: #070a11;
   --bg-backdrop: rgba(3, 6, 14, 0.7);
 
   --text-primary: #f1f5f9;
@@ -109,7 +109,7 @@ html[data-theme='dark'][data-accent='ruby'] {
   --accent-border: rgba(224, 45, 66, 0.36);
 }
 
-/* Thunderbird Cobalt-Indigo Accent */
+/* Kova Cobalt-Sapphire Accent */
 html[data-accent='cobalt'] {
   --accent: #2563eb;
   --accent-hover: #1d4ed8;
@@ -117,7 +117,7 @@ html[data-accent='cobalt'] {
   --accent-soft-hover: rgba(37, 99, 235, 0.16);
   --accent-border: rgba(37, 99, 235, 0.3);
   --border-focus: rgba(37, 99, 235, 0.45);
-  --accent-gradient: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+  --accent-gradient: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 }
 html[data-theme='dark'][data-accent='cobalt'] {
   --accent: #3b82f6;
@@ -125,7 +125,7 @@ html[data-theme='dark'][data-accent='cobalt'] {
   --accent-soft: rgba(59, 130, 246, 0.16);
   --accent-soft-hover: rgba(59, 130, 246, 0.24);
   --accent-border: rgba(59, 130, 246, 0.38);
-  --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
 }
 
 html[data-accent='emerald'] {
@@ -135,6 +135,7 @@ html[data-accent='emerald'] {
   --accent-soft-hover: rgba(15, 118, 110, 0.16);
   --accent-border: rgba(15, 118, 110, 0.3);
   --border-focus: rgba(15, 118, 110, 0.45);
+  --accent-gradient: linear-gradient(135deg, #0f766e 0%, #115e59 100%);
 }
 html[data-theme='dark'][data-accent='emerald'] {
   --accent: #14b8a6;
@@ -142,6 +143,7 @@ html[data-theme='dark'][data-accent='emerald'] {
   --accent-soft: rgba(20, 184, 166, 0.15);
   --accent-soft-hover: rgba(20, 184, 166, 0.24);
   --accent-border: rgba(20, 184, 166, 0.38);
+  --accent-gradient: linear-gradient(135deg, #14b8a6 0%, #0f766e 100%);
 }
 
 html[data-accent='graphite'] {
@@ -151,6 +153,7 @@ html[data-accent='graphite'] {
   --accent-soft-hover: rgba(31, 35, 43, 0.14);
   --accent-border: rgba(31, 35, 43, 0.26);
   --border-focus: rgba(31, 35, 43, 0.4);
+  --accent-gradient: linear-gradient(135deg, #1f232b 0%, #111318 100%);
 }
 html[data-theme='dark'][data-accent='graphite'] {
   --accent: #e5e7eb;
@@ -159,6 +162,7 @@ html[data-theme='dark'][data-accent='graphite'] {
   --accent-soft-hover: rgba(229, 231, 235, 0.2);
   --accent-border: rgba(229, 231, 235, 0.32);
   --text-on-accent: #111318;
+  --accent-gradient: linear-gradient(135deg, #f3f4f6 0%, #d1d5db 100%);
 }
 
 /* Density Presets */
@@ -166,15 +170,15 @@ html[data-density='compact'] {
   --titlebar-h: 36px;
   --toolbar-h: 40px;
   --control-h: 28px;
-  --sidebar-w: 228px;
-  --inspector-w: 264px;
+  --sidebar-w: 210px;
+  --inspector-w: 242px;
 }
 html[data-density='comfortable'] {
   --titlebar-h: 44px;
-  --toolbar-h: 52px;
-  --control-h: 36px;
-  --sidebar-w: 276px;
-  --inspector-w: 308px;
+  --toolbar-h: 50px;
+  --control-h: 35px;
+  --sidebar-w: 256px;
+  --inspector-w: 288px;
 }
 
 html[data-animations='off'] * {
@@ -234,13 +238,16 @@ textarea {
 }
 
 /* ==========================================================================
-   APP SHELL LAYOUT
+   APP SHELL LAYOUT (HIGH-DPI SAFE — ZERO HORIZONTAL CLIPPING)
    ========================================================================== */
 .app-shell {
   display: flex;
   flex-direction: column;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  max-width: 100vw;
+  height: 100%;
+  max-height: 100vh;
+  overflow: hidden;
   background: var(--bg-chrome);
   border: 1px solid var(--border-subtle);
 }
@@ -256,8 +263,9 @@ textarea {
   background: var(--bg-chrome);
   border-bottom: 1px solid var(--border-subtle);
   padding-left: 10px;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
+  min-width: 0;
 }
 
 .win-brand {
@@ -282,7 +290,7 @@ textarea {
 .win-brand-title {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 13px;
+  font-size: 13.5px;
   letter-spacing: -0.03em;
   display: flex;
   align-items: center;
@@ -313,9 +321,9 @@ textarea {
   align-items: center;
   gap: 7px;
   height: calc(100% - 1px);
-  max-width: 215px;
-  min-width: 115px;
-  padding: 0 10px 0 11px;
+  max-width: 205px;
+  min-width: 104px;
+  padding: 0 9px 0 10px;
   border-radius: 8px 8px 0 0;
   font-size: 12px;
   font-weight: 500;
@@ -414,13 +422,13 @@ textarea {
   display: flex;
   align-items: center;
   height: 100%;
-  gap: 4px;
+  gap: 3px;
   flex-shrink: 0;
 }
 
 .cmd-trigger {
   height: 26px;
-  padding: 0 10px;
+  padding: 0 9px;
   border-radius: var(--radius-xs);
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface);
@@ -428,7 +436,7 @@ textarea {
   font-size: 11.5px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   cursor: pointer;
   transition: border-color var(--transition-fast), color var(--transition-fast);
 }
@@ -450,10 +458,10 @@ textarea {
   display: flex;
   align-items: center;
   height: 100%;
-  margin-left: 4px;
+  margin-left: 2px;
 }
 .win-cap-btn {
-  width: 44px;
+  width: 42px;
   height: 100%;
   border: none;
   background: transparent;
@@ -488,12 +496,12 @@ textarea {
 
 .mode-bar {
   min-height: var(--toolbar-h);
-  padding: 4px 14px;
+  padding: 4px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 8px 12px;
+  gap: 6px 10px;
   overflow: visible;
 }
 
@@ -508,12 +516,12 @@ textarea {
 }
 .mode-pill {
   height: calc(var(--control-h) - 2px);
-  padding: 0 12px;
+  padding: 0 11px;
   border-radius: 7px;
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -537,20 +545,20 @@ textarea {
 }
 .toolbar-divider {
   width: 1px;
-  height: 20px;
+  height: 18px;
   background: var(--border-subtle);
-  margin: 0 4px;
+  margin: 0 3px;
 }
 
 /* Buttons */
 .btn {
   height: var(--control-h);
-  padding: 0 11px;
+  padding: 0 10px;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 500;
   display: inline-flex;
   align-items: center;
@@ -591,7 +599,7 @@ textarea {
   background: var(--accent-gradient, var(--accent));
   color: var(--text-on-accent);
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.24);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.22);
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);
@@ -600,30 +608,30 @@ textarea {
 
 /* Sub-toolbar for Edit Mode */
 .edit-subbar {
-  min-height: 42px;
-  padding: 5px 14px;
+  min-height: 38px;
+  padding: 4px 12px;
   border-top: 1px solid var(--border-subtle);
   background: var(--bg-surface-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 6px 8px;
+  gap: 4px 6px;
   overflow: visible;
 }
 
 .tool-chip {
-  height: 30px;
-  padding: 0 10px;
+  height: 28px;
+  padding: 0 9px;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 500;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   cursor: pointer;
   white-space: nowrap;
   transition: all var(--transition-fast);
@@ -652,7 +660,7 @@ textarea {
 }
 
 /* ==========================================================================
-   MAIN WORKSPACE BODY (THUNDERBIRD SPACES RAIL + STAGE + RIGHT INSPECTOR)
+   MAIN WORKSPACE BODY (NAVIGATION RAIL + STAGE + RIGHT INSPECTOR)
    ========================================================================== */
 .workspace-body {
   flex: 1;
@@ -663,10 +671,10 @@ textarea {
   overflow: hidden;
 }
 
-/* Thunderbird Iconic Dark Spaces Rail */
+/* Architectural Dark Navigation Rail */
 .left-rail {
-  width: 48px;
-  background: #0b0f1c;
+  width: 44px;
+  background: #0b0f1a;
   border-right: 1px solid rgba(148, 163, 184, 0.14);
   display: flex;
   flex-direction: column;
@@ -677,9 +685,9 @@ textarea {
   z-index: 12;
 }
 .rail-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 9px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
   border: none;
   background: transparent;
   color: #94a3b8;
@@ -701,9 +709,9 @@ textarea {
 .rail-btn.active::before {
   content: '';
   position: absolute;
-  left: -6px;
-  top: 8px;
-  bottom: 8px;
+  left: -5px;
+  top: 7px;
+  bottom: 7px;
   width: 3px;
   border-radius: 0 3px 3px 0;
   background: #38bdf8;
@@ -719,13 +727,13 @@ textarea {
   flex-shrink: 0;
 }
 .drawer-header {
-  height: 38px;
+  height: 36px;
   padding: 0 12px;
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -805,8 +813,8 @@ textarea {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 24px 24px 64px;
-  gap: 24px;
+  padding: 20px 20px 56px;
+  gap: 22px;
   position: relative;
 }
 .canvas-viewport.dual-grid {
@@ -851,14 +859,14 @@ textarea {
   overflow: hidden;
 }
 
-/* Native PDF Existing Text Blocks (Direct In-Place Edit & Move — Clamped to Page!) */
+/* Native PDF Existing Text Blocks (Direct In-Place Edit & Move) */
 .native-text-patch {
   position: absolute;
   pointer-events: none;
   z-index: 25;
 }
 
-/* Clean Hover Hotspots for Unmodified Native PDF Text (Zero Ghosting!) */
+/* Clean Hover Hotspots for Unmodified Native PDF Text (Zero Ghosting) */
 .native-text-hotspot {
   position: absolute;
   border: 1px dashed transparent;
@@ -881,7 +889,7 @@ textarea {
   transition: border-color 100ms ease, box-shadow 100ms ease;
   display: flex;
   align-items: center;
-  padding: 1px 3px;
+  padding: 0 2px;
   max-width: 96%;
   box-sizing: border-box;
   z-index: 40;
@@ -958,7 +966,7 @@ textarea {
 /* Floating Quick Action Bar above Selected Object */
 .object-quickbar {
   position: absolute;
-  top: -38px;
+  top: -36px;
   left: 0;
   height: 30px;
   background: var(--bg-surface-elevated);
@@ -967,7 +975,7 @@ textarea {
   box-shadow: var(--shadow-md);
   display: inline-flex;
   align-items: center;
-  padding: 0 4px;
+  padding: 0 5px;
   gap: 2px;
   z-index: 80;
   white-space: nowrap;
@@ -1004,8 +1012,8 @@ textarea {
    ========================================================================== */
 .right-inspector {
   width: var(--inspector-w);
-  max-width: 30vw;
-  min-width: 224px;
+  max-width: 28vw;
+  min-width: 210px;
   background: var(--bg-surface);
   border-left: 1px solid var(--border-subtle);
   display: flex;
@@ -1015,30 +1023,34 @@ textarea {
   overflow-x: hidden;
 }
 
-@media (max-width: 1120px) {
+@media (max-width: 1180px) {
   .left-drawer {
-    width: 196px;
+    width: 188px;
   }
   .right-inspector {
-    width: 232px;
-    min-width: 208px;
+    width: 222px;
+    min-width: 198px;
   }
   .canvas-viewport {
-    padding: 16px 12px 48px;
+    padding: 14px 12px 44px;
+  }
+  .cmd-trigger-label {
+    display: none;
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 920px) {
   .left-drawer {
     display: none;
   }
   .right-inspector {
-    width: 214px;
-    min-width: 196px;
+    width: 204px;
+    min-width: 188px;
   }
 }
+
 .inspector-section {
-  padding: 14px;
+  padding: 13px;
   border-bottom: 1px solid var(--border-subtle);
 }
 .inspector-title {
@@ -1047,7 +1059,7 @@ textarea {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-muted);
-  margin-bottom: 10px;
+  margin-bottom: 9px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1063,7 +1075,7 @@ textarea {
   margin-bottom: 0;
 }
 .prop-label {
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--text-secondary);
 }
 .prop-input,
@@ -1093,7 +1105,7 @@ textarea {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  border: 2px solid rgba(0, 0, 0, 0.12);
+  border: 2px solid rgba(0, 0, 0, 0.14);
   cursor: pointer;
   padding: 0;
   transition: transform 100ms ease;
@@ -1112,10 +1124,10 @@ textarea {
   flex: 1;
   overflow-y: auto;
   background: var(--bg-surface-subtle);
-  padding: 36px 48px;
+  padding: 32px 36px;
 }
 .home-container {
-  max-width: 1080px;
+  max-width: 1120px;
   margin: 0 auto;
 }
 .home-hero {
@@ -1123,28 +1135,28 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding: 28px 32px;
+  padding: 26px 30px;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-sm);
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 }
 .home-actions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 14px;
-  margin-bottom: 32px;
+  grid-template-columns: repeat(auto-fit, minmax(205px, 1fr));
+  gap: 12px;
+  margin-bottom: 28px;
 }
 .action-card {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  padding: 18px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
   cursor: pointer;
   text-align: left;
   transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
@@ -1155,9 +1167,9 @@ textarea {
   box-shadow: var(--shadow-md);
 }
 .action-icon-box {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
   background: var(--accent-soft);
   color: var(--accent);
   display: flex;
@@ -1167,7 +1179,7 @@ textarea {
 .action-card-title {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 14px;
+  font-size: 13.5px;
   color: var(--text-primary);
 }
 .action-card-desc {
@@ -1216,19 +1228,35 @@ textarea {
 }
 
 /* ==========================================================================
-   STATUS BAR
+   STATUS BAR (TRUNCATION-SAFE ON NARROW VIEWPORTS)
    ========================================================================== */
 .status-bar {
-  height: 28px;
+  height: 27px;
   padding: 0 12px;
   background: var(--bg-surface);
   border-top: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 11.5px;
+  gap: 12px;
+  font-size: 11px;
   color: var(--text-muted);
   flex-shrink: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+.status-bar-left,
+.status-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.status-bar-doc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .offline-pill {
   display: inline-flex;
@@ -1237,6 +1265,7 @@ textarea {
   color: var(--success);
   font-weight: 600;
   font-size: 11px;
+  flex-shrink: 0;
 }
 
 /* ==========================================================================
@@ -1251,7 +1280,7 @@ textarea {
   align-items: center;
   justify-content: center;
   z-index: 200;
-  padding: 20px;
+  padding: 18px;
 }
 .modal-window {
   background: var(--bg-surface);
@@ -1260,13 +1289,13 @@ textarea {
   box-shadow: var(--shadow-lg);
   width: 100%;
   max-width: 780px;
-  max-height: 86vh;
+  max-height: 88vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 .modal-header {
-  padding: 16px 22px;
+  padding: 15px 20px;
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
@@ -1274,7 +1303,7 @@ textarea {
 }
 .modal-title {
   font-family: var(--font-display);
-  font-size: 16px;
+  font-size: 15.5px;
   font-weight: 700;
   letter-spacing: -0.02em;
   display: flex;
@@ -1284,10 +1313,10 @@ textarea {
 .modal-body {
   flex: 1;
   overflow-y: auto;
-  padding: 22px;
+  padding: 20px;
 }
 .modal-footer {
-  padding: 14px 22px;
+  padding: 13px 20px;
   border-top: 1px solid var(--border-subtle);
   background: var(--bg-surface-subtle);
   display: flex;
@@ -1299,11 +1328,11 @@ textarea {
 /* Settings Split Layout */
 .settings-layout {
   display: flex;
-  height: 540px;
+  height: 520px;
   max-height: 76vh;
 }
 .settings-nav {
-  width: 215px;
+  width: 210px;
   background: var(--bg-surface-subtle);
   border-right: 1px solid var(--border-subtle);
   padding: 14px 10px;
@@ -1319,7 +1348,7 @@ textarea {
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
   display: flex;
   align-items: center;
@@ -1340,10 +1369,10 @@ textarea {
 .settings-content {
   flex: 1;
   overflow-y: auto;
-  padding: 22px 26px;
+  padding: 20px 24px;
 }
 .setting-card {
-  padding: 14px 16px;
+  padding: 13px 15px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--bg-surface-subtle);
@@ -1399,7 +1428,7 @@ textarea {
 /* Toast Notification */
 .toast-stack {
   position: fixed;
-  bottom: 40px;
+  bottom: 38px;
   right: 20px;
   display: flex;
   flex-direction: column;
