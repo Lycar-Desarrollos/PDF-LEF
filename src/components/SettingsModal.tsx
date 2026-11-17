@@ -26,6 +26,7 @@ import { downloadBlobInBrowser } from '../utils/tauriBridge';
 import {
   CURRENT_APP_VERSION,
   checkGlobalAppUpdate,
+  openExternalUrl,
   triggerOneClickUpdate,
   type RemoteUpdateInfo,
 } from '../utils/updater';
@@ -692,20 +693,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             Nueva actualización disponible: {updateResult.latestVersion}
                           </strong>
                           {updateResult.downloadUrl && (
-                            <button
-                              type="button"
-                              className="btn btn-primary"
-                              style={{ height: 30, fontSize: 12 }}
-                              disabled={installingUpdate}
-                              onClick={() => handleInstallOneClick(updateResult.downloadUrl!)}
-                            >
-                              <Download size={13} />
-                              <span>
-                                {installingUpdate
-                                  ? 'Descargando e instalando…'
-                                  : 'Actualizar e instalar en 1 clic'}
-                              </span>
-                            </button>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                              <button
+                                type="button"
+                                className="btn btn-primary"
+                                style={{ height: 30, fontSize: 12 }}
+                                disabled={installingUpdate}
+                                onClick={() => handleInstallOneClick(updateResult.downloadUrl!)}
+                              >
+                                <Download size={13} />
+                                <span>
+                                  {installingUpdate
+                                    ? 'Descargando e instalando…'
+                                    : 'Actualizar e instalar en 1 clic'}
+                                </span>
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-subtle"
+                                style={{ height: 30, fontSize: 11.5 }}
+                                onClick={() => {
+                                  openExternalUrl(updateResult.downloadUrl!);
+                                  onNotify('Abriendo descarga directa en tu navegador predeterminado…');
+                                }}
+                              >
+                                <span>Descargar .exe en navegador</span>
+                              </button>
+                            </div>
                           )}
                         </div>
                         <div style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>

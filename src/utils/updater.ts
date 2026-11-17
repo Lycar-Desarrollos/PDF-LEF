@@ -1,6 +1,6 @@
 import { isTauriDesktop } from './tauriBridge';
 
-export const CURRENT_APP_VERSION = '2.2.0';
+export const CURRENT_APP_VERSION = '2.2.1';
 
 export const GLOBAL_MANIFEST_URL =
   'https://lycar-desarrollos.github.io/PDF-LEF/update-manifest.json';
@@ -153,6 +153,28 @@ export async function checkGlobalAppUpdate(
   };
 }
 
+export async function openExternalUrl(url: string): Promise<void> {
+  if (!url) return;
+  if (isTauriDesktop()) {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('open_external_url', { url });
+      return;
+    } catch {
+      // Fallback below if invoke fails
+    }
+  }
+  if (typeof window !== 'undefined') {
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+}
+
 export async function triggerOneClickUpdate(
   downloadUrl: string
 ): Promise<{ nativeInstalled: boolean; message: string }> {
@@ -164,31 +186,20 @@ export async function triggerOneClickUpdate(
       });
       return { nativeInstalled: true, message: msg };
     } catch (err) {
-      // Fallback to direct browser download if native command errors
-      if (typeof window !== 'undefined') {
-        window.open(downloadUrl, '_blank', 'noopener,noreferrer');
-      }
+      await openExternalUrl(downloadUrl);
       return {
         nativeInstalled: false,
         message:
           err instanceof Error
-            ? `${err.message} Se inició la descarga directa en tu navegador.`
-            : 'Se inició la descarga directa del instalador.',
+            ? `${err.message} Se abrió la descarga directa en tu navegador predeterminado.`
+            : 'Se abrió la descarga directa del instalador en tu navegador.',
       };
     }
   }
 
-  if (typeof window !== 'undefined') {
-    const a = document.createElement('a');
-    a.href = downloadUrl;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }
+  await openExternalUrl(downloadUrl);
   return {
     nativeInstalled: false,
-    message: 'Descarga del instalador oficial iniciada. Ejecútalo para completar la actualización.',
+    message: 'Descarga del instalador oficial iniciada en tu navegador. Ejecútalo para completar la actualización.',
   };
 }

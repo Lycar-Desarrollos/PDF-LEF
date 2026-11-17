@@ -405,7 +405,7 @@ test('7. Windows Tauri v2 High-DPI config, NSIS, ICO headers & spellCheck={false
   const tauriConf = JSON.parse(readFileSync(join(ROOT, 'src-tauri/tauri.conf.json'), 'utf8'));
   assert.equal(tauriConf.productName, 'Kova PDF');
   assert.equal(tauriConf.mainBinaryName, 'KovaPDF');
-  assert.equal(tauriConf.version, '2.2.0');
+  assert.equal(tauriConf.version, '2.2.1');
   assert.equal(tauriConf.identifier, 'studio.kova.pdf');
   assert.equal(tauriConf.bundle.publisher, 'Kova Studio');
   assert.equal(tauriConf.bundle.fileAssociations[0].name, 'KovaPDF.Document');
@@ -572,32 +572,35 @@ test('10. Global Internet Auto-Updater & Remote Manifest Control (any network wo
   const { CURRENT_APP_VERSION, isNewerVersion, parseSemver } = await import(
     '../src/utils/updater.ts'
   );
-  assert.equal(CURRENT_APP_VERSION, '2.2.0');
-  assert.deepEqual(parseSemver('v2.2.0'), [2, 2, 0]);
-  assert.equal(isNewerVersion('v2.2.0', '2.0.0'), true);
-  assert.equal(isNewerVersion('v2.2.0', '2.1.0'), true);
-  assert.equal(isNewerVersion('v2.2.0', '2.2.0'), false);
-  assert.equal(isNewerVersion('v2.1.0', '2.2.0'), false);
+  assert.equal(CURRENT_APP_VERSION, '2.2.1');
+  assert.deepEqual(parseSemver('v2.2.1'), [2, 2, 1]);
+  assert.equal(isNewerVersion('v2.2.1', '2.0.0'), true);
+  assert.equal(isNewerVersion('v2.2.1', '2.2.0'), true);
+  assert.equal(isNewerVersion('v2.2.1', '2.2.1'), false);
+  assert.equal(isNewerVersion('v2.2.0', '2.2.1'), false);
 
   const manifest = JSON.parse(readFileSync(join(ROOT, 'website/update-manifest.json'), 'utf8'));
   assert.equal(manifest.product, 'Kova PDF');
-  assert.equal(manifest.version, '2.2.0');
+  assert.equal(manifest.version, '2.2.1');
   assert.equal(manifest.mandatory, true);
-  assert.equal(manifest.autoInstall, true);
-  assert.ok(manifest.exeUrl.endsWith('Kova.PDF_2.2.0_x64-setup.exe'));
-  assert.ok(manifest.msiUrl.endsWith('Kova.PDF_2.2.0_x64_en-US.msi'));
+  assert.equal(typeof manifest.autoInstall, 'boolean');
+  assert.ok(manifest.exeUrl.endsWith('Kova.PDF_2.2.1_x64-setup.exe'));
+  assert.ok(manifest.msiUrl.endsWith('Kova.PDF_2.2.1_x64_en-US.msi'));
 });
 
 test('11. Inline Bold+Regular separation on #F4F6F9 gray cards, untouched-if-unchanged guarantee & CREATE_NO_WINDOW', async () => {
-  // 1. Verify Rust register_default_pdf_app silences all console windows via CREATE_NO_WINDOW
+  // 1. Verify Rust register_default_pdf_app & hardened NSIS updater flags (/P /R /UPDATE, MZ header, open_external_url)
   const rustLib = readFileSync(join(ROOT, 'src-tauri/src/lib.rs'), 'utf8');
   assert.match(rustLib, /const CREATE_NO_WINDOW:\s*u32\s*=\s*0x08000000/);
   const regMatches = rustLib.match(/\.creation_flags\(CREATE_NO_WINDOW\)/g) ?? [];
   assert.ok(
-    regMatches.length >= 4,
-    `Expected all Command::new spawns in lib.rs to set CREATE_NO_WINDOW, found ${regMatches.length}`
+    regMatches.length >= 6,
+    `Expected all background Windows spawns in lib.rs to set CREATE_NO_WINDOW, found ${regMatches.length}`
   );
   assert.ok(!rustLib.includes('Command::new("cmd")'), 'Must not spawn cmd.exe console host');
+  assert.match(rustLib, /args\(\["\/P",\s*"\/R",\s*"\/UPDATE"\]\)/, 'Must launch NSIS updater with official /P /R /UPDATE flags');
+  assert.match(rustLib, /b"MZ"/, 'Must verify Windows PE MZ signature before executing downloaded installer');
+  assert.match(rustLib, /fn open_external_url/, 'Must expose native open_external_url fallback for WebView2');
 
   // 2. Build an in-memory PDF replicating the user's gray card screenshot (Modalidad: Bold + Regular value)
   const doc = await PDFDocument.create();

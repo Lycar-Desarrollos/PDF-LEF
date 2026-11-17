@@ -97,6 +97,35 @@ fn register_default_pdf_app(_app: tauri::AppHandle) -> Result<String, String> {
 }
 
 #[tauri::command]
+fn open_external_url(url: String) -> Result<(), String> {
+    let trimmed = url.trim().to_string();
+    if !trimmed.starts_with("https://") {
+        return Err("Solo se permiten enlaces seguros HTTPS.".to_string());
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        use std::process::Command;
+
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+        Command::new("rundll32.exe")
+            .args(["url.dll,FileProtocolHandler", &trimmed])
+            .creation_flags(CREATE_NO_WINDOW)
+            .spawn()
+            .map_err(|e| format!("No se pudo abrir el navegador predeterminado: {}", e))?;
+        return Ok(());
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = trimmed;
+        Ok(())
+    }
+}
+
+#[tauri::command]
 async fn download_and_install_update(
     app: tauri::AppHandle,
     download_url: String,
@@ -113,78 +142,105 @@ async fn download_and_install_update(
 
     #[cfg(target_os = "windows")]
     {
+        use std::io::Read;
         use std::os::windows::process::CommandExt;
         use std::process::Command;
 
         const CREATE_NO_WINDOW: u32 = 0x08000000;
 
-        let installer_path = std::env::temp_dir().join("KovaPDF_Update_Setup.exe");
-        let _ = fs::remove_file(&installer_path);
-        let installer_str = installer_path.to_string_lossy().to_string();
+        let url_for_worker = trimmed.clone();
+        let installer_path = tauri::async_runtime::spawn_blocking(move || -> Result<PathBuf, String> {
+            let dest = std::env::temp_dir().join("KovaPDF_Update_Setup.exe");
+            let _ = fs::remove_file(&dest);
+            let dest_str = dest.to_string_lossy().to_string();
 
-        let status = Command::new("curl.exe")
-            .args([
-                "-fL",
-                "--retry",
-                "2",
-                "--connect-timeout",
-                "15",
-                "-o",
-                &installer_str,
-                &trimmed,
-            ])
-            .creation_flags(CREATE_NO_WINDOW)
-            .status()
-            .map_err(|e| format!("No se pudo descargar el instalador: {}", e))?;
+            // 1. Primary fast native download via Windows curl.exe (--ssl-no-revoke avoids corporate Schannel CRL blocks)
+            let curl_ok = Command::new("curl.exe")
+                .args([
+                    "-fL",
+                    "--ssl-no-revoke",
+                    "--retry",
+                    "2",
+                    "--connect-timeout",
+                    "15",
+                    "-o",
+                    &dest_str,
+                    &url_for_worker,
+                ])
+                .creation_flags(CREATE_NO_WINDOW)
+                .status()
+                .map(|s| s.success())
+                .unwrap_or(false);
 
-        if !status.success() {
-            return Err("Error al descargar el paquete de actualización desde internet.".to_string());
-        }
+            // 2. Fallback download via PowerShell TLS 1.2 if curl.exe is unavailable or blocked
+            if !curl_ok || !dest.exists() {
+                let ps_dl = format!(
+                    "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri '{}' -OutFile '{}'",
+                    url_for_worker.replace('\'', "''"),
+                    dest_str.replace('\'', "''")
+                );
+                let ps_ok = Command::new("powershell.exe")
+                    .args([
+                        "-NoProfile",
+                        "-NonInteractive",
+                        "-WindowStyle",
+                        "Hidden",
+                        "-Command",
+                        &ps_dl,
+                    ])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status()
+                    .map(|s| s.success())
+                    .unwrap_or(false);
 
-        let meta = fs::metadata(&installer_path)
-            .map_err(|_| "El archivo de actualización descargado no se encontró.".to_string())?;
-        if meta.len() < 200_000 {
-            return Err("El archivo descargado está incompleto.".to_string());
-        }
+                if !ps_ok {
+                    return Err("Error al descargar el instalador desde el servidor global.".to_string());
+                }
+            }
 
-        let exe_path = std::env::current_exe()
-            .map_err(|e| format!("No se pudo ubicar el ejecutable actual: {}", e))?;
-        let exe_raw = exe_path.to_string_lossy();
-        let exe_str = exe_raw.trim_start_matches(r"\\?\").to_string();
+            // 3. Validate downloaded binary size & Windows PE ('MZ') signature
+            let meta = fs::metadata(&dest)
+                .map_err(|_| "El archivo de actualización descargado no se encontró.".to_string())?;
+            if meta.len() < 500_000 {
+                let _ = fs::remove_file(&dest);
+                return Err("La descarga del instalador quedó incompleta.".to_string());
+            }
 
-        let ps_script = format!(
-            "Start-Sleep -Milliseconds 1400; Start-Process -FilePath '{}' -ArgumentList '/S' -Wait; Start-Process -FilePath '{}'",
-            installer_str.replace('\'', "''"),
-            exe_str.replace('\'', "''")
-        );
+            let mut header = [0u8; 2];
+            let mut file = fs::File::open(&dest)
+                .map_err(|_| "No se pudo verificar el instalador descargado.".to_string())?;
+            file.read_exact(&mut header)
+                .map_err(|_| "Encabezado de instalador inválido.".to_string())?;
+            if &header != b"MZ" {
+                let _ = fs::remove_file(&dest);
+                return Err("El archivo descargado no es un ejecutable válido de Windows.".to_string());
+            }
 
-        Command::new("powershell.exe")
-            .args([
-                "-NoProfile",
-                "-NonInteractive",
-                "-WindowStyle",
-                "Hidden",
-                "-Command",
-                &ps_script,
-            ])
-            .creation_flags(CREATE_NO_WINDOW)
+            Ok(dest)
+        })
+        .await
+        .map_err(|e| format!("Fallo interno en tarea de descarga: {}", e))??;
+
+        // 4. Launch Tauri NSIS installer directly with official Passive + Relaunch + Update flags (/P /R /UPDATE)
+        Command::new(&installer_path)
+            .args(["/P", "/R", "/UPDATE"])
             .spawn()
-            .map_err(|e| format!("No se pudo iniciar la instalación automática: {}", e))?;
+            .map_err(|e| format!("No se pudo ejecutar el instalador de actualización: {}", e))?;
 
         let app_handle = app.clone();
         std::thread::spawn(move || {
-            std::thread::sleep(std::time::Duration::from_millis(450));
+            std::thread::sleep(std::time::Duration::from_millis(350));
             app_handle.exit(0);
         });
 
-        return Ok("Actualización descargada. Instalando y reiniciando Kova PDF...".to_string());
+        return Ok("Actualización verificada. Aplicando nueva versión y reiniciando Kova PDF...".to_string());
     }
 
     #[cfg(not(target_os = "windows"))]
     {
         let _ = app;
         Ok(format!(
-            "En Windows 10/11 descarga e instala silenciosamente desde: {}",
+            "En Windows 10/11 descarga e instala automáticamente (/P /R /UPDATE) desde: {}",
             trimmed
         ))
     }
@@ -200,6 +256,7 @@ pub fn run() {
             write_pdf_bytes,
             get_startup_pdf_path,
             register_default_pdf_app,
+            open_external_url,
             download_and_install_update
         ])
         .run(tauri::generate_context!())
