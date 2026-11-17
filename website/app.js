@@ -13,9 +13,9 @@ const I18N = {
     hero_lead:
       'Edita títulos a color y encabezados sobre fondos oscuros sin superposiciones, convierte documentos a Word editable (.docx) y Excel (.csv), elimina o recorta páginas, comprime archivos y estampa firmas transparentes sin exponer información confidencial en portales externos.',
     hero_btn_exe_main: 'Descargar Kova PDF para Windows',
-    hero_btn_exe_sub: 'Instalador Nativo v2.0 (.exe · 64-bit · Gratis)',
+    hero_btn_exe_sub: 'Instalador Nativo v2.1 (.exe · 64-bit · Gratis)',
     hero_btn_msi: 'Paquete Empresarial (.msi)',
-    spec_1_b: 'v2.0.0 Estable',
+    spec_1_b: 'v2.1.0 Estable',
     spec_2_b: '0 Bytes en Nube',
     spec_2_t: 'Privacidad Total',
     spec_3_b: 'High-DPI Ready',
@@ -154,9 +154,9 @@ const I18N = {
     hero_lead:
       'Edit colored headings and dark header banners with zero ghosting, convert files to editable Word (.docx) and Excel (.csv), remove or crop pages, compress file size, and place transparent signatures without uploading confidential files to third-party cloud servers.',
     hero_btn_exe_main: 'Download Kova PDF for Windows',
-    hero_btn_exe_sub: 'Native Installer v2.0 (.exe · 64-bit · Free)',
+    hero_btn_exe_sub: 'Native Installer v2.1 (.exe · 64-bit · Free)',
     hero_btn_msi: 'Enterprise Package (.msi)',
-    spec_1_b: 'v2.0.0 Stable',
+    spec_1_b: 'v2.1.0 Stable',
     spec_2_b: '0 Cloud Bytes',
     spec_2_t: 'Total Privacy',
     spec_3_b: 'High-DPI Ready',

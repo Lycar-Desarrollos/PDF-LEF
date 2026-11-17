@@ -23,6 +23,12 @@ import type {
 } from '../types/pdf';
 import { DEFAULT_SETTINGS } from '../utils/storage';
 import { downloadBlobInBrowser } from '../utils/tauriBridge';
+import {
+  CURRENT_APP_VERSION,
+  checkGlobalAppUpdate,
+  triggerOneClickUpdate,
+  type RemoteUpdateInfo,
+} from '../utils/updater';
 
 interface SettingsModalProps {
   settings: AppSettings;
@@ -33,25 +39,6 @@ interface SettingsModalProps {
 
 type SettingsSection = 'appearance' | 'viewer' | 'editor' | 'privacy' | 'shortcuts' | 'updates';
 
-const CURRENT_APP_VERSION = '2.0.0';
-
-function parseSemver(v: string): number[] {
-  return v
-    .replace(/^v/i, '')
-    .split('.')
-    .map((n) => parseInt(n, 10) || 0);
-}
-
-function isNewerVersion(remoteTag: string, localVer: string): boolean {
-  const r = parseSemver(remoteTag);
-  const l = parseSemver(localVer);
-  for (let i = 0; i < 3; i++) {
-    if ((r[i] || 0) > (l[i] || 0)) return true;
-    if ((r[i] || 0) < (l[i] || 0)) return false;
-  }
-  return false;
-}
-
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
   onChangeSettings,
@@ -60,44 +47,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
   const [section, setSection] = useState<SettingsSection>('appearance');
   const [checkingUpdate, setCheckingUpdate] = useState(false);
-  const [updateResult, setUpdateResult] = useState<{
-    status: 'latest' | 'available' | 'error';
-    version?: string;
-    downloadUrl?: string;
-    notes?: string;
-  } | null>(null);
+  const [installingUpdate, setInstallingUpdate] = useState(false);
+  const [updateResult, setUpdateResult] = useState<RemoteUpdateInfo | null>(null);
 
   const checkUpdates = async () => {
     setCheckingUpdate(true);
     setUpdateResult(null);
     try {
-      const releaseEndpoint =
-        'https://api.github.com/repos/Lycar-Desarrollos/PDF-LEF/releases/latest';
-      const res = await fetch(releaseEndpoint);
-      if (!res.ok) throw new Error('No se pudo consultar el canal de actualizaciones');
-      const release = await res.json();
-      const latestTag = String(release.tag_name || `v${CURRENT_APP_VERSION}`);
-      const exeAsset = Array.isArray(release.assets)
-        ? release.assets.find((a: { name?: string }) => a.name?.toLowerCase().endsWith('.exe'))
-        : null;
-
-      if (!isNewerVersion(latestTag, CURRENT_APP_VERSION)) {
-        setUpdateResult({
-          status: 'latest',
-          version: `v${CURRENT_APP_VERSION}`,
-        });
-      } else {
-        setUpdateResult({
-          status: 'available',
-          version: latestTag,
-          downloadUrl: exeAsset?.browser_download_url || release.html_url,
-          notes: release.body || '',
-        });
-      }
+      const info = await checkGlobalAppUpdate(CURRENT_APP_VERSION);
+      setUpdateResult(info);
     } catch {
-      setUpdateResult({ status: 'error' });
+      setUpdateResult({
+        status: 'error',
+        currentVersion: `v${CURRENT_APP_VERSION}`,
+        latestVersion: `v${CURRENT_APP_VERSION}`,
+        mandatory: false,
+      });
     } finally {
       setCheckingUpdate(false);
+    }
+  };
+
+  const handleInstallOneClick = async (downloadUrl: string) => {
+    setInstallingUpdate(true);
+    try {
+      const res = await triggerOneClickUpdate(downloadUrl);
+      onNotify(res.message);
+    } finally {
+      setInstallingUpdate(false);
     }
   };
 
@@ -658,6 +635,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </button>
                 </div>
 
+                <div className="setting-card" style={{ marginTop: 12 }}>
+                  <div>
+                    <div className="setting-card-title">Aviso automático al abrir Kova PDF</div>
+                    <div className="setting-card-desc">
+                      Verifica por internet (desde cualquier red o país) si existe una nueva versión oficial lista para instalar en 1 clic.
+                    </div>
+                  </div>
+                  <label className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={settings.autoCheckUpdates}
+                      onChange={(e) => update('autoCheckUpdates', e.target.checked)}
+                    />
+                    <span className="toggle-slider" />
+                  </label>
+                </div>
+
                 {updateResult && (
                   <div
                     style={{
@@ -683,7 +677,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--success)' }}>
                         <CheckCircle2 size={18} />
                         <div>
-                          <strong>Estás en la versión oficial más reciente ({updateResult.version}).</strong>
+                          <strong>Estás en la versión oficial más reciente ({updateResult.latestVersion}).</strong>
                           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
                             Tu estación cuenta con las últimas mejoras del motor gráfico y tipográfico de Kova PDF.
                           </div>
@@ -693,21 +687,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                     {updateResult.status === 'available' && (
                       <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
                           <strong style={{ color: 'var(--accent)' }}>
-                            Nueva actualización disponible: {updateResult.version}
+                            Nueva actualización disponible: {updateResult.latestVersion}
                           </strong>
                           {updateResult.downloadUrl && (
-                            <a
-                              href={updateResult.downloadUrl}
-                              target="_blank"
-                              rel="noreferrer"
+                            <button
+                              type="button"
                               className="btn btn-primary"
-                              style={{ height: 28, fontSize: 11.5 }}
+                              style={{ height: 30, fontSize: 12 }}
+                              disabled={installingUpdate}
+                              onClick={() => handleInstallOneClick(updateResult.downloadUrl!)}
                             >
                               <Download size={13} />
-                              <span>Descargar Instalador</span>
-                            </a>
+                              <span>
+                                {installingUpdate
+                                  ? 'Descargando e instalando…'
+                                  : 'Actualizar e instalar en 1 clic'}
+                              </span>
+                            </button>
                           )}
                         </div>
                         <div style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
@@ -718,7 +716,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                     {updateResult.status === 'error' && (
                       <div style={{ color: 'var(--danger)', fontSize: 12.5 }}>
-                        No se pudo conectar con el servidor de distribución. Verifica tu conexión a internet.
+                        No se pudo conectar con el servidor global de distribución. Verifica tu conexión a internet.
                       </div>
                     )}
                   </div>
@@ -734,11 +732,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   }}
                 >
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
-                    Canal Oficial de Distribución Automática
+                    Canal Global de Distribución por Internet (Cualquier Red)
                   </div>
                   <div style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--text-secondary)' }}>
-                    Cada nueva versión publicada genera automáticamente instaladores verificados <code>.exe</code> y <code>.msi</code> de 64 bits.
-                    Todos los equipos con <strong>Kova PDF</strong> pueden actualizarse en un clic conservando sus preferencias, logos y firmas locales.
+                    Cada nueva versión publicada distribuye automáticamente instaladores <code>.exe</code> y <code>.msi</code> a través de HTTPS global.
+                    Cualquier equipo con internet —dentro o fuera de tu oficina— recibe la mejora en 1 clic conservando sus firmas, logos y ajustes locales.
                   </div>
                 </div>
               </div>

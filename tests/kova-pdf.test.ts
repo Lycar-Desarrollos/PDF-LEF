@@ -404,7 +404,7 @@ test('7. Windows Tauri v2 High-DPI config, NSIS, ICO headers & spellCheck={false
   const tauriConf = JSON.parse(readFileSync(join(ROOT, 'src-tauri/tauri.conf.json'), 'utf8'));
   assert.equal(tauriConf.productName, 'Kova PDF');
   assert.equal(tauriConf.mainBinaryName, 'KovaPDF');
-  assert.equal(tauriConf.version, '2.0.0');
+  assert.equal(tauriConf.version, '2.1.0');
   assert.equal(tauriConf.identifier, 'studio.kova.pdf');
   assert.equal(tauriConf.bundle.publisher, 'Kova Studio');
   assert.equal(tauriConf.bundle.fileAssociations[0].name, 'KovaPDF.Document');
@@ -548,11 +548,13 @@ test('9. Hermetic Brand Cleanliness Audit: ZERO traces of forbidden legacy or th
 
   for (const file of filesToScan) {
     const raw = readFileSync(file, 'utf8');
-    // Strip only internal GitHub API/Release repository slug URLs ("Lycar-Desarrollos/PDF-LEF") before scanning
-    const sanitized = raw.replace(
-      /(?:api\.)?github\.com\/(?:repos\/)?Lycar-Desarrollos\/PDF-LEF/g,
-      'github.com/REPO_SLUG'
-    );
+    // Strip only internal GitHub API/Release/Pages repository slug URLs before scanning
+    const sanitized = raw
+      .replace(
+        /(?:api\.)?github\.com\/(?:repos\/)?Lycar-Desarrollos\/PDF-LEF/gi,
+        'github.com/REPO_SLUG'
+      )
+      .replace(/lycar-desarrollos\.github\.io\/PDF-LEF/gi, 'pages.kova.studio');
 
     for (const { label, regex } of forbiddenPatterns) {
       const match = sanitized.match(regex);
@@ -563,4 +565,23 @@ test('9. Hermetic Brand Cleanliness Audit: ZERO traces of forbidden legacy or th
       );
     }
   }
+});
+
+test('10. Global Internet Auto-Updater & Remote Manifest Control (any network worldwide)', async () => {
+  const { CURRENT_APP_VERSION, isNewerVersion, parseSemver } = await import(
+    '../src/utils/updater.ts'
+  );
+  assert.equal(CURRENT_APP_VERSION, '2.1.0');
+  assert.deepEqual(parseSemver('v2.1.0'), [2, 1, 0]);
+  assert.equal(isNewerVersion('v2.1.0', '2.0.0'), true);
+  assert.equal(isNewerVersion('v2.2.0', '2.1.0'), true);
+  assert.equal(isNewerVersion('v2.1.0', '2.1.0'), false);
+  assert.equal(isNewerVersion('v2.0.0', '2.1.0'), false);
+
+  const manifest = JSON.parse(readFileSync(join(ROOT, 'website/update-manifest.json'), 'utf8'));
+  assert.equal(manifest.product, 'Kova PDF');
+  assert.equal(manifest.version, '2.1.0');
+  assert.equal(typeof manifest.mandatory, 'boolean');
+  assert.ok(manifest.exeUrl.endsWith('.exe'));
+  assert.ok(manifest.msiUrl.endsWith('.msi'));
 });

@@ -86,6 +86,100 @@ fn register_default_pdf_app(_app: tauri::AppHandle) -> Result<String, String> {
     }
 }
 
+#[tauri::command]
+async fn download_and_install_update(
+    app: tauri::AppHandle,
+    download_url: String,
+) -> Result<String, String> {
+    let allowed_github = "https://github.com/Lycar-Desarrollos/PDF-LEF/releases/download/";
+    let allowed_pages = "https://lycar-desarrollos.github.io/PDF-LEF/";
+    let trimmed = download_url.trim().to_string();
+
+    if !(trimmed.starts_with(allowed_github) || trimmed.starts_with(allowed_pages))
+        || !trimmed.to_lowercase().ends_with(".exe")
+    {
+        return Err("Origen de actualización no verificado.".to_string());
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        use std::process::Command;
+
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+        let installer_path = std::env::temp_dir().join("KovaPDF_Update_Setup.exe");
+        let _ = fs::remove_file(&installer_path);
+        let installer_str = installer_path.to_string_lossy().to_string();
+
+        let status = Command::new("curl.exe")
+            .args([
+                "-fL",
+                "--retry",
+                "2",
+                "--connect-timeout",
+                "15",
+                "-o",
+                &installer_str,
+                &trimmed,
+            ])
+            .creation_flags(CREATE_NO_WINDOW)
+            .status()
+            .map_err(|e| format!("No se pudo descargar el instalador: {}", e))?;
+
+        if !status.success() {
+            return Err("Error al descargar el paquete de actualización desde internet.".to_string());
+        }
+
+        let meta = fs::metadata(&installer_path)
+            .map_err(|_| "El archivo de actualización descargado no se encontró.".to_string())?;
+        if meta.len() < 200_000 {
+            return Err("El archivo descargado está incompleto.".to_string());
+        }
+
+        let exe_path = std::env::current_exe()
+            .map_err(|e| format!("No se pudo ubicar el ejecutable actual: {}", e))?;
+        let exe_raw = exe_path.to_string_lossy();
+        let exe_str = exe_raw.trim_start_matches(r"\\?\").to_string();
+
+        let ps_script = format!(
+            "Start-Sleep -Milliseconds 1400; Start-Process -FilePath '{}' -ArgumentList '/S' -Wait; Start-Process -FilePath '{}'",
+            installer_str.replace('\'', "''"),
+            exe_str.replace('\'', "''")
+        );
+
+        Command::new("powershell.exe")
+            .args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-WindowStyle",
+                "Hidden",
+                "-Command",
+                &ps_script,
+            ])
+            .creation_flags(CREATE_NO_WINDOW)
+            .spawn()
+            .map_err(|e| format!("No se pudo iniciar la instalación automática: {}", e))?;
+
+        let app_handle = app.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(450));
+            app_handle.exit(0);
+        });
+
+        return Ok("Actualización descargada. Instalando y reiniciando Kova PDF...".to_string());
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = app;
+        Ok(format!(
+            "En Windows 10/11 descarga e instala silenciosamente desde: {}",
+            trimmed
+        ))
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -95,7 +189,8 @@ pub fn run() {
             read_pdf_bytes,
             write_pdf_bytes,
             get_startup_pdf_path,
-            register_default_pdf_app
+            register_default_pdf_app,
+            download_and_install_update
         ])
         .run(tauri::generate_context!())
         .expect("Error al iniciar Kova PDF");

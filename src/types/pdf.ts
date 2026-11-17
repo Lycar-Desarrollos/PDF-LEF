@@ -278,6 +278,7 @@ export interface AppSettings {
   autoCleanMetadataOnExport: boolean;
   confirmCloseUnsaved: boolean;
   strictOfflineIndicator: boolean;
+  autoCheckUpdates: boolean;
 }
 
 export type ToolModalKind =

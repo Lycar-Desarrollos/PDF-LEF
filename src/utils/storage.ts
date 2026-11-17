@@ -43,6 +43,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoCleanMetadataOnExport: false,
   confirmCloseUnsaved: true,
   strictOfflineIndicator: true,
+  autoCheckUpdates: true,
 };
 
 export function loadSettings(): AppSettings {

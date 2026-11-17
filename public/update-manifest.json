@@ -1,0 +1,15 @@
+{
+  "product": "Kova PDF",
+  "publisher": "Kova Studio",
+  "channel": "stable",
+  "version": "2.1.0",
+  "minRequiredVersion": "2.0.0",
+  "mandatory": false,
+  "publishedAt": "2026-11-17T20:10:00Z",
+  "exeUrl": "https://github.com/Lycar-Desarrollos/PDF-LEF/releases/download/v2.1.0/Kova.PDF_2.1.0_x64-setup.exe",
+  "msiUrl": "https://github.com/Lycar-Desarrollos/PDF-LEF/releases/download/v2.1.0/Kova.PDF_2.1.0_x64_en-US.msi",
+  "releaseUrl": "https://github.com/Lycar-Desarrollos/PDF-LEF/releases/tag/v2.1.0",
+  "announcement": "",
+  "notesEs": "• Nuevo icono oficial PDF con cinta envolvente 3D en azul para Windows 10 y Windows 11.\n• Auto-actualizador automático global por internet (instala en 1 clic sin importar en qué red o país esté el usuario).\n• Canal de control remoto de versiones y avisos globales.",
+  "notesEn": "• New official 3D blue ribbon PDF icon for Windows 10 and Windows 11.\n• Global internet 1-click silent auto-updater (works across any network worldwide).\n• Remote version control manifest and broadcast channel."
+}

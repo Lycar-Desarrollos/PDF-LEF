@@ -1,40 +1,34 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <defs>
-    <linearGradient id="docPaper" x1="88" y1="24" x2="424" y2="484" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="100%" stop-color="#F1F5F9"/>
-    </linearGradient>
-    <linearGradient id="docUpperWing" x1="216" y1="122" x2="378" y2="262" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#38BDF8"/>
-      <stop offset="100%" stop-color="#2563EB"/>
-    </linearGradient>
-    <linearGradient id="docLowerWing" x1="224" y1="246" x2="380" y2="392" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#1D4ED8"/>
-      <stop offset="100%" stop-color="#1E3A8A"/>
-    </linearGradient>
-    <linearGradient id="docBadge" x1="76" y1="358" x2="436" y2="446" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#1D4ED8"/>
-      <stop offset="100%" stop-color="#1E3A8A"/>
+    <linearGradient id="kovaRibbonFront" x1="44" y1="212" x2="468" y2="380" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
     </linearGradient>
   </defs>
 
-  <!-- Subtle Sheet Drop Shadow -->
-  <path d="M94 50C94 35.64 105.64 24 120 24H318L426 132V462C426 476.36 414.36 488 400 488H120C105.64 488 94 476.36 94 462V50Z" fill="#0F172A" opacity="0.11" transform="translate(0, 6)"/>
+  <!-- Subtle Ambient Drop Shadow -->
+  <path d="M92 40H316L420 144V488H92V40Z" fill="#0B0F17" opacity="0.12"/>
 
-  <!-- Clean Folded A4 Document Sheet -->
-  <path d="M92 46C92 31.64 103.64 20 118 20H316L424 128V458C424 472.36 412.36 484 398 484H118C103.64 484 92 472.36 92 458V46Z" fill="url(#docPaper)" stroke="#94A3B8" stroke-width="6" stroke-linejoin="round"/>
+  <!-- Bold Obsidian Document Frame & Solid Folded Top-Right Corner -->
+  <path d="M92 32H316L420 136V480H92V32Z" fill="#0B0F17"/>
 
-  <!-- Folded Top-Right Corner -->
-  <path d="M316 20V104C316 117.255 326.745 128 340 128H424L316 20Z" fill="#E2E8F0" stroke="#94A3B8" stroke-width="5" stroke-linejoin="round"/>
+  <!-- Crisp Pure White Document Interior -->
+  <path d="M118 58H298V154H394V454H118V58Z" fill="#FFFFFF"/>
 
-  <!-- Centered Kova Architectural Monogram -->
-  <g transform="translate(120, 88) scale(0.53)">
-    <rect x="142" y="120" width="66" height="272" rx="20" fill="#0F172A"/>
-    <path d="M226 256L302 256L374 358C382.5 370 373.9 392 358 392H296C287.5 392 279.6 387.7 274.8 380.6L214 290L226 256Z" fill="url(#docLowerWing)"/>
-    <path d="M296 120H358C373.9 120 382.5 142 374 154L276 286C271.2 292.5 263.6 296 255.5 296H214V238L280.6 129.4C284 123.6 290.2 120 296 120Z" fill="url(#docUpperWing)"/>
-  </g>
+  <!-- 3D Wrap-Around Side Ribbon Flaps -->
+  <polygon points="44,212 92,166 92,212" fill="#1E3A8A"/>
+  <polygon points="468,212 420,166 420,212" fill="#1E3A8A"/>
 
-  <!-- Clean Universal PDF Pill Badge -->
-  <rect x="76" y="358" width="360" height="86" rx="18" fill="url(#docBadge)"/>
-  <text x="256" y="418" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-weight="800" font-size="52" letter-spacing="4" fill="#FFFFFF">PDF</text>
+  <!-- Subtle Ribbon Underside Shadow on Paper -->
+  <rect x="92" y="380" width="328" height="14" fill="#0B0F17" opacity="0.16"/>
+
+  <!-- Front Cobalt Blue Ribbon Banner -->
+  <rect x="44" y="212" width="424" height="168" rx="4" fill="url(#kovaRibbonFront)"/>
+
+  <!-- Pure Vector Bold Geometric 'PDF' Letterforms (Mathematically Centered: x=132..380) -->
+  <path fill="#FFFFFF" fill-rule="evenodd" clip-rule="evenodd" d="
+    M132 250H174C193 250 205 261 205 279C205 297 193 308 174 308H154V342H132V250ZM154 268V290H171C179 290 183 286 183 279C183 272 179 268 171 268H154Z
+    M220 250H256C284 250 301 268 301 296C301 324 284 342 256 342H220V250ZM242 269V323H255C270 323 279 313 279 296C279 279 270 269 255 269H242Z
+    M318 250H380V269H340V288H374V307H340V342H318V250Z
+  "/>
 </svg>

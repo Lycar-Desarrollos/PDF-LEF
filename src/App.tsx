@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ShieldCheck } from 'lucide-react';
+import { Download, RefreshCw, ShieldCheck, X } from 'lucide-react';
 import type {
   ActiveTool,
   AppSettings,
@@ -38,6 +38,12 @@ import {
   registerDefaultPdfApp,
   savePdfBytesToDisk,
 } from './utils/tauriBridge';
+import {
+  CURRENT_APP_VERSION,
+  checkGlobalAppUpdate,
+  triggerOneClickUpdate,
+  type RemoteUpdateInfo,
+} from './utils/updater';
 import {
   createBlankPdfBytes,
   generateShowcaseSamplePdf,
@@ -105,12 +111,15 @@ export const App: React.FC = () => {
     loadRecentFiles()
   );
 
-  // Modals
+  // Modals & Global Internet Updater
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [toolModal, setToolModal] = useState<ToolModalKind>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
   const [toasts, setToasts] = useState<Array<{ id: string; text: string }>>([]);
+  const [remoteUpdate, setRemoteUpdate] = useState<RemoteUpdateInfo | null>(null);
+  const [updateBannerDismissed, setUpdateBannerDismissed] = useState(false);
+  const [installingAutoUpdate, setInstallingAutoUpdate] = useState(false);
 
   // Hidden image input for inserting or replacing an image on the active page
   const imageInputRef = useRef<HTMLInputElement | null>(null);
@@ -127,6 +136,39 @@ export const App: React.FC = () => {
   useEffect(() => {
     applySettingsToDom(settings);
   }, [settings]);
+
+  useEffect(() => {
+    if (!settings.autoCheckUpdates) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      checkGlobalAppUpdate(CURRENT_APP_VERSION)
+        .then((info) => {
+          if (cancelled) return;
+          if (info.status === 'available' || info.announcement) {
+            setRemoteUpdate(info);
+          }
+        })
+        .catch(() => {});
+    }, 1200);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [settings.autoCheckUpdates]);
+
+  const handleGlobalOneClickUpdate = useCallback(
+    async (downloadUrl?: string) => {
+      if (!downloadUrl) return;
+      setInstallingAutoUpdate(true);
+      try {
+        const res = await triggerOneClickUpdate(downloadUrl);
+        notify(res.message);
+      } finally {
+        setInstallingAutoUpdate(false);
+      }
+    },
+    [notify]
+  );
 
   const handleUpdateSettings = useCallback((next: AppSettings) => {
     setSettings(next);
@@ -1073,6 +1115,87 @@ export const App: React.FC = () => {
         onOpenSettings={() => setSettingsOpen(true)}
       />
 
+      {remoteUpdate &&
+        !updateBannerDismissed &&
+        (remoteUpdate.status === 'available' || Boolean(remoteUpdate.announcement)) && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              padding: '7px 16px',
+              background: 'linear-gradient(90deg, #1E3A8A 0%, #2563EB 100%)',
+              color: '#FFFFFF',
+              fontSize: 12.5,
+              borderBottom: '1px solid rgba(255,255,255,0.16)',
+              zIndex: 40,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+              <RefreshCw
+                size={14}
+                className={installingAutoUpdate ? 'spin-icon' : ''}
+                style={{ flexShrink: 0 }}
+              />
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {remoteUpdate.status === 'available' ? (
+                  <>
+                    <strong>Nueva actualización {remoteUpdate.latestVersion} disponible</strong>
+                    {remoteUpdate.announcement ? ` · ${remoteUpdate.announcement}` : ' · Instalación automática en 1 clic sin perder tus firmas ni ajustes.'}
+                  </>
+                ) : (
+                  <strong>{remoteUpdate.announcement}</strong>
+                )}
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              {remoteUpdate.status === 'available' && remoteUpdate.downloadUrl && (
+                <button
+                  type="button"
+                  disabled={installingAutoUpdate}
+                  onClick={() => handleGlobalOneClickUpdate(remoteUpdate.downloadUrl)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '4px 12px',
+                    borderRadius: 6,
+                    border: 'none',
+                    background: '#FFFFFF',
+                    color: '#1E3A8A',
+                    fontWeight: 700,
+                    fontSize: 12,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Download size={13} />
+                  <span>
+                    {installingAutoUpdate ? 'Descargando e instalando…' : 'Actualizar ahora'}
+                  </span>
+                </button>
+              )}
+              {!remoteUpdate.mandatory && (
+                <button
+                  type="button"
+                  onClick={() => setUpdateBannerDismissed(true)}
+                  aria-label="Cerrar aviso"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'rgba(255,255,255,0.85)',
+                    cursor: 'pointer',
+                    padding: 3,
+                    display: 'inline-flex',
+                  }}
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
       {/* Active Workspace: Home Hub vs Studio Document View */}
       {workspaceMode === 'home' || !activeTab ? (
         <HomeHub
@@ -1477,7 +1600,7 @@ export const App: React.FC = () => {
                 mm
               </span>
             )}
-            <span>Kova PDF v2.0 · Kova Studio</span>
+            <span>Kova PDF v{CURRENT_APP_VERSION} · Kova Studio</span>
           </div>
         </footer>
       )}
@@ -1600,6 +1723,58 @@ export const App: React.FC = () => {
           actions={commandActions}
           onClose={() => setCmdPaletteOpen(false)}
         />
+      )}
+
+      {remoteUpdate?.status === 'available' && remoteUpdate.mandatory && (
+        <div className="modal-backdrop">
+          <div className="modal-window" style={{ maxWidth: 480, padding: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <img
+                src="/brand/logo-mark.svg"
+                alt="Kova PDF"
+                style={{ width: 38, height: 38 }}
+              />
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>
+                  Actualización obligatoria disponible ({remoteUpdate.latestVersion})
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  Versión actual instalada: {remoteUpdate.currentVersion}
+                </div>
+              </div>
+            </div>
+            <div
+              style={{
+                fontSize: 13,
+                lineHeight: 1.55,
+                color: 'var(--text-secondary)',
+                padding: '12px 14px',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-subtle)',
+                marginBottom: 18,
+                whiteSpace: 'pre-wrap',
+              }}
+            >
+              {remoteUpdate.notes ||
+                'Esta actualización incluye mejoras esenciales de seguridad, precisión tipográfica y estabilidad para todos los equipos.'}
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ width: '100%', justifyContent: 'center', height: 40, fontSize: 13.5 }}
+              disabled={installingAutoUpdate}
+              onClick={() => handleGlobalOneClickUpdate(remoteUpdate.downloadUrl)}
+            >
+              <Download size={15} />
+              <span>
+                {installingAutoUpdate
+                  ? 'Descargando e instalando automáticamente…'
+                  : `Actualizar a ${remoteUpdate.latestVersion} ahora`}
+              </span>
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Toast Feedback */}
