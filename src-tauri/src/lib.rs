@@ -144,6 +144,7 @@ async fn download_and_install_update(
     {
         use std::io::Read;
         use std::os::windows::process::CommandExt;
+        use std::path::PathBuf;
         use std::process::Command;
 
         const CREATE_NO_WINDOW: u32 = 0x08000000;
