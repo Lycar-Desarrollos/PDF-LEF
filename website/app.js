@@ -1,4 +1,4 @@
-/* Kova PDF v2.0 — International Bilingual Portal & Release Resolver */
+/* Kova PDF v2.3 — International Bilingual Portal & Release Resolver */
 
 const I18N = {
   es: {
@@ -6,16 +6,15 @@ const I18N = {
     nav_suite: '16 Herramientas',
     nav_windows: 'Windows 11',
     nav_compare: 'Comparativa',
-    nav_samples: 'Auditoría Real',
     nav_cta: 'Descargar (.exe)',
     hero_kicker: 'KOVA STUDIO  /  WINDOWS 10 & 11 (X64)  /  ARQUITECTURA 100% LOCAL',
     hero_title: 'Precisión editorial para tus documentos <em>PDF</em>, directo en tu equipo.',
     hero_lead:
-      'Edita títulos a color y encabezados sobre fondos oscuros sin superposiciones, convierte documentos a Word editable (.docx) y Excel (.csv), elimina o recorta páginas, comprime archivos y estampa firmas transparentes sin exponer información confidencial en portales externos.',
+      'Edita y mueve textos, firmas, logotipos y páginas con guías magnéticas inteligentes, convierte documentos a Word editable (.docx) y Excel (.csv), recorta, comprime archivos y estampa firmas transparentes sin exponer información confidencial en portales externos.',
     hero_btn_exe_main: 'Descargar Kova PDF para Windows',
-    hero_btn_exe_sub: 'Instalador Nativo v2.2 (.exe · 64-bit · Gratis)',
+    hero_btn_exe_sub: 'Instalador Nativo v2.3 (.exe · 64-bit · Gratis)',
     hero_btn_msi: 'Paquete Empresarial (.msi)',
-    spec_1_b: 'v2.2.1 Estable',
+    spec_1_b: 'v2.3.0 Estable',
     spec_2_b: '0 Bytes en Nube',
     spec_2_t: 'Privacidad Total',
     spec_3_b: 'High-DPI Ready',
@@ -27,13 +26,13 @@ const I18N = {
     eng_eyebrow: 'INGENIERÍA VISUAL CALIBRADA',
     eng_title: 'Diseñado para documentos complejos del mundo real.',
     eng_sub:
-      'Desde portafolios de arquitectura con encabezados oscuros hasta facturas fiscales y contratos legales de múltiples páginas.',
+      'Desde propuestas ejecutivas con encabezados oscuros hasta facturas fiscales y contratos legales de múltiples páginas.',
     p1_title: 'Escáner Cromático Inteligente',
     p1_desc:
-      'Detecta automáticamente el color real de la tipografía y del fondo perimetral. Edita textos blancos sobre cintillos gris carbón o títulos en terracota conservando su estética exacta.',
-    p2_title: 'Cero Superposición ni Recortes',
+      'Detecta automáticamente el color real de la tipografía y del fondo perimetral. Edita y mueve textos blancos sobre cintillos oscuros o títulos a color conservando su estética exacta.',
+    p2_title: 'Movimiento Magnético Intuitivo',
     p2_desc:
-      'Delimitación vertical sensible a renglones vecinos y fusión de líneas justificadas. Reemplaza cifras o párrafos cerrados sin mordisquear letras superiores ni mostrar subrayados rojos.',
+      'Arrastra cualquier texto, firma, logotipo o flecha direccional con guías inteligentes de alineación, duplicado rápido (Alt + Arrastrar) y copiado entre páginas (Ctrl+C / Ctrl+V).',
     p3_title: 'Word (.docx) y Excel (.csv)',
     p3_desc:
       'Genera documentos Word OOXML editables con tablas estructuradas y hojas de cálculo UTF-8 listas para análisis financiero sin depender de convertidores en internet.',
@@ -56,11 +55,11 @@ const I18N = {
     win_li_2:
       '<b>Apertura instantánea al doble clic:</b> Binario compilado en Rust que inicia en una fracción de segundo con consumo mínimo de memoria RAM.',
     win_li_3:
-      '<b>Actualizaciones en todos tus equipos:</b> El verificador integrado detecta cada nueva versión publicada y permite actualizar cualquier computadora en 1 clic conservando firmas y ajustes.',
+      '<b>Actualizaciones en todos tus equipos:</b> El verificador integrado detecta cada nueva versión publicada y actualiza cualquier computadora en 1 clic conservando firmas y ajustes.',
     win_li_4:
       '<b>Despliegue empresarial (.exe y .msi):</b> Compatible con instalación silenciosa por políticas de grupo (GPO / Intune) para equipos corporativos.',
     exp_title: 'Explorador de Windows 11 · Documentos Corporativos',
-    upd_strip_text: '✓ Canal de actualizaciones automáticas v2.2 activo en todos los equipos',
+    upd_strip_text: '✓ Canal de actualizaciones automáticas v2.3 activo en todos los equipos',
     cmp_eyebrow: 'TRANSPARENCIA TÉCNICA',
     cmp_title: 'Por qué los equipos profesionales migran a Kova PDF.',
     cmp_sub:
@@ -73,7 +72,7 @@ const I18N = {
     cmp_r1_w: 'Subida obligatoria a servidores externos',
     cmp_r1_l: 'Sincronización y cuenta en nube requerida',
     cmp_r2_c: 'Edición sobre fondos oscuros y color',
-    cmp_r2_k: 'Escáner cromático automático + selector libre',
+    cmp_r2_k: 'Escáner cromático automático + movimiento libre',
     cmp_r2_w: 'Deja recuadros blancos visibles',
     cmp_r2_l: 'Disponible solo bajo pago mensual',
     cmp_r3_c: 'Conversión a Word (.docx) y Excel',
@@ -85,42 +84,13 @@ const I18N = {
     cmp_r4_w: 'Pega imágenes opacas sobre la línea',
     cmp_r4_l: 'Flujo lento de múltiples pasos',
     cmp_r5_c: 'Peso e inicio en Windows 11',
-    cmp_r5_k: 'Ultraligero (~9 MB · Abre en < 0.4 s)',
+    cmp_r5_k: 'Ultraligero (~3.1 MB · Abre en < 0.4 s)',
     cmp_r5_w: 'Depende de tu velocidad de internet',
     cmp_r5_l: 'Más de 1.5 GB y procesos residentes',
     cmp_r6_c: 'Licenciamiento',
     cmp_r6_k: 'Descarga directa sin suscripciones',
     cmp_r6_w: 'Suscripción recurrente para funciones pro',
     cmp_r6_l: 'Más de $240 USD anuales por usuario',
-    lab_eyebrow: 'LABORATORIO DE AUDITORÍA DOCUMENTAL',
-    lab_title: '6 documentos corporativos reales listos para auditar.',
-    lab_sub:
-      'Descarga cualquiera de estos expedientes de prueba —o ábrelos con un clic desde la pantalla principal de Kova PDF— para comprobar su precisión.',
-    doc6_cat: 'Portafolio Obra · Nuevo',
-    doc6_title: '06 · Portafolio de Obra e Infraestructura',
-    doc6_desc:
-      'Banner oscuro (#4A4A4A) con texto blanco, títulos en naranja terracota (Proyectos / Servicios), subtítulo MetroBus L5 - CDMX y tabla de presupuestos.',
-    doc1_cat: 'Cotización TI',
-    doc1_title: '01 · Cotización Comercial Hardware',
-    doc1_desc:
-      'Partidas con precios unitarios, desglose de IVA 16% ($52,908.00) y condiciones comerciales para auditar edición numérica y exportación a Excel.',
-    doc2_cat: 'Fiscal CFDI 4.0',
-    doc2_title: '02 · Factura Electrónica CFDI 4.0',
-    doc2_desc:
-      'Comprobante fiscal con emisor, receptor, UUID y sellos digitales. Ideal para probar sellos ejecutivos, conversión a Word y limpieza de metadatos.',
-    doc3_cat: 'Legal Multipágina',
-    doc3_title: '03 · Contrato Marco de Servicios',
-    doc3_desc:
-      'Clausulado jurídico completo y bloques de firma dual en página 2 para probar firmas caligráficas transparentes, numeración Bates y división.',
-    doc4_cat: 'Finanzas & KPIs',
-    doc4_title: '04 · Informe Financiero Ejecutivo',
-    doc4_desc:
-      'Encabezado institucional marino con texto blanco, tarjetas de EBITDA ($24.8M USD) y balance comparativo regional Q3/Q4.',
-    doc5_cat: 'Capital Humano',
-    doc5_title: '05 · Constancia Laboral y Nómina',
-    doc5_desc:
-      'Columnas paralelas de percepciones y deducciones, sueldo neto y certificación laboral lista para firma y sello institucional.',
-    doc_dl: 'Descargar PDF de prueba ↓',
     faq_eyebrow: 'PREGUNTAS FRECUENTES',
     faq_title: 'Respuestas claras sobre Kova PDF.',
     faq_q1: '¿Mis documentos se suben a internet al editar o convertir a Word?',
@@ -131,13 +101,13 @@ const I18N = {
       'Kova PDF analiza en tiempo real los píxeles del perímetro y del interior de cada letra antes de abrir el editor. Así conserva automáticamente letras blancas sobre banners oscuros o títulos corporativos en color, además de ofrecer selectores manuales en la barra rápida.',
     faq_q3: '¿Cómo se actualizan los equipos que ya tienen la aplicación instalada?',
     faq_a3:
-      'En Configuración encontrarás el módulo de Actualizaciones de Kova PDF, que consulta la última versión oficial publicada y descarga el instalador actualizado en un clic. En redes empresariales también puedes desplegar el paquete .msi mediante Intune o GPO.',
+      'En Configuración encontrarás el módulo de Actualizaciones de Kova PDF, que consulta la última versión oficial publicada y descarga e instala la nueva versión en un clic. En redes empresariales también puedes desplegar el paquete .msi mediante Intune o GPO.',
     faq_q4: '¿Se adapta bien a pantallas de laptops con escalado al 125% o 150%?',
     faq_a4:
-      'Sí. La versión 2.2 inicia maximizada automáticamente, ajusta el ancho de sus paneles según la resolución disponible y permite colapsar el inspector derecho para maximizar el área de lectura y edición del documento.',
-    ft_title: 'Instala Kova PDF v2.2 en tu equipo Windows hoy mismo.',
+      'Sí. Kova PDF v2.3 inicia maximizado automáticamente, ajusta el ancho de sus paneles según la resolución disponible y permite colapsar el inspector derecho para maximizar el área de lectura y edición del documento.',
+    ft_title: 'Instala Kova PDF v2.3 en tu equipo Windows hoy mismo.',
     ft_sub:
-      'Descarga directa del instalador oficial firmado para Windows 10 y Windows 11 (64-bit). 100% local, privado y sin suscripciones.',
+      'Descarga directa del instalador oficial para Windows 10 y Windows 11 (64-bit). 100% local, privado y sin suscripciones.',
     ft_btn_exe: 'Descargar Kova PDF (.exe)',
     ft_btn_sub: 'Windows 10 / 11 · x64 · Gratis',
     ft_copy: '© 2026 Kova Studio · Ingeniería documental 100% local para Windows. Todos los derechos reservados.',
@@ -147,16 +117,15 @@ const I18N = {
     nav_suite: '16-Tool Suite',
     nav_windows: 'Windows 11',
     nav_compare: 'Comparison',
-    nav_samples: 'Live Audit PDFs',
     nav_cta: 'Download (.exe)',
     hero_kicker: 'KOVA STUDIO  /  WINDOWS 10 & 11 (X64)  /  100% LOCAL ARCHITECTURE',
     hero_title: 'Architectural precision for your <em>PDF</em> documents, right on your desktop.',
     hero_lead:
-      'Edit colored headings and dark header banners with zero ghosting, convert files to editable Word (.docx) and Excel (.csv), remove or crop pages, compress file size, and place transparent signatures without uploading confidential files to third-party cloud servers.',
+      'Edit and move native text, signatures, logos, and pages with smart magnetic guides, convert files to editable Word (.docx) and Excel (.csv), crop, compress file size, and place transparent signatures without uploading confidential files to cloud servers.',
     hero_btn_exe_main: 'Download Kova PDF for Windows',
-    hero_btn_exe_sub: 'Native Installer v2.2 (.exe · 64-bit · Free)',
+    hero_btn_exe_sub: 'Native Installer v2.3 (.exe · 64-bit · Free)',
     hero_btn_msi: 'Enterprise Package (.msi)',
-    spec_1_b: 'v2.2.1 Stable',
+    spec_1_b: 'v2.3.0 Stable',
     spec_2_b: '0 Cloud Bytes',
     spec_2_t: 'Total Privacy',
     spec_3_b: 'High-DPI Ready',
@@ -168,13 +137,13 @@ const I18N = {
     eng_eyebrow: 'CALIBRATED VISUAL ENGINEERING',
     eng_title: 'Engineered for complex real-world business documents.',
     eng_sub:
-      'From architectural portfolios with dark charcoal headers to tax invoices, financial reports, and multi-page legal agreements.',
+      'From executive proposals with dark charcoal headers to tax invoices, financial reports, and multi-page legal agreements.',
     p1_title: 'Smart Chromatic Scanner',
     p1_desc:
-      'Automatically samples both perimeter background pixels and interior glyph ink. Edit white titles over dark slate banners or terracotta headings with exact color fidelity.',
-    p2_title: 'Zero Ghosting or Line Clipping',
+      'Automatically samples both perimeter background pixels and interior glyph ink. Edit and move white titles over dark slate banners or colored headings with exact fidelity.',
+    p2_title: 'Magnetic Direct Manipulation',
     p2_desc:
-      'Neighbor-aware vertical bounds and justified-line fusion let you edit tight paragraphs and numbers cleanly without shaving adjacent lines or showing red spellcheck squiggles.',
+      'Drag any text block, signature, logo, or directional arrow with smart alignment guides, Alt+Drag cloning, and cross-page Ctrl+C / Ctrl+V.',
     p3_title: 'Editable Word (.docx) & Excel (.csv)',
     p3_desc:
       'Exports genuine OOXML Word documents with reconstructed tables and UTF-8 spreadsheets ready for financial modeling—completely offline.',
@@ -197,11 +166,11 @@ const I18N = {
     win_li_2:
       '<b>Instant double-click launch:</b> Native Rust binary opens in a fraction of a second with minimal RAM footprint.',
     win_li_3:
-      '<b>Fleet-ready update checker:</b> Built-in version checker detects new official releases and downloads the updated installer in one click while keeping preferences intact.',
+      '<b>Fleet-ready update checker:</b> Built-in version checker detects new official releases and installs updates in one click while keeping preferences intact.',
     win_li_4:
       '<b>Enterprise deployment (.exe & .msi):</b> Ready for silent rollout across corporate workstations via Microsoft Intune or Group Policy.',
     exp_title: 'Windows 11 File Explorer · Corporate Documents',
-    upd_strip_text: '✓ Automatic v2.0 update channel active inside Settings',
+    upd_strip_text: '✓ Automatic v2.3 update channel active across workstations',
     cmp_eyebrow: 'TECHNICAL TRANSPARENCY',
     cmp_title: 'Why professional teams standardize on Kova PDF.',
     cmp_sub:
@@ -214,7 +183,7 @@ const I18N = {
     cmp_r1_w: 'Mandatory upload to external servers',
     cmp_r1_l: 'Cloud account & background sync required',
     cmp_r2_c: 'Editing on dark banners & colored text',
-    cmp_r2_k: 'Automatic chromatic scanner + manual pickers',
+    cmp_r2_k: 'Automatic chromatic scanner + magnetic move',
     cmp_r2_w: 'Leaves visible white patch boxes',
     cmp_r2_l: 'Locked behind monthly subscription',
     cmp_r3_c: 'PDF to Word (.docx) & Excel (.csv)',
@@ -226,42 +195,13 @@ const I18N = {
     cmp_r4_w: 'Pastes opaque white boxes over lines',
     cmp_r4_l: 'Multi-step manual workflow',
     cmp_r5_c: 'Footprint & startup on Windows 11',
-    cmp_r5_k: 'Ultralight (~9 MB · Opens in < 0.4 s)',
+    cmp_r5_k: 'Ultralight (~3.1 MB · Opens in < 0.4 s)',
     cmp_r5_w: 'Depends on upload/download bandwidth',
     cmp_r5_l: 'Over 1.5 GB + background services',
     cmp_r6_c: 'Licensing model',
     cmp_r6_k: 'Direct download · Zero subscriptions',
     cmp_r6_w: 'Recurring monthly fees for pro tools',
     cmp_r6_l: 'Over $240 USD/year per seat',
-    lab_eyebrow: 'DOCUMENT AUDIT LABORATORY',
-    lab_title: '6 real corporate PDFs ready for hands-on testing.',
-    lab_sub:
-      'Download any of these production-grade test files—or open them in one click from Kova PDF’s Home screen—to verify layout and color fidelity.',
-    doc6_cat: 'Portfolio · New',
-    doc6_title: '06 · Infrastructure & Architecture Portfolio',
-    doc6_desc:
-      'Dark charcoal header (#4A4A4A) with white text, terracotta headings (Proyectos / Servicios), MetroBus L5 - CDMX subtitle, and budget schedule.',
-    doc1_cat: 'IT Quotation',
-    doc1_title: '01 · Commercial Hardware Quotation',
-    doc1_desc:
-      'Line items, 16% VAT breakdown ($52,908.00), and commercial terms ideal for testing numeric edits and Excel table extraction.',
-    doc2_cat: 'Tax Invoice',
-    doc2_title: '02 · Electronic Tax Invoice (CFDI 4.0)',
-    doc2_desc:
-      'Structured issuer/recipient blocks, fiscal UUID, and digital seals. Great for testing executive stamps, Word export, and metadata scrubbing.',
-    doc3_cat: 'Multi-Page Legal',
-    doc3_title: '03 · Master Services Agreement',
-    doc3_desc:
-      'Two-page legal contract with dual signature blocks on page 2 for testing transparent signatures, Bates numbering, and page splitting.',
-    doc4_cat: 'Finance & KPIs',
-    doc4_title: '04 · Executive Financial Report',
-    doc4_desc:
-      'Deep navy header band, EBITDA metric cards ($24.8M USD), and regional Q3/Q4 breakdown table.',
-    doc5_cat: 'HR & Payroll',
-    doc5_title: '05 · Employment Certificate & Payslip',
-    doc5_desc:
-      'Parallel earnings and deductions columns, net pay summary, and HR certification block.',
-    doc_dl: 'Download test PDF ↓',
     faq_eyebrow: 'FREQUENTLY ASKED QUESTIONS',
     faq_title: 'Clear answers about Kova PDF.',
     faq_q1: 'Are my PDFs ever uploaded online when editing or converting to Word?',
@@ -272,11 +212,11 @@ const I18N = {
       'Before opening the inline editor, Kova PDF scans perimeter background pixels and interior glyph ink pixels, automatically matching white text over dark banners or colored corporate titles while giving you instant color pickers.',
     faq_q3: 'How can we push updates to computers that already have the app installed?',
     faq_a3:
-      'Settings includes a built-in Kova PDF Update Checker that queries the latest official release and downloads the new installer in one click. IT teams can also deploy the .msi package via Intune or GPO.',
+      'Settings includes a built-in Kova PDF Update Checker that queries the latest official release and downloads and installs the update in one click. IT teams can also deploy the .msi package via Intune or GPO.',
     faq_q4: 'Does it fit cleanly on Windows 11 laptops with 125% or 150% DPI scaling?',
     faq_a4:
-      'Yes. Version 2.0 launches maximized by default, scales sidebars fluidly, and lets you collapse the right-hand inspector in one click for maximum canvas space.',
-    ft_title: 'Install Kova PDF v2.0 on your Windows PC today.',
+      'Yes. Kova PDF v2.3 launches maximized by default, scales sidebars fluidly, and lets you collapse the right-hand inspector in one click for maximum canvas space.',
+    ft_title: 'Install Kova PDF v2.3 on your Windows PC today.',
     ft_sub:
       'Direct download of the official installer for Windows 10 and Windows 11 (64-bit). 100% local, private, and subscription-free.',
     ft_btn_exe: 'Download Kova PDF (.exe)',
@@ -580,10 +520,10 @@ function renderHeroStage() {
   const docLabel = document.getElementById('studio-active-doc');
   if (docLabel) {
     const map = {
-      chromatic: '06_Portafolio_Obra_Proyectos.pdf',
-      convert: '01_Cotizacion_Comercial_Abasteo.pdf',
-      pages: '03_Contrato_Prestacion_Servicios.pdf',
-      sign: '05_Certificado_Laboral_Nomina.pdf',
+      chromatic: 'Propuesta_Ejecutiva_2026.pdf',
+      convert: 'Cotizacion_Comercial_2026.pdf',
+      pages: 'Contrato_Marco_Servicios.pdf',
+      sign: 'Constancia_Corporativa.pdf',
     };
     docLabel.textContent = map[currentMode] || map.chromatic;
   }

@@ -14,6 +14,7 @@ import { fileToDataUrl, removeSignatureBackground } from '../utils/imageUtils';
 
 interface SignatureModalProps {
   savedSignatures: SavedSignature[];
+  hasActivePage?: boolean;
   onSaveNewSignature: (sig: SavedSignature) => void;
   onDeleteSavedSignature: (id: string) => void;
   onPlaceSignatureOnPage: (dataUrl: string, signerLabel: string) => void;
@@ -28,6 +29,7 @@ const INK_COLORS = [
 
 export const SignatureModal: React.FC<SignatureModalProps> = ({
   savedSignatures,
+  hasActivePage = true,
   onSaveNewSignature,
   onDeleteSavedSignature,
   onPlaceSignatureOnPage,
@@ -134,7 +136,9 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
       createdAt: new Date().toLocaleDateString('es-ES'),
     };
     onSaveNewSignature(saved);
-    onPlaceSignatureOnPage(dataUrl, saved.name);
+    if (hasActivePage) {
+      onPlaceSignatureOnPage(dataUrl, saved.name);
+    }
     onClose();
   };
 
@@ -164,7 +168,9 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                   marginBottom: 8,
                 }}
               >
-                Mis Firmas Guardadas (Clic para estampar en la página actual)
+                {hasActivePage
+                  ? 'Mis Firmas Guardadas (Clic para estampar en la página actual)'
+                  : 'Mis Firmas Guardadas (Clic para abrir un PDF y estampar)'}
               </div>
               <div
                 style={{
@@ -410,7 +416,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
           </button>
           <button type="button" className="btn btn-primary" onClick={handleCreateAndPlace}>
             <Check size={14} />
-            <span>Guardar y Estampar en Página</span>
+            <span>{hasActivePage ? 'Guardar y Estampar en Página' : 'Guardar en Bóveda Local'}</span>
           </button>
         </div>
       </div>

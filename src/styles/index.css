@@ -871,21 +871,24 @@ textarea {
   position: absolute;
   border: 1px dashed transparent;
   border-radius: 3px;
-  cursor: text;
+  cursor: grab;
   box-sizing: border-box;
   transition: border-color 100ms ease, background-color 100ms ease;
   z-index: 35;
 }
 .native-text-hotspot:hover {
-  border-color: rgba(37, 99, 235, 0.65);
+  border-color: rgba(37, 99, 235, 0.72);
   background-color: rgba(37, 99, 235, 0.05);
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.22);
+}
+.native-text-hotspot:active {
+  cursor: grabbing;
 }
 
 .native-text-box {
   position: absolute;
   border-radius: 3px;
-  cursor: pointer;
+  cursor: grab;
   transition: border-color 100ms ease, box-shadow 100ms ease;
   display: flex;
   align-items: center;
@@ -894,11 +897,14 @@ textarea {
   box-sizing: border-box;
   z-index: 40;
 }
+.native-text-box:active:not(.selected) {
+  cursor: grabbing;
+}
 .native-text-box.modified:not(.selected) {
   border: 1px dashed transparent;
 }
 .native-text-box.modified:not(.selected):hover {
-  border-color: rgba(37, 99, 235, 0.55);
+  border-color: rgba(37, 99, 235, 0.65);
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
 .native-text-box.selected {
@@ -910,6 +916,26 @@ textarea {
 .native-text-box.readonly-modified {
   border-color: transparent;
   pointer-events: none;
+}
+.native-drag-handle {
+  position: absolute;
+  left: -15px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 13px;
+  height: 24px;
+  border-radius: 4px 0 0 4px;
+  background: var(--accent);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.32);
+  z-index: 68;
+}
+.native-drag-handle:active {
+  cursor: grabbing;
 }
 .native-text-editor {
   width: 100%;
@@ -932,11 +958,14 @@ textarea {
 /* Movable & Resizable Overlay Elements */
 .overlay-item {
   position: absolute;
-  cursor: move;
+  cursor: grab;
   user-select: none;
 }
+.overlay-item:active {
+  cursor: grabbing;
+}
 .overlay-item:hover:not(.selected) {
-  outline: 1px dashed var(--accent-border);
+  outline: 1.5px dashed var(--accent-border);
 }
 .overlay-item.selected {
   outline: 1.5px solid var(--accent);
@@ -962,6 +991,50 @@ textarea {
 .resize-handle.s  { bottom: -5px; left: calc(50% - 4.5px); cursor: ns-resize; }
 .resize-handle.w  { left: -5px; top: calc(50% - 4.5px); cursor: ew-resize; }
 .resize-handle.e  { right: -5px; top: calc(50% - 4.5px); cursor: ew-resize; }
+
+/* 360° Directional Endpoint Handles (Arrows & Dimensions) */
+.endpoint-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid var(--accent);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.28);
+  cursor: crosshair;
+  z-index: 70;
+  transition: transform 90ms ease;
+}
+.endpoint-handle:hover {
+  transform: scale(1.25);
+  background: var(--accent);
+}
+
+/* Live Floating Manipulation Telemetry Pill */
+.live-drag-hud {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.88);
+  color: #f8fafc;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  pointer-events: none;
+  z-index: 95;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.25);
+  white-space: nowrap;
+}
+
+.recent-file-row:hover {
+  background: var(--bg-surface-subtle);
+}
 
 /* Floating Quick Action Bar above Selected Object */
 .object-quickbar {

@@ -393,10 +393,11 @@ export async function compileTabToPdfBytes(
           borderOpacity: opacity,
         });
       } else if (el.kind === 'arrow') {
-        const startX = boxX;
-        const startY = boxY + boxH;
-        const endX = boxX + boxW;
-        const endY = boxY;
+        const hasPts = el.points && el.points.length >= 2;
+        const startX = hasPts ? el.points![0].x * pw : boxX;
+        const startY = hasPts ? ph - el.points![0].y * ph : boxY + boxH;
+        const endX = hasPts ? el.points![1].x * pw : boxX + boxW;
+        const endY = hasPts ? ph - el.points![1].y * ph : boxY;
         const strokeCol = hexToPdfRgb(el.color, '#2563EB');
         const thick = el.strokeWidth || 2.2;
         pdfPage.drawLine({

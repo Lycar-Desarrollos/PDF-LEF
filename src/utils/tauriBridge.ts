@@ -163,6 +163,22 @@ export async function checkStartupOpenedPdfFromWindows(): Promise<OpenedPdfPaylo
   }
 }
 
+export async function readPdfFromLocalPath(filePath: string): Promise<OpenedPdfPayload | null> {
+  if (!isTauriDesktop() || !filePath) return null;
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const rawBytes = await invoke<number[]>('read_pdf_bytes', { path: filePath });
+    const fileName = filePath.split(/[\\/]/).pop() || 'Documento.pdf';
+    return {
+      fileName,
+      filePath,
+      bytes: new Uint8Array(rawBytes),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function registerDefaultPdfApp(): Promise<{ native: boolean; message: string }> {
   if (isTauriDesktop()) {
     try {

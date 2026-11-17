@@ -5,6 +5,7 @@ import {
   Bold,
   Copy,
   GripHorizontal,
+  GripVertical,
   RotateCcw,
   Trash2,
   Wand2,
@@ -56,6 +57,7 @@ interface PdfCanvasStageProps {
   onReorderElementLayer: (id: string, dir: 'front' | 'back') => void;
   onDeleteOverlayElement: (id: string) => void;
   onSwitchToSelectTool: () => void;
+  onActivateEditPdfText?: () => void;
   onChangeZoom?: (zoom: number) => void;
 }
 
@@ -94,6 +96,7 @@ interface InteractivePageCardProps {
   onReorderElementLayer: (id: string, dir: 'front' | 'back') => void;
   onDeleteOverlayElement: (id: string) => void;
   onSwitchToSelectTool: () => void;
+  onActivateEditPdfText?: () => void;
 }
 
 const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
@@ -118,6 +121,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
   onReorderElementLayer,
   onDeleteOverlayElement,
   onSwitchToSelectTool,
+  onActivateEditPdfText,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
@@ -128,8 +132,9 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
   const [editingOverlayId, setEditingOverlayId] = useState<string | null>(null);
   const [snapV, setSnapV] = useState<number | null>(null);
   const [snapH, setSnapH] = useState<number | null>(null);
+  const [dragHud, setDragHud] = useState<string | null>(null);
 
-  // Live drawing preview state (shapes, highlights, ink, dimension lines)
+  // Live drawing preview state (shapes, highlights, ink, dimension lines, directional arrows)
   const [draftBox, setDraftBox] = useState<{
     x: number;
     y: number;
@@ -143,6 +148,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
     x2: number;
     y2: number;
     label: string;
+    isArrow?: boolean;
   } | null>(null);
 
   // Render PDF page canvas cleanly on zoom / rotation change
@@ -200,13 +206,20 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
     };
   };
 
-  // Dragging an Overlay Element
+  // Combine extracted native text items with edited versions
+  const baseExtracted = tab.extractedPageTexts[pageDesc.id] || [];
+  const mergedNativeItems: NativePdfTextItem[] =
+    activeTool === 'edit-pdf-text' && isEditableMode
+      ? baseExtracted.map((base) => tab.nativeTextEdits[base.id] || base)
+      : Object.values(tab.nativeTextEdits).filter(
+          (nt) => nt.pageId === pageDesc.id && (nt.modified || nt.deleted)
+        );
+
+  // Dragging an Overlay Element (supports Multi-Edge Magnetic Snap, Shift Axis-Lock, and Alt-Drag Quick Clone!)
   const startMoveOverlay = (e: React.MouseEvent, el: PdfOverlayElement) => {
-    if (!isEditableMode || el.locked) return;
+    if (!isEditableMode || el.locked || activeTool === 'pan') return;
     if (editingOverlayId === el.id) return;
     e.stopPropagation();
-    onSelectElement(el.id);
-    onSelectNativeText(null);
 
     const rect = overlayRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -215,31 +228,112 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
     const origX = el.x;
     const origY = el.y;
     const origPoints = el.points ? el.points.map((p) => ({ ...p })) : undefined;
+    let targetId = el.id;
+    let clonedViaAlt = false;
     let moved = false;
 
+    onSelectElement(el.id);
+    onSelectNativeText(null);
+
+    const peerOverlays = tab.elements.filter((p) => p.pageId === pageDesc.id && p.id !== el.id);
+    const xTargets: number[] = [0.06, 0.5, 0.94];
+    const yTargets: number[] = [0.5];
+    for (const peer of peerOverlays) {
+      xTargets.push(peer.x, peer.x + peer.width / 2, peer.x + peer.width);
+      yTargets.push(peer.y, peer.y + peer.height / 2, peer.y + peer.height);
+    }
+    for (const nt of baseExtracted.slice(0, 40)) {
+      xTargets.push(nt.x);
+    }
+
     const onMove = (ev: MouseEvent) => {
-      const dx = (ev.clientX - startClientX) / rect.width;
-      const dy = (ev.clientY - startClientY) / rect.height;
-      if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) moved = true;
+      const pxDist = Math.hypot(ev.clientX - startClientX, ev.clientY - startClientY);
+      if (!moved && pxDist < 2.5) return;
+
+      if (!moved && ev.altKey && !clonedViaAlt) {
+        clonedViaAlt = true;
+        const cloneId = `${el.kind}_alt_${Date.now()}`;
+        const clonedEl: PdfOverlayElement = {
+          ...el,
+          id: cloneId,
+          zIndex: tab.elements.length + 2,
+          points: origPoints ? origPoints.map((p) => ({ ...p })) : undefined,
+        };
+        onAddOverlayElement(clonedEl);
+        onSelectElement(cloneId);
+        targetId = cloneId;
+      }
+
+      moved = true;
+      let dx = (ev.clientX - startClientX) / rect.width;
+      let dy = (ev.clientY - startClientY) / rect.height;
+
+      // Shift-drag locks movement strictly to horizontal or vertical axis
+      let axisLocked = false;
+      if (ev.shiftKey) {
+        axisLocked = true;
+        if (Math.abs(dx) >= Math.abs(dy)) {
+          dy = 0;
+        } else {
+          dx = 0;
+        }
+      }
 
       let nextX = Math.max(0, Math.min(1 - el.width, origX + dx));
       let nextY = Math.max(0, Math.min(1 - el.height, origY + dy));
+      let snapNote = '';
 
       if (settings.snapGuides) {
-        const centerX = nextX + el.width / 2;
-        const centerY = nextY + el.height / 2;
-        if (Math.abs(centerX - 0.5) < 0.012) {
-          nextX = 0.5 - el.width / 2;
-          setSnapV(0.5);
-        } else {
-          setSnapV(null);
+        let foundV: number | null = null;
+        let foundH: number | null = null;
+        const thresh = 0.009;
+
+        // Check center, left, and right edges against xTargets
+        for (const tx of xTargets) {
+          if (Math.abs(nextX + el.width / 2 - tx) < thresh) {
+            nextX = Math.max(0, Math.min(1 - el.width, tx - el.width / 2));
+            foundV = tx;
+            snapNote = Math.abs(tx - 0.5) < 0.001 ? 'Centrado H' : 'Alineado';
+            break;
+          }
+          if (Math.abs(nextX - tx) < thresh) {
+            nextX = Math.max(0, Math.min(1 - el.width, tx));
+            foundV = tx;
+            snapNote = 'Alineado';
+            break;
+          }
+          if (Math.abs(nextX + el.width - tx) < thresh) {
+            nextX = Math.max(0, Math.min(1 - el.width, tx - el.width));
+            foundV = tx;
+            snapNote = 'Alineado';
+            break;
+          }
         }
-        if (Math.abs(centerY - 0.5) < 0.012) {
-          nextY = 0.5 - el.height / 2;
-          setSnapH(0.5);
-        } else {
-          setSnapH(null);
+
+        // Check middle, top, and bottom edges against yTargets
+        for (const ty of yTargets) {
+          if (Math.abs(nextY + el.height / 2 - ty) < thresh) {
+            nextY = Math.max(0, Math.min(1 - el.height, ty - el.height / 2));
+            foundH = ty;
+            snapNote = snapNote || (Math.abs(ty - 0.5) < 0.001 ? 'Centrado V' : 'Alineado');
+            break;
+          }
+          if (Math.abs(nextY - ty) < thresh) {
+            nextY = Math.max(0, Math.min(1 - el.height, ty));
+            foundH = ty;
+            snapNote = snapNote || 'Alineado';
+            break;
+          }
+          if (Math.abs(nextY + el.height - ty) < thresh) {
+            nextY = Math.max(0, Math.min(1 - el.height, ty - el.height));
+            foundH = ty;
+            snapNote = snapNote || 'Alineado';
+            break;
+          }
         }
+
+        setSnapV(axisLocked && dy === 0 ? null : foundV);
+        setSnapH(axisLocked && dx === 0 ? origY + el.height / 2 : foundH);
       }
 
       const patch: Partial<PdfOverlayElement> = { x: nextX, y: nextY };
@@ -251,7 +345,16 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
           y: Math.max(0, Math.min(1, pt.y + actualDy)),
         }));
       }
-      onUpdateOverlayElement(el.id, patch, false);
+      onUpdateOverlayElement(targetId, patch, false);
+
+      const modeTag = clonedViaAlt
+        ? 'Copia rápida · '
+        : axisLocked
+        ? 'Eje fijo · '
+        : snapNote
+        ? `${snapNote} · `
+        : '';
+      setDragHud(`${modeTag}X ${(nextX * 100).toFixed(1)}% · Y ${(nextY * 100).toFixed(1)}%`);
     };
 
     const onUp = () => {
@@ -259,9 +362,84 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
       window.removeEventListener('mouseup', onUp);
       setSnapV(null);
       setSnapH(null);
-      if (moved) {
-        onUpdateOverlayElement(el.id, {}, true);
+      setDragHud(null);
+      if (moved && !clonedViaAlt) {
+        onUpdateOverlayElement(targetId, {}, true);
       }
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  // Dragging 360° Start/End Endpoints on Arrows & Engineering Dimensions
+  const startDragEndpoint = (
+    e: React.MouseEvent,
+    el: PdfOverlayElement,
+    pointIndex: 0 | 1
+  ) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const basePts =
+      el.points && el.points.length >= 2
+        ? [
+            { x: el.points[0].x, y: el.points[0].y },
+            { x: el.points[1].x, y: el.points[1].y },
+          ]
+        : [
+            { x: el.x, y: el.y + el.height },
+            { x: el.x + el.width, y: el.y },
+          ];
+
+    const onMove = (ev: MouseEvent) => {
+      const { nx, ny } = getNormCoords(ev.clientX, ev.clientY);
+      const otherIdx = pointIndex === 0 ? 1 : 0;
+      let px = nx;
+      let py = ny;
+      if (ev.shiftKey) {
+        const dx = px - basePts[otherIdx].x;
+        const dy = py - basePts[otherIdx].y;
+        if (Math.abs(dx) >= Math.abs(dy)) py = basePts[otherIdx].y;
+        else px = basePts[otherIdx].x;
+      }
+      const nextPts =
+        pointIndex === 0 ? [{ x: px, y: py }, basePts[1]] : [basePts[0], { x: px, y: py }];
+      const minX = Math.min(nextPts[0].x, nextPts[1].x);
+      const maxX = Math.max(nextPts[0].x, nextPts[1].x);
+      const minY = Math.min(nextPts[0].y, nextPts[1].y);
+      const maxY = Math.max(nextPts[0].y, nextPts[1].y);
+      const patch: Partial<PdfOverlayElement> = {
+        x: Math.max(0, minX - 0.012),
+        y: Math.max(0, minY - 0.012),
+        width: Math.max(0.035, maxX - minX + 0.024),
+        height: Math.max(0.028, maxY - minY + 0.024),
+        points: nextPts,
+      };
+      if (el.kind === 'dimension') {
+        patch.text = formatEngineeringLength(
+          pageDesc.widthPt,
+          pageDesc.heightPt,
+          nextPts[0],
+          nextPts[1],
+          tab.scaleCalibration
+        );
+      }
+      onUpdateOverlayElement(el.id, patch, false);
+      const deg = Math.round(
+        (Math.atan2(nextPts[1].y - nextPts[0].y, nextPts[1].x - nextPts[0].x) * 180) / Math.PI
+      );
+      setDragHud(
+        el.kind === 'dimension'
+          ? `Medida: ${patch.text} · ${deg}°`
+          : `Dirección: ${deg}° (Shift = recto)`
+      );
+    };
+
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      setDragHud(null);
+      onUpdateOverlayElement(el.id, {}, true);
     };
 
     window.addEventListener('mousemove', onMove);
@@ -285,6 +463,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
     const oy = el.y;
     const ow = el.width;
     const oh = el.height;
+    const origPts = el.points ? el.points.map((p) => ({ ...p })) : undefined;
     const ratio = ow / Math.max(0.01, oh);
 
     const onMove = (ev: MouseEvent) => {
@@ -296,29 +475,35 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
       let nw = ow;
       let nh = oh;
 
-      if (dir.includes('e')) nw = Math.max(0.025, Math.min(1 - ox, ow + dx));
-      if (dir.includes('s')) nh = Math.max(0.016, Math.min(1 - oy, oh + dy));
+      if (dir.includes('e')) nw = Math.max(0.02, Math.min(1 - ox, ow + dx));
+      if (dir.includes('s')) nh = Math.max(0.014, Math.min(1 - oy, oh + dy));
       if (dir.includes('w')) {
-        const maxLeftDelta = ow - 0.025;
+        const maxLeftDelta = ow - 0.02;
         const clampedDx = Math.max(-ox, Math.min(maxLeftDelta, dx));
         nx = ox + clampedDx;
         nw = ow - clampedDx;
       }
       if (dir.includes('n')) {
-        const maxTopDelta = oh - 0.016;
+        const maxTopDelta = oh - 0.014;
         const clampedDy = Math.max(-oy, Math.min(maxTopDelta, dy));
         ny = oy + clampedDy;
         nh = oh - clampedDy;
       }
 
       if (
-        el.preserveAspect &&
+        (el.preserveAspect || ev.shiftKey) &&
         (dir === 'se' || dir === 'nw' || dir === 'ne' || dir === 'sw')
       ) {
-        nh = Math.max(0.016, nw / ratio);
+        nh = Math.max(0.014, nw / ratio);
       }
 
       const patch: Partial<PdfOverlayElement> = { x: nx, y: ny, width: nw, height: nh };
+      if (origPts && ow > 0.001 && oh > 0.001) {
+        patch.points = origPts.map((pt) => ({
+          x: nx + ((pt.x - ox) / ow) * nw,
+          y: ny + ((pt.y - oy) / oh) * nh,
+        }));
+      }
       if (el.kind === 'area') {
         patch.text = formatEngineeringArea(
           pageDesc.widthPt,
@@ -329,11 +514,15 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
         );
       }
       onUpdateOverlayElement(el.id, patch, false);
+      const wMm = Math.round(nw * pageDesc.widthPt * 0.3528);
+      const hMm = Math.round(nh * pageDesc.heightPt * 0.3528);
+      setDragHud(`Tamaño · ${wMm} × ${hMm} mm`);
     };
 
     const onUp = () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
+      setDragHud(null);
       onUpdateOverlayElement(el.id, {}, true);
     };
 
@@ -341,28 +530,21 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
     window.addEventListener('mouseup', onUp);
   };
 
-  // Combine extracted native text items with edited versions
-  const baseExtracted = tab.extractedPageTexts[pageDesc.id] || [];
-  const mergedNativeItems: NativePdfTextItem[] =
-    activeTool === 'edit-pdf-text' && isEditableMode
-      ? baseExtracted.map((base) => tab.nativeTextEdits[base.id] || base)
-      : Object.values(tab.nativeTextEdits).filter(
-          (nt) => nt.pageId === pageDesc.id && (nt.modified || nt.deleted)
-        );
-
-  // Dragging / Moving an Existing Native PDF Text Block with Magnetic Row/Column Snap!
+  // 1-Motion Drag-or-Click for Existing Native PDF Text Blocks!
+  // - Drag (> 3px): moves the native text block immediately with magnetic row/column/center snap!
+  // - Click without drag (<= 3px): selects & opens inline text editing!
   const startMoveNativeText = (
     e: React.MouseEvent,
     item: NativePdfTextItem,
-    focusTarget?: HTMLTextAreaElement | null
+    deferSelectUntilClickOrDrag = false
   ) => {
-    if (activeTool === 'pan') return;
+    if (activeTool === 'pan' || e.button !== 0) return;
     e.stopPropagation();
-    if (focusTarget) {
+    if (!deferSelectUntilClickOrDrag) {
       e.preventDefault();
+      onSelectNativeText(item.id);
+      onSelectElement(null);
     }
-    onSelectNativeText(item.id);
-    onSelectElement(null);
 
     const rect = overlayRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -376,13 +558,26 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
     const peers = mergedNativeItems.filter((p) => !p.deleted && p.id !== item.id);
 
     const onMove = (ev: MouseEvent) => {
-      const dx = (ev.clientX - startClientX) / rect.width;
-      const dy = (ev.clientY - startClientY) / rect.height;
-      if (Math.abs(dx) > 0.002 || Math.abs(dy) > 0.002) moved = true;
-      if (!moved) return;
+      const pxDist = Math.hypot(ev.clientX - startClientX, ev.clientY - startClientY);
+      if (!moved && pxDist < 3.2) return;
+      if (!moved) {
+        moved = true;
+        onSelectNativeText(item.id);
+        onSelectElement(null);
+      }
 
-      let nx = Math.max(0.015, Math.min(0.95 - Math.min(0.45, item.width), ox + dx));
-      let ny = Math.max(0.01, Math.min(0.985 - item.height, oy + dy));
+      let dx = (ev.clientX - startClientX) / rect.width;
+      let dy = (ev.clientY - startClientY) / rect.height;
+      let axisLocked = false;
+      if (ev.shiftKey) {
+        axisLocked = true;
+        if (Math.abs(dx) >= Math.abs(dy)) dy = 0;
+        else dx = 0;
+      }
+
+      let nx = Math.max(0.01, Math.min(0.97 - Math.min(0.08, item.width), ox + dx));
+      let ny = Math.max(0.008, Math.min(0.985 - item.height, oy + dy));
+      let snapLabel = '';
 
       if (settings.snapGuides) {
         let matchedV: number | null = null;
@@ -392,30 +587,35 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
         if (Math.abs(nx - item.origX) < 0.007) {
           nx = item.origX;
           matchedV = nx;
+          snapLabel = 'Columna original';
         } else {
           for (const peer of peers) {
             if (Math.abs(nx - peer.x) < 0.007) {
               nx = peer.x;
               matchedV = peer.x;
+              snapLabel = 'Alineado a columna';
               break;
             }
           }
         }
         // Or snap center of page
         if (matchedV === null && Math.abs(nx + item.width / 2 - 0.5) < 0.01) {
-          nx = Math.max(0.015, 0.5 - item.width / 2);
+          nx = Math.max(0.01, 0.5 - item.width / 2);
           matchedV = 0.5;
+          snapLabel = 'Centrado en hoja';
         }
 
         // 2. Snap baseline/top row to original Y or peer row Y
         if (Math.abs(ny - item.origY) < 0.006) {
           ny = item.origY;
           matchedH = ny;
+          snapLabel = snapLabel || 'Renglón original';
         } else {
           for (const peer of peers) {
             if (Math.abs(ny - peer.y) < 0.006) {
               ny = peer.y;
               matchedH = peer.y;
+              snapLabel = snapLabel || 'Mismo renglón';
               break;
             }
           }
@@ -432,6 +632,8 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
         modified: true,
       };
       onUpdateNativeTextItem(latest, false);
+      const prefix = axisLocked ? 'Eje fijo · ' : snapLabel ? `${snapLabel} · ` : 'Moviendo texto · ';
+      setDragHud(`${prefix}X ${(nx * 100).toFixed(1)}% · Y ${(ny * 100).toFixed(1)}%`);
     };
 
     const onUp = () => {
@@ -439,15 +641,75 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
       window.removeEventListener('mouseup', onUp);
       setSnapV(null);
       setSnapH(null);
+      setDragHud(null);
       if (moved) {
         onUpdateNativeTextItem(latest, true);
-      } else if (focusTarget) {
-        focusTarget.focus();
+      } else if (deferSelectUntilClickOrDrag) {
+        onSelectNativeText(item.id);
+        onSelectElement(null);
       }
     };
 
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
+  };
+
+  // Duplicate any Native PDF Text Item as an independent movable Overlay Text Box!
+  const duplicateNativeTextAsOverlay = (nt: NativePdfTextItem) => {
+    const newId = `txt_clone_${Date.now()}`;
+    onAddOverlayElement({
+      id: newId,
+      pageId: pageDesc.id,
+      kind: 'text',
+      x: Math.min(0.84, nt.x + 0.02),
+      y: Math.min(0.94, nt.y + Math.max(0.022, nt.height + 0.006)),
+      width: Math.max(0.16, Math.min(0.85, nt.width + 0.03)),
+      height: Math.max(0.032, nt.height + 0.012),
+      rotation: 0,
+      opacity: 1,
+      zIndex: tab.elements.length + 2,
+      text: nt.text,
+      fontFamily: nt.fontFamily,
+      fontSizePt: nt.fontSizePt,
+      fontWeight: nt.fontWeight,
+      fontStyle: nt.fontStyle,
+      textAlign: 'left',
+      color: nt.color,
+      backgroundColor: 'transparent',
+    });
+    onSwitchToSelectTool();
+    onSelectNativeText(null);
+    onSelectElement(newId);
+  };
+
+  // Zero-Mode-Trap: Double-clicking ANY text on the PDF page automatically activates Edit PDF Text and selects it!
+  const handleStageDoubleClick = async (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target !== overlayRef.current) return;
+    const { nx, ny } = getNormCoords(e.clientX, e.clientY);
+    let items = tab.extractedPageTexts[pageDesc.id];
+    if (!items) {
+      try {
+        const bytes = tab.sourceBuffers[pageDesc.sourceId];
+        items = await extractNativeEditableTexts(pageDesc.sourceId, bytes, pageDesc);
+        onCacheExtractedPageTexts(pageDesc.id, items);
+      } catch {
+        return;
+      }
+    }
+    const candidates = items.map((base) => tab.nativeTextEdits[base.id] || base).filter((it) => !it.deleted);
+    const pad = 0.008;
+    const hit = candidates.find(
+      (it) =>
+        nx >= it.x - pad &&
+        nx <= it.x + it.width + pad &&
+        ny >= it.y - pad &&
+        ny <= it.y + it.height + pad
+    );
+    if (hit && onActivateEditPdfText) {
+      onActivateEditPdfText();
+      onSelectElement(null);
+      onSelectNativeText(hit.id);
+    }
   };
 
   // Page Background Click / Drag-to-Create Tool Handler
@@ -735,13 +997,78 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
       return;
     }
 
+    if (activeTool === 'arrow') {
+      const startPt = { x: nx, y: ny };
+      let endPt = { x: Math.min(0.98, nx + 0.08), y: Math.max(0.02, ny - 0.04) };
+      setDraftLine({
+        x1: startPt.x,
+        y1: startPt.y,
+        x2: endPt.x,
+        y2: endPt.y,
+        label: 'Flecha direccional',
+        isArrow: true,
+      });
+
+      const onMove = (ev: MouseEvent) => {
+        const p = getNormCoords(ev.clientX, ev.clientY);
+        let px = p.nx;
+        let py = p.ny;
+        if (ev.shiftKey) {
+          const dx = px - startPt.x;
+          const dy = py - startPt.y;
+          if (Math.abs(dx) >= Math.abs(dy)) py = startPt.y;
+          else px = startPt.x;
+        }
+        endPt = { x: px, y: py };
+        setDraftLine({
+          x1: startPt.x,
+          y1: startPt.y,
+          x2: endPt.x,
+          y2: endPt.y,
+          label: ev.shiftKey ? 'Flecha recta (Shift)' : 'Flecha 360°',
+          isArrow: true,
+        });
+      };
+
+      const onUp = () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+        setDraftLine(null);
+        const minX = Math.min(startPt.x, endPt.x);
+        const maxX = Math.max(startPt.x, endPt.x);
+        const minY = Math.min(startPt.y, endPt.y);
+        const maxY = Math.max(startPt.y, endPt.y);
+        const newId = `arr_${Date.now()}`;
+        onAddOverlayElement({
+          id: newId,
+          pageId: pageDesc.id,
+          kind: 'arrow',
+          x: Math.max(0, minX - 0.012),
+          y: Math.max(0, minY - 0.012),
+          width: Math.max(0.04, maxX - minX + 0.024),
+          height: Math.max(0.028, maxY - minY + 0.024),
+          rotation: 0,
+          opacity: 1,
+          zIndex: tab.elements.length + 1,
+          color: settings.defaultInkColor,
+          strokeWidth: 2.2,
+          points: [startPt, endPt],
+        });
+        onSelectElement(newId);
+        if (settings.autoSelectAfterInsert) onSwitchToSelectTool();
+      };
+
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+      return;
+    }
+
     const boxTools: ActiveTool[] = [
       'highlight',
       'underline',
       'strikeout',
       'rect',
       'ellipse',
-      'arrow',
       'redact',
     ];
     if (boxTools.includes(activeTool)) {
@@ -787,6 +1114,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
           strokeWidth: 2.2,
         });
         onSelectElement(newId);
+        if (settings.autoSelectAfterInsert) onSwitchToSelectTool();
       };
 
       window.addEventListener('mousemove', onMove);
@@ -870,11 +1198,15 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
         className="pdf-overlay-layer"
         style={{ cursor: cursorStyle }}
         onMouseDown={handleStageMouseDown}
+        onDoubleClick={handleStageDoubleClick}
         onDragOver={(e) => {
           if (Array.from(e.dataTransfer.types).includes('Files')) e.preventDefault();
         }}
         onDrop={handleDropImageOnPage}
       >
+        {/* Live Floating Manipulation HUD Pill */}
+        {dragHud && <div className="live-drag-hud">{dragHud}</div>}
+
         {/* Smart Alignment Guides */}
         {snapV !== null && (
           <div className="snap-guide-v" style={{ left: `${snapV * 100}%` }} />
@@ -956,7 +1288,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
             // Case A: Unmodified text that is NOT currently selected
             if (!nt.modified && !isSelected) {
               if (!isEditTool) return null;
-              // Clean hover hotspot: no duplicate text, zero ghosting!
+              // Clean hover hotspot: click to edit inline, OR drag immediately to move!
               return (
                 <div
                   key={nt.id}
@@ -967,12 +1299,8 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                     width: `${nt.width * 100}%`,
                     height: `${nt.height * 100}%`,
                   }}
-                  title="Clic para editar este texto"
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    onSelectNativeText(nt.id);
-                    onSelectElement(null);
-                  }}
+                  title="Clic para editar texto · Arrastra para moverlo"
+                  onMouseDown={(e) => startMoveNativeText(e, nt, true)}
                 />
               );
             }
@@ -996,11 +1324,26 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                   backgroundColor: bgSolid,
                 }}
                 onMouseDown={(e) => {
+                  if (!isSelected || e.altKey) {
+                    startMoveNativeText(e, nt, !isSelected);
+                    return;
+                  }
                   e.stopPropagation();
                   onSelectNativeText(nt.id);
                   onSelectElement(null);
                 }}
               >
+                {/* Left Drag-Grip Handle Pill when Selected */}
+                {isSelected && isEditTool && (
+                  <div
+                    className="native-drag-handle"
+                    onMouseDown={(e) => startMoveNativeText(e, nt)}
+                    title="Arrastra desde aquí para mover el texto (Shift = recto)"
+                  >
+                    <GripVertical size={11} />
+                  </div>
+                )}
+
                 {/* Floating Quick Action Bar when Selected */}
                 {isSelected && isEditTool && (
                   <div
@@ -1131,6 +1474,16 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                     </label>
 
                     <div style={{ width: 1, height: 16, background: 'var(--border-subtle)', margin: '0 2px' }} />
+
+                    <button
+                      type="button"
+                      className="btn icon-only"
+                      style={{ width: 22, height: 22 }}
+                      onClick={() => duplicateNativeTextAsOverlay(nt)}
+                      title="Duplicar como texto libre móvil (Ctrl+D)"
+                    >
+                      <Copy size={11.5} />
+                    </button>
 
                     {nt.modified && (
                       <button
@@ -1318,17 +1671,46 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                 </div>
               )}
 
-              {/* 8 Resize Handles */}
+              {/* 360° Endpoint Handles for Arrows & Dimensions vs 8 Box Resize Handles */}
               {isSelected &&
-                (['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as ResizeHandleDir[]).map(
-                  (dir) => (
-                    <div
-                      key={dir}
-                      className={`resize-handle ${dir}`}
-                      onMouseDown={(e) => startResizeOverlay(e, el, dir)}
-                    />
+                (el.kind === 'arrow' || el.kind === 'dimension' ? (
+                  <>
+                    {(() => {
+                      const p0 = el.points?.[0] || { x: el.x, y: el.y + el.height };
+                      const p1 = el.points?.[1] || { x: el.x + el.width, y: el.y };
+                      const relX0 = ((p0.x - el.x) / Math.max(0.001, el.width)) * 100;
+                      const relY0 = ((p0.y - el.y) / Math.max(0.001, el.height)) * 100;
+                      const relX1 = ((p1.x - el.x) / Math.max(0.001, el.width)) * 100;
+                      const relY1 = ((p1.y - el.y) / Math.max(0.001, el.height)) * 100;
+                      return (
+                        <>
+                          <div
+                            className="endpoint-handle"
+                            style={{ left: `${relX0}%`, top: `${relY0}%` }}
+                            title="Arrastra el origen (Shift = línea recta)"
+                            onMouseDown={(e) => startDragEndpoint(e, el, 0)}
+                          />
+                          <div
+                            className="endpoint-handle"
+                            style={{ left: `${relX1}%`, top: `${relY1}%` }}
+                            title="Arrastra la punta en cualquier dirección 360° (Shift = recto)"
+                            onMouseDown={(e) => startDragEndpoint(e, el, 1)}
+                          />
+                        </>
+                      );
+                    })()}
+                  </>
+                ) : (
+                  (['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as ResizeHandleDir[]).map(
+                    (dir) => (
+                      <div
+                        key={dir}
+                        className={`resize-handle ${dir}`}
+                        onMouseDown={(e) => startResizeOverlay(e, el, dir)}
+                      />
+                    )
                   )
-                )}
+                ))}
 
               {/* Render Element Visual Content */}
               {el.kind === 'text' &&
@@ -1543,30 +1925,48 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                 />
               )}
 
-              {el.kind === 'arrow' && (
-                <svg
-                  width="100%"
-                  height="100%"
-                  viewBox="0 0 100 100"
-                  preserveAspectRatio="none"
-                  style={{ overflow: 'visible' }}
-                >
-                  <line
-                    x1="2"
-                    y1="98"
-                    x2="96"
-                    y2="4"
-                    stroke={el.color || '#2563EB'}
-                    strokeWidth={Math.max(2, el.strokeWidth || 2.5)}
-                  />
-                  <polyline
-                    points="78,4 97,3 96,22"
-                    fill="none"
-                    stroke={el.color || '#2563EB'}
-                    strokeWidth={Math.max(2, el.strokeWidth || 2.5)}
-                  />
-                </svg>
-              )}
+              {el.kind === 'arrow' &&
+                (() => {
+                  const p0 = el.points?.[0] || { x: el.x, y: el.y + el.height };
+                  const p1 = el.points?.[1] || { x: el.x + el.width, y: el.y };
+                  const x1 = (p0.x - el.x) * boxSize.w;
+                  const y1 = (p0.y - el.y) * boxSize.h;
+                  const x2 = (p1.x - el.x) * boxSize.w;
+                  const y2 = (p1.y - el.y) * boxSize.h;
+                  const ang = Math.atan2(y2 - y1, x2 - x1);
+                  const headLen = Math.max(9, 11 * tab.zoom);
+                  const hx1 = x2 - headLen * Math.cos(ang - Math.PI / 6);
+                  const hy1 = y2 - headLen * Math.sin(ang - Math.PI / 6);
+                  const hx2 = x2 - headLen * Math.cos(ang + Math.PI / 6);
+                  const hy2 = y2 - headLen * Math.sin(ang + Math.PI / 6);
+                  const sw = Math.max(2, (el.strokeWidth || 2.2) * tab.zoom);
+                  const col = el.color || '#2563EB';
+                  return (
+                    <svg
+                      width="100%"
+                      height="100%"
+                      style={{ overflow: 'visible', display: 'block' }}
+                    >
+                      <line
+                        x1={x1}
+                        y1={y1}
+                        x2={x2}
+                        y2={y2}
+                        stroke={col}
+                        strokeWidth={sw}
+                        strokeLinecap="round"
+                      />
+                      <polyline
+                        points={`${hx1},${hy1} ${x2},${y2} ${hx2},${hy2}`}
+                        fill="none"
+                        stroke={col}
+                        strokeWidth={sw}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  );
+                })()}
 
               {el.kind === 'note' && (
                 <div
@@ -2109,6 +2509,7 @@ export const PdfCanvasStage: React.FC<PdfCanvasStageProps> = (props) => {
             onReorderElementLayer={props.onReorderElementLayer}
             onDeleteOverlayElement={props.onDeleteOverlayElement}
             onSwitchToSelectTool={props.onSwitchToSelectTool}
+            onActivateEditPdfText={props.onActivateEditPdfText}
           />
         ))}
       </div>

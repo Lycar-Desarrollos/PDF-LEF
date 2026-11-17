@@ -36,6 +36,7 @@ import {
   checkStartupOpenedPdfFromWindows,
   isTauriDesktop,
   openPdfFilesWithDialog,
+  readPdfFromLocalPath,
   registerDefaultPdfApp,
   savePdfBytesToDisk,
 } from './utils/tauriBridge';
@@ -47,7 +48,6 @@ import {
 } from './utils/updater';
 import {
   createBlankPdfBytes,
-  generateShowcaseSamplePdf,
   getPdfJsProxy,
   hasNativeTextMeaningfulDiff,
   loadPdfIntoTabDocument,
@@ -144,9 +144,11 @@ export const App: React.FC = () => {
   const [updateBannerDismissed, setUpdateBannerDismissed] = useState(false);
   const [installingAutoUpdate, setInstallingAutoUpdate] = useState(false);
 
-  // Hidden image input for inserting or replacing an image on the active page
+  // Hidden image input & internal object clipboard for cross-page Ctrl+C / Ctrl+V
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const replaceTargetIdRef = useRef<string | null>(null);
+  const copiedElementRef = useRef<PdfOverlayElement | null>(null);
+  const lastInternalPasteMsRef = useRef<number>(0);
 
   const notify = useCallback((text: string) => {
     const id = `t_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -226,7 +228,7 @@ export const App: React.FC = () => {
       filePath?: string,
       initialMode: WorkspaceMode = 'edit',
       initialPage = 0
-    ) => {
+    ): Promise<PdfTabDocument | null> => {
       try {
         const doc = await loadPdfIntoTabDocument(fileName, bytes, settings, filePath);
         doc.currentPageIndex = Math.max(0, Math.min(doc.pages.length - 1, initialPage));
@@ -242,8 +244,10 @@ export const App: React.FC = () => {
           pageCount: doc.pages.length,
         });
         setRecentFiles(updatedRecents);
+        return doc;
       } catch {
         notify(`No se pudo abrir "${fileName}". Verifica que sea un PDF válido.`);
+        return null;
       }
     },
     [settings, notify]
@@ -253,7 +257,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     checkStartupOpenedPdfFromWindows().then((payload) => {
       if (payload) {
-        openBytesAsNewTab(payload.fileName, payload.bytes, payload.filePath, 'reader');
+        openBytesAsNewTab(payload.fileName, payload.bytes, payload.filePath, 'edit');
       }
     });
   }, [openBytesAsNewTab]);
@@ -325,6 +329,47 @@ export const App: React.FC = () => {
     }
   }, [openBytesAsNewTab]);
 
+  const handleOpenPdfForEditText = useCallback(async () => {
+    const picked = await openPdfFilesWithDialog(false);
+    if (picked.length === 0) return;
+    const item = picked[0];
+    const doc = await openBytesAsNewTab(item.fileName, item.bytes, item.filePath, 'edit', 0);
+    if (doc) {
+      setActiveTool('edit-pdf-text');
+      notify('Arrastra cualquier texto para moverlo o haz clic sobre él para editarlo.');
+    }
+  }, [openBytesAsNewTab, notify]);
+
+  const handleOpenRecentFile = useCallback(
+    async (item: RecentFileEntry) => {
+      const alreadyOpen = tabs.find(
+        (t) => (item.filePath && t.filePath === item.filePath) || t.fileName === item.fileName
+      );
+      if (alreadyOpen) {
+        setActiveTabId(alreadyOpen.id);
+        setWorkspaceMode('edit');
+        return;
+      }
+
+      if (item.filePath) {
+        const payload = await readPdfFromLocalPath(item.filePath);
+        if (payload) {
+          await openBytesAsNewTab(
+            payload.fileName || item.fileName,
+            payload.bytes,
+            payload.filePath || item.filePath,
+            'edit',
+            0
+          );
+          return;
+        }
+        notify(`"${item.fileName}" se movió o renombró. Selecciónalo desde tu equipo.`);
+      }
+      await handleOpenPdfDialog();
+    },
+    [tabs, openBytesAsNewTab, handleOpenPdfDialog, notify]
+  );
+
   const handleDropFilesOnHome = useCallback(
     async (files: File[]) => {
       const pdfs = files.filter(
@@ -340,37 +385,6 @@ export const App: React.FC = () => {
         const converted = await convertImagesToPdfBytes(imgs, 'a4', 28);
         await openBytesAsNewTab('Imagenes_Importadas_Kova.pdf', converted, undefined, 'edit');
         notify(`${imgs.length} imagen(es) convertidas a PDF automáticamente.`);
-      }
-    },
-    [openBytesAsNewTab, notify]
-  );
-
-  const handleLoadShowcaseDemo = useCallback(async () => {
-    const demoBytes = await generateShowcaseSamplePdf();
-    await openBytesAsNewTab(
-      'Acuerdo_Ejecutivo_Kova_PDF.pdf',
-      demoBytes,
-      undefined,
-      'edit',
-      0
-    );
-    setActiveTool('edit-pdf-text');
-    notify(
-      'Haz clic en cualquier texto de la hoja para editarlo respetando su color y fondo.'
-    );
-  }, [openBytesAsNewTab, notify]);
-
-  const handleLoadSamplePdf = useCallback(
-    async (sampleName: string) => {
-      try {
-        const response = await fetch(`/pruebas/${sampleName}`);
-        if (!response.ok) throw new Error('Archivo no encontrado');
-        const buf = await response.arrayBuffer();
-        await openBytesAsNewTab(sampleName, new Uint8Array(buf), undefined, 'edit', 0);
-        setActiveTool('edit-pdf-text');
-        notify(`Documento cargado: ${sampleName}. Clic en cualquier texto para editarlo.`);
-      } catch {
-        notify(`Error al cargar el archivo de prueba ${sampleName}`);
       }
     },
     [openBytesAsNewTab, notify]
@@ -416,12 +430,27 @@ export const App: React.FC = () => {
       copy.set(outBytes);
       const blob = new Blob([copy.buffer], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
-      const win = window.open(url, '_blank');
-      if (win) {
-        win.addEventListener('load', () => win.print());
-      } else {
-        window.print();
-      }
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      iframe.onload = () => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } catch {
+          window.print();
+        }
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          iframe.remove();
+        }, 60_000);
+      };
+      iframe.src = url;
+      document.body.appendChild(iframe);
     } catch {
       window.print();
     }
@@ -521,66 +550,156 @@ export const App: React.FC = () => {
     notify('Imagen insertada: arrástrala o usa las esquinas para ajustar su tamaño.');
   };
 
-  // Clipboard Ctrl+V Image Paste directly onto active PDF page
+  const selectedElement = useMemo(
+    () => activeTab?.elements.find((e) => e.id === selectedElementId) || null,
+    [activeTab, selectedElementId]
+  );
+
+  const selectedNativeText = useMemo(() => {
+    if (!activeTab || !selectedNativeTextId) return null;
+    if (activeTab.nativeTextEdits[selectedNativeTextId]) {
+      return activeTab.nativeTextEdits[selectedNativeTextId];
+    }
+    for (const list of Object.values(t_safe(activeTab.extractedPageTexts))) {
+      const found = list.find((item) => item.id === selectedNativeTextId);
+      if (found) return found;
+    }
+    return null;
+  }, [activeTab, selectedNativeTextId]);
+
+  const pasteCopiedElementOnCurrentPage = useCallback(() => {
+    const src = copiedElementRef.current;
+    if (!src || !activeTab || workspaceMode === 'home') return false;
+    const curPage = activeTab.pages[activeTab.currentPageIndex];
+    if (!curPage) return false;
+    lastInternalPasteMsRef.current = Date.now();
+    const samePage = curPage.id === src.pageId;
+    const nx = samePage ? Math.min(1 - src.width, src.x + 0.02) : src.x;
+    const ny = samePage ? Math.min(1 - src.height, src.y + 0.02) : src.y;
+    const adx = nx - src.x;
+    const ady = ny - src.y;
+    const newId = `el_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const pasted: PdfOverlayElement = {
+      ...src,
+      id: newId,
+      pageId: curPage.id,
+      x: nx,
+      y: ny,
+      zIndex: activeTab.elements.length + 1,
+      points: src.points
+        ? src.points.map((pt) => ({
+            x: Math.max(0, Math.min(1, pt.x + adx)),
+            y: Math.max(0, Math.min(1, pt.y + ady)),
+          }))
+        : undefined,
+    };
+    mutateActiveTab(
+      (t) => ({
+        ...t,
+        isModified: true,
+        elements: [...t.elements, pasted],
+      }),
+      true
+    );
+    setWorkspaceMode('edit');
+    setActiveTool('select');
+    setSelectedElementId(newId);
+    setSelectedNativeTextId(null);
+    notify(
+      samePage
+        ? 'Objeto pegado en la página actual.'
+        : `Objeto pegado en la misma posición (Página ${activeTab.currentPageIndex + 1}).`
+    );
+    return true;
+  }, [activeTab, workspaceMode, mutateActiveTab, notify]);
+
+  // Clipboard Ctrl+V Image Paste (or internal Kova object paste) onto active PDF page
   useEffect(() => {
     const onPaste = async (e: ClipboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
       if (!activeTab || workspaceMode === 'home') return;
       const items = Array.from(e.clipboardData?.items || []);
       const imgItem = items.find((it) => it.type.startsWith('image/'));
-      if (!imgItem) return;
-      const blob = imgItem.getAsFile();
-      if (!blob) return;
-      e.preventDefault();
-      const dataUrl = await fileToDataUrl(blob);
-      await insertImageDataUrlOnActivePage(dataUrl, 'Captura pegada', 0.32);
-      notify('Imagen del portapapeles pegada directamente en la página.');
+      if (imgItem) {
+        const blob = imgItem.getAsFile();
+        if (!blob) return;
+        e.preventDefault();
+        copiedElementRef.current = null;
+        const dataUrl = await fileToDataUrl(blob);
+        await insertImageDataUrlOnActivePage(dataUrl, 'Captura pegada', 0.32);
+        notify('Imagen del portapapeles pegada directamente en la página.');
+        return;
+      }
+      if (copiedElementRef.current) {
+        e.preventDefault();
+        pasteCopiedElementOnCurrentPage();
+      }
     };
     window.addEventListener('paste', onPaste);
     return () => window.removeEventListener('paste', onPaste);
-  }, [activeTab, workspaceMode, insertImageDataUrlOnActivePage, notify]);
+  }, [activeTab, workspaceMode, insertImageDataUrlOnActivePage, pasteCopiedElementOnCurrentPage, notify]);
 
   const handlePlaceSignatureOnPage = useCallback(
-    (dataUrl: string, signerLabel: string) => {
-      if (!activeTab) return;
-      const curPage = activeTab.pages[activeTab.currentPageIndex];
+    async (dataUrl: string, signerLabel: string) => {
+      let targetTab = activeTab;
+      if (!targetTab) {
+        const picked = await openPdfFilesWithDialog(false);
+        if (picked.length === 0) return;
+        targetTab = await openBytesAsNewTab(
+          picked[0].fileName,
+          picked[0].bytes,
+          picked[0].filePath,
+          'edit',
+          0
+        );
+      }
+      if (!targetTab) return;
+      const curPage = targetTab.pages[targetTab.currentPageIndex];
       if (!curPage) return;
       const newId = `sig_${Date.now()}`;
       const dateStr = settings.includeDateOnSignature
         ? `${signerLabel} · ${new Date().toLocaleDateString('es-ES')}`
         : '';
+      const targetId = targetTab.id;
 
-      mutateActiveTab(
-        (tab) => ({
-          ...tab,
-          isModified: true,
-          elements: [
-            ...tab.elements,
-            {
-              id: newId,
-              pageId: curPage.id,
-              kind: 'signature',
-              x: 0.12,
-              y: 0.72,
-              width: 0.26,
-              height: 0.085,
-              rotation: 0,
-              opacity: 1,
-              zIndex: tab.elements.length + 1,
-              dataUrl,
-              preserveAspect: true,
-              text: signerLabel,
-              subText: dateStr,
-            },
-          ],
-        }),
-        true
+      setTabs((prev) =>
+        prev.map((tab) => {
+          if (tab.id !== targetId) return tab;
+          return {
+            ...tab,
+            isModified: true,
+            undoStack: [...tab.undoStack.slice(-29), createSnapshot(tab)],
+            redoStack: [],
+            elements: [
+              ...tab.elements,
+              {
+                id: newId,
+                pageId: curPage.id,
+                kind: 'signature',
+                x: 0.12,
+                y: 0.72,
+                width: 0.26,
+                height: 0.085,
+                rotation: 0,
+                opacity: 1,
+                zIndex: tab.elements.length + 1,
+                dataUrl,
+                preserveAspect: true,
+                text: signerLabel,
+                subText: dateStr,
+              },
+            ],
+          };
+        })
       );
       setWorkspaceMode('edit');
       setActiveTool('select');
       setSelectedElementId(newId);
-      notify('Firma transparente colocada en la página.');
+      setSelectedNativeTextId(null);
+      notify('Firma transparente colocada en la página. Arrástrala libremente.');
     },
-    [activeTab, settings.includeDateOnSignature, mutateActiveTab, notify]
+    [activeTab, settings.includeDateOnSignature, openBytesAsNewTab, notify]
   );
 
   const handlePlaceQuickStamp = useCallback(
@@ -674,21 +793,102 @@ export const App: React.FC = () => {
       if (!activeTab) return;
       const orig = activeTab.elements.find((e) => e.id === id);
       if (!orig) return;
-      const copyId = `el_${Date.now()}`;
+      const copyId = `el_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`;
+      const nx = Math.min(1 - orig.width, orig.x + 0.022);
+      const ny = Math.min(1 - orig.height, orig.y + 0.022);
+      const adx = nx - orig.x;
+      const ady = ny - orig.y;
       const cloned: PdfOverlayElement = {
         ...orig,
         id: copyId,
-        x: Math.min(0.92, orig.x + 0.025),
-        y: Math.min(0.92, orig.y + 0.025),
+        x: nx,
+        y: ny,
         zIndex: activeTab.elements.length + 1,
+        points: orig.points
+          ? orig.points.map((pt) => ({
+              x: Math.max(0, Math.min(1, pt.x + adx)),
+              y: Math.max(0, Math.min(1, pt.y + ady)),
+            }))
+          : undefined,
       };
       mutateActiveTab(
         (t) => ({ ...t, isModified: true, elements: [...t.elements, cloned] }),
         true
       );
       setSelectedElementId(copyId);
+      setSelectedNativeTextId(null);
     },
     [activeTab, mutateActiveTab]
+  );
+
+  const handleReplicateElementAcrossPages = useCallback(
+    (id: string) => {
+      if (!activeTab || activeTab.pages.length < 2) return;
+      const orig = activeTab.elements.find((e) => e.id === id);
+      if (!orig) return;
+      const now = Date.now();
+      const clones: PdfOverlayElement[] = activeTab.pages
+        .filter((p) => p.id !== orig.pageId)
+        .map((p, idx) => ({
+          ...orig,
+          id: `rep_${now}_${idx}_${Math.random().toString(36).slice(2, 5)}`,
+          pageId: p.id,
+          zIndex: activeTab.elements.length + idx + 1,
+          points: orig.points ? orig.points.map((pt) => ({ ...pt })) : undefined,
+        }));
+      if (clones.length === 0) return;
+      mutateActiveTab(
+        (t) => ({
+          ...t,
+          isModified: true,
+          elements: [...t.elements, ...clones],
+        }),
+        true
+      );
+      notify(`Objeto aplicado en la misma posición en las ${activeTab.pages.length} páginas.`);
+    },
+    [activeTab, mutateActiveTab, notify]
+  );
+
+  const handleDuplicateNativeTextAsOverlay = useCallback(
+    (nt: NativePdfTextItem) => {
+      if (!activeTab) return;
+      const newId = `ntclone_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`;
+      const newEl: PdfOverlayElement = {
+        id: newId,
+        pageId: nt.pageId,
+        kind: 'text',
+        x: Math.min(0.92, nt.x + 0.018),
+        y: Math.min(0.94, nt.y + 0.018),
+        width: Math.max(0.08, Math.min(0.85, nt.width + 0.04)),
+        height: Math.max(0.025, nt.height + 0.008),
+        rotation: 0,
+        opacity: 1,
+        zIndex: activeTab.elements.length + 1,
+        text: nt.text,
+        fontFamily: nt.fontFamily,
+        fontSizePt: nt.fontSizePt,
+        fontWeight: nt.fontWeight,
+        fontStyle: nt.fontStyle,
+        textAlign: 'left',
+        color: nt.color,
+        backgroundColor: 'transparent',
+      };
+      mutateActiveTab(
+        (t) => ({
+          ...t,
+          isModified: true,
+          elements: [...t.elements, newEl],
+        }),
+        true
+      );
+      setWorkspaceMode('edit');
+      setActiveTool('select');
+      setSelectedNativeTextId(null);
+      setSelectedElementId(newId);
+      notify('Texto duplicado como bloque libre movible.');
+    },
+    [activeTab, mutateActiveTab, notify]
   );
 
   const handleDeleteOverlayElement = useCallback(
@@ -765,6 +965,11 @@ export const App: React.FC = () => {
         handleOpenPdfDialog();
         return;
       }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        handleCreateBlankPdf();
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
         handleSaveExportPdf();
@@ -804,6 +1009,65 @@ export const App: React.FC = () => {
 
       if (isTyping) return;
 
+      // Cross-page Ctrl+C / Ctrl+V for any PDF object or native text
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key.toLowerCase() === 'c' &&
+        !window.getSelection()?.toString()
+      ) {
+        if (selectedElement) {
+          e.preventDefault();
+          copiedElementRef.current = {
+            ...selectedElement,
+            points: selectedElement.points
+              ? selectedElement.points.map((pt) => ({ ...pt }))
+              : undefined,
+          };
+          notify('Objeto copiado. Usa Ctrl+V en esta u otra página para pegarlo.');
+          return;
+        }
+        if (selectedNativeText) {
+          e.preventDefault();
+          copiedElementRef.current = {
+            id: `clip_${Date.now()}`,
+            pageId: selectedNativeText.pageId,
+            kind: 'text',
+            x: selectedNativeText.x,
+            y: selectedNativeText.y,
+            width: Math.max(0.08, Math.min(0.85, selectedNativeText.width + 0.04)),
+            height: Math.max(0.025, selectedNativeText.height + 0.008),
+            rotation: 0,
+            opacity: 1,
+            zIndex: 10,
+            text: selectedNativeText.text,
+            fontFamily: selectedNativeText.fontFamily,
+            fontSizePt: selectedNativeText.fontSizePt,
+            fontWeight: selectedNativeText.fontWeight,
+            fontStyle: selectedNativeText.fontStyle,
+            textAlign: 'left',
+            color: selectedNativeText.color,
+            backgroundColor: 'transparent',
+          };
+          notify('Texto copiado como bloque. Usa Ctrl+V en cualquier página para pegarlo.');
+          return;
+        }
+      }
+
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key.toLowerCase() === 'v' &&
+        copiedElementRef.current &&
+        activeTab &&
+        workspaceMode !== 'home'
+      ) {
+        // Fallback if OS clipboard is empty and browser does not emit a paste event
+        setTimeout(() => {
+          if (Date.now() - lastInternalPasteMsRef.current > 120 && copiedElementRef.current) {
+            pasteCopiedElementOnCurrentPage();
+          }
+        }, 45);
+      }
+
       if (
         ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) &&
         activeTab &&
@@ -819,15 +1083,24 @@ export const App: React.FC = () => {
             (t) => ({
               ...t,
               isModified: true,
-              elements: t.elements.map((el) =>
-                el.id === selectedElementId
-                  ? {
-                      ...el,
-                      x: Math.max(0, Math.min(1 - el.width, el.x + dx)),
-                      y: Math.max(0, Math.min(1 - el.height, el.y + dy)),
-                    }
-                  : el
-              ),
+              elements: t.elements.map((el) => {
+                if (el.id !== selectedElementId) return el;
+                const nx = Math.max(0, Math.min(1 - el.width, el.x + dx));
+                const ny = Math.max(0, Math.min(1 - el.height, el.y + dy));
+                const adx = nx - el.x;
+                const ady = ny - el.y;
+                return {
+                  ...el,
+                  x: nx,
+                  y: ny,
+                  points: el.points
+                    ? el.points.map((pt) => ({
+                        x: Math.max(0, Math.min(1, pt.x + adx)),
+                        y: Math.max(0, Math.min(1, pt.y + ady)),
+                      }))
+                    : undefined,
+                };
+              }),
             }),
             true
           );
@@ -846,15 +1119,11 @@ export const App: React.FC = () => {
             if (!base) return t;
             const moved: NativePdfTextItem = {
               ...base,
-              x: Math.max(0.02, Math.min(0.95 - Math.min(0.5, base.width), base.x + dx)),
-              y: Math.max(0.02, Math.min(0.97 - base.height, base.y + dy)),
+              x: Math.max(0.015, Math.min(0.97 - Math.min(0.08, base.width), base.x + dx)),
+              y: Math.max(0.015, Math.min(0.975 - base.height, base.y + dy)),
               modified: true,
             };
-            return {
-              ...t,
-              isModified: true,
-              nativeTextEdits: { ...t.nativeTextEdits, [moved.id]: moved },
-            };
+            return applyNativeTextEdit(t, moved);
           }, true);
         }
         return;
@@ -869,10 +1138,14 @@ export const App: React.FC = () => {
       } else if (
         (e.ctrlKey || e.metaKey) &&
         e.key.toLowerCase() === 'd' &&
-        selectedElementId
+        (selectedElementId || selectedNativeText)
       ) {
         e.preventDefault();
-        handleDuplicateOverlayElement(selectedElementId);
+        if (selectedElementId) {
+          handleDuplicateOverlayElement(selectedElementId);
+        } else if (selectedNativeText) {
+          handleDuplicateNativeTextAsOverlay(selectedNativeText);
+        }
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElementId) {
         e.preventDefault();
         handleDeleteOverlayElement(selectedElementId);
@@ -909,16 +1182,23 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [
     activeTab,
+    workspaceMode,
+    selectedElement,
+    selectedNativeText,
     selectedElementId,
     selectedNativeTextId,
     mutateActiveTab,
     handleOpenPdfDialog,
+    handleCreateBlankPdf,
     handleSaveExportPdf,
     handlePrintActiveTab,
     handleUndo,
     handleRedo,
     handleDuplicateOverlayElement,
+    handleDuplicateNativeTextAsOverlay,
     handleDeleteOverlayElement,
+    pasteCopiedElementOnCurrentPage,
+    notify,
   ]);
 
   // Command Palette Actions
@@ -932,10 +1212,11 @@ export const App: React.FC = () => {
         run: handleOpenPdfDialog,
       },
       {
-        id: 'demo-pdf',
-        category: 'Inicio',
-        label: 'Abrir Documento Interactivo de Demostración',
-        run: handleLoadShowcaseDemo,
+        id: 'new-blank-pdf',
+        category: 'Archivo',
+        label: 'Crear Nuevo PDF en Blanco',
+        shortcut: 'Ctrl+N',
+        run: handleCreateBlankPdf,
       },
       {
         id: 'edit-native-text',
@@ -946,7 +1227,7 @@ export const App: React.FC = () => {
             setWorkspaceMode('edit');
             setActiveTool('edit-pdf-text');
           } else {
-            handleLoadShowcaseDemo();
+            handleOpenPdfForEditText();
           }
         },
       },
@@ -1008,10 +1289,7 @@ export const App: React.FC = () => {
         id: 'sign-doc',
         category: 'Firmas',
         label: 'Dibujar o Insertar Firma Transparente',
-        run: () => {
-          if (activeTab) setSignatureModalOpen(true);
-          else handleLoadShowcaseDemo().then(() => setSignatureModalOpen(true));
-        },
+        run: () => setSignatureModalOpen(true),
       },
       {
         id: 'watermark',
@@ -1068,29 +1346,13 @@ export const App: React.FC = () => {
       activeTab,
       settings,
       handleOpenPdfDialog,
-      handleLoadShowcaseDemo,
+      handleCreateBlankPdf,
+      handleOpenPdfForEditText,
       handleSetDefaultWindowsApp,
       handleSaveExportPdf,
       handleUpdateSettings,
     ]
   );
-
-  const selectedElement = useMemo(
-    () => activeTab?.elements.find((e) => e.id === selectedElementId) || null,
-    [activeTab, selectedElementId]
-  );
-
-  const selectedNativeText = useMemo(() => {
-    if (!activeTab || !selectedNativeTextId) return null;
-    if (activeTab.nativeTextEdits[selectedNativeTextId]) {
-      return activeTab.nativeTextEdits[selectedNativeTextId];
-    }
-    for (const list of Object.values(t_safe(activeTab.extractedPageTexts))) {
-      const found = list.find((item) => item.id === selectedNativeTextId);
-      if (found) return found;
-    }
-    return null;
-  }, [activeTab, selectedNativeTextId]);
 
   return (
     <div className="app-shell">
@@ -1233,14 +1495,12 @@ export const App: React.FC = () => {
           recentFiles={recentFiles}
           savedLogosCount={savedLogos.length}
           onOpenPdfDialog={handleOpenPdfDialog}
+          onOpenPdfForEditText={handleOpenPdfForEditText}
+          onOpenRecentFile={handleOpenRecentFile}
           onDropFiles={handleDropFilesOnHome}
-          onLoadShowcaseDemo={handleLoadShowcaseDemo}
-          onLoadSamplePdf={handleLoadSamplePdf}
           onCreateBlankPdf={handleCreateBlankPdf}
           onOpenToolModal={(kind) => setToolModal(kind)}
-          onOpenSignatureVault={() => {
-            handleLoadShowcaseDemo().then(() => setSignatureModalOpen(true));
-          }}
+          onOpenSignatureVault={() => setSignatureModalOpen(true)}
           onSetDefaultWindowsApp={handleSetDefaultWindowsApp}
           onTogglePinRecent={(id) => setRecentFiles(togglePinRecentFile(id))}
           onClearRecents={() => setRecentFiles(clearRecentFiles())}
@@ -1401,6 +1661,22 @@ export const App: React.FC = () => {
                   onSelectPage={(idx) =>
                     mutateActiveTab((t) => ({ ...t, currentPageIndex: idx }))
                   }
+                  onReorderPages={(from, to) =>
+                    mutateActiveTab((t) => {
+                      if (from < 0 || to < 0 || from >= t.pages.length || to >= t.pages.length || from === to) {
+                        return t;
+                      }
+                      const next = [...t.pages];
+                      const [moved] = next.splice(from, 1);
+                      next.splice(to, 0, moved);
+                      return {
+                        ...t,
+                        isModified: true,
+                        pages: next,
+                        currentPageIndex: to,
+                      };
+                    }, true)
+                  }
                   onRotatePage={(idx) =>
                     mutateActiveTab(
                       (t) => ({
@@ -1529,6 +1805,11 @@ export const App: React.FC = () => {
                   }
                   onDeleteOverlayElement={handleDeleteOverlayElement}
                   onSwitchToSelectTool={() => setActiveTool('select')}
+                  onActivateEditPdfText={() => {
+                    setWorkspaceMode('edit');
+                    setActiveTool('edit-pdf-text');
+                    setSelectedElementId(null);
+                  }}
                   onChangeZoom={(z) => mutateActiveTab((t) => ({ ...t, zoom: z }))}
                 />
 
@@ -1550,6 +1831,7 @@ export const App: React.FC = () => {
                       )
                     }
                     onDuplicateElement={handleDuplicateOverlayElement}
+                    onReplicateElementAcrossPages={handleReplicateElementAcrossPages}
                     onReorderLayer={(id, dir) =>
                       mutateActiveTab((t) => {
                         const maxZ = Math.max(1, ...t.elements.map((e) => e.zIndex));
@@ -1570,6 +1852,7 @@ export const App: React.FC = () => {
                     onUpdateNativeText={(item, pushUndo = true) =>
                       mutateActiveTab((t) => applyNativeTextEdit(t, item), pushUndo)
                     }
+                    onDuplicateNativeTextAsOverlay={handleDuplicateNativeTextAsOverlay}
                     onResetNativeText={(id) => {
                       mutateActiveTab((t) => {
                         const copy = { ...t.nativeTextEdits };
@@ -1630,10 +1913,14 @@ export const App: React.FC = () => {
       {signatureModalOpen && (
         <SignatureModal
           savedSignatures={savedSignatures}
+          hasActivePage={Boolean(activeTab)}
           onSaveNewSignature={(sig) => {
             const next = [sig, ...savedSignatures];
             setSavedSignatures(next);
             saveSignaturesList(next);
+            if (!activeTab) {
+              notify(`Firma "${sig.name}" guardada en tu Bóveda Local.`);
+            }
           }}
           onDeleteSavedSignature={(id) => {
             const next = savedSignatures.filter((s) => s.id !== id);
@@ -1664,9 +1951,62 @@ export const App: React.FC = () => {
             setSavedLogos(next);
             saveLogosList(next);
           }}
-          onPlaceLogoOnPage={(logo) => {
-            insertImageDataUrlOnActivePage(logo.dataUrl, logo.name, 0.19);
-            notify(`Logo "${logo.name}" estampado en la página.`);
+          onPlaceLogoOnPage={async (logo) => {
+            if (activeTab) {
+              await insertImageDataUrlOnActivePage(logo.dataUrl, logo.name, 0.19);
+              notify(`Logo "${logo.name}" estampado en la página. Arrástralo libremente.`);
+              return;
+            }
+            const picked = await openPdfFilesWithDialog(false);
+            if (picked.length === 0) return;
+            const doc = await openBytesAsNewTab(
+              picked[0].fileName,
+              picked[0].bytes,
+              picked[0].filePath,
+              'edit',
+              0
+            );
+            if (!doc) return;
+            const curPage = doc.pages[0];
+            if (!curPage) return;
+            const dims = await getImageDimensions(logo.dataUrl);
+            const aspect = dims.width / Math.max(1, dims.height);
+            const w = 0.19;
+            const h = Math.min(0.48, (w / aspect) * (curPage.widthPt / Math.max(1, curPage.heightPt)));
+            const newId = `img_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`;
+            setTabs((prev) =>
+              prev.map((t) =>
+                t.id === doc.id
+                  ? {
+                      ...t,
+                      isModified: true,
+                      undoStack: [...t.undoStack.slice(-29), createSnapshot(t)],
+                      elements: [
+                        ...t.elements,
+                        {
+                          id: newId,
+                          pageId: curPage.id,
+                          kind: 'image',
+                          x: 0.08,
+                          y: 0.05,
+                          width: w,
+                          height: h,
+                          rotation: 0,
+                          opacity: 1,
+                          zIndex: t.elements.length + 1,
+                          dataUrl: logo.dataUrl,
+                          naturalWidth: dims.width,
+                          naturalHeight: dims.height,
+                          preserveAspect: true,
+                          text: logo.name,
+                        },
+                      ],
+                    }
+                  : t
+              )
+            );
+            setSelectedElementId(newId);
+            notify(`Logo "${logo.name}" estampado en "${doc.fileName}".`);
           }}
           onInsertAccountingSummaryOnPage={handleInsertAccountingSummaryOnPage}
           onOpenGeneratedPdfInTab={(name, bytes) =>

@@ -17,7 +17,6 @@ import {
   Scissors,
   ShieldCheck,
   Signature,
-  Sparkles,
   Trash2,
 } from 'lucide-react';
 import type { RecentFileEntry, ToolModalKind } from '../types/pdf';
@@ -26,9 +25,9 @@ interface HomeHubProps {
   recentFiles: RecentFileEntry[];
   savedLogosCount: number;
   onOpenPdfDialog: () => void;
+  onOpenPdfForEditText: () => void;
+  onOpenRecentFile: (item: RecentFileEntry) => void;
   onDropFiles: (files: File[]) => void;
-  onLoadShowcaseDemo: () => void;
-  onLoadSamplePdf?: (sampleName: string) => void;
   onCreateBlankPdf: () => void;
   onOpenToolModal: (kind: ToolModalKind) => void;
   onOpenSignatureVault: () => void;
@@ -43,70 +42,13 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
-const TEST_DOCUMENTS = [
-  {
-    filename: '06_Portafolio_Obra_Proyectos.pdf',
-    badge: 'Arquitectura y Obra',
-    badgeBg: 'rgba(217, 121, 59, 0.14)',
-    badgeColor: '#C25E24',
-    size: '2 págs · 4.8 KB',
-    title: 'Portafolio de Proyectos e Ingeniería',
-    desc: 'Encabezado oscuro, títulos en color terracota y párrafos densos para probar detección cromática exacta.',
-  },
-  {
-    filename: '01_Cotizacion_Comercial_Abasteo.pdf',
-    badge: 'Cotización TI',
-    badgeBg: 'rgba(37, 99, 235, 0.12)',
-    badgeColor: '#2563EB',
-    size: '1 pág · 3.4 KB',
-    title: 'Cotización Ejecutiva de Hardware',
-    desc: 'Partidas tabulares e importes. Prueba editar precios y condiciones respetando la alineación.',
-  },
-  {
-    filename: '02_Factura_Fiscal_CFDI.pdf',
-    badge: 'CFDI 4.0 Fiscal',
-    badgeBg: 'rgba(13, 122, 95, 0.12)',
-    badgeColor: '#0D7A5F',
-    size: '1 pág · 3.3 KB',
-    title: 'Factura Fiscal con Desglose IVA',
-    desc: 'Emisor, receptor, impuestos y sello digital. Prueba modificar conceptos o exportar tabla a Excel.',
-  },
-  {
-    filename: '03_Contrato_Prestacion_Servicios.pdf',
-    badge: 'Contrato Legal',
-    badgeBg: 'rgba(3, 105, 161, 0.12)',
-    badgeColor: '#0369A1',
-    size: '2 págs · 4.2 KB',
-    title: 'Contrato Marco de Servicios',
-    desc: 'Cláusulas jurídicas y bloques de firmas en pág. 2. Prueba estampar firmas transparentes o eliminar hoja.',
-  },
-  {
-    filename: '04_Reporte_Financiero_Ejecutivo.pdf',
-    badge: 'Finanzas',
-    badgeBg: 'rgba(180, 83, 9, 0.12)',
-    badgeColor: '#B45309',
-    size: '1 pág · 3.1 KB',
-    title: 'Informe Ejecutivo de Indicadores',
-    desc: 'Tarjetas de métricas ($24.8M USD) y resultados por región listos para convertir a Word o Excel.',
-  },
-  {
-    filename: '05_Certificado_Laboral_Nomina.pdf',
-    badge: 'Capital Humano',
-    badgeBg: 'rgba(200, 30, 50, 0.11)',
-    badgeColor: '#C81E32',
-    size: '1 pág · 3.1 KB',
-    title: 'Constancia Laboral y Nómina',
-    desc: 'Percepciones, deducciones y validación oficial. Prueba colocar sellos, logos o marcas de agua.',
-  },
-];
-
 export const HomeHub: React.FC<HomeHubProps> = ({
   recentFiles,
   savedLogosCount,
   onOpenPdfDialog,
+  onOpenPdfForEditText,
+  onOpenRecentFile,
   onDropFiles,
-  onLoadShowcaseDemo,
-  onLoadSamplePdf,
   onCreateBlankPdf,
   onOpenToolModal,
   onOpenSignatureVault,
@@ -147,7 +89,7 @@ export const HomeHub: React.FC<HomeHubProps> = ({
             flexWrap: 'wrap',
           }}
         >
-          <div style={{ maxWidth: 610 }}>
+          <div style={{ maxWidth: 620 }}>
             <div
               style={{
                 display: 'inline-flex',
@@ -192,8 +134,9 @@ export const HomeHub: React.FC<HomeHubProps> = ({
               }}
             >
               Estación profesional de ingeniería documental sin nube ni suscripciones.{' '}
-              <strong>Edita textos nativos</strong> respetando tipografía, color y fondo,{' '}
-              <strong>une, divide, elimina páginas, comprime</strong> y convierte a{' '}
+              <strong>Edita y mueve textos nativos</strong> respetando tipografía, color y fondo,{' '}
+              <strong>estampar firmas y logotipos</strong> con guías magnéticas,{' '}
+              <strong>une, divide, comprime</strong> y convierte a{' '}
               <strong>Word o Excel</strong> al instante en tu equipo.
             </p>
           </div>
@@ -211,13 +154,13 @@ export const HomeHub: React.FC<HomeHubProps> = ({
             </button>
             <button
               type="button"
-              id="home-demo-pdf-btn"
+              id="home-blank-pdf-btn"
               className="btn btn-subtle"
               style={{ height: 36, padding: '0 16px', fontSize: 12.5 }}
-              onClick={onLoadShowcaseDemo}
+              onClick={onCreateBlankPdf}
             >
-              <Sparkles size={14} style={{ color: 'var(--accent)' }} />
-              <span>Probar Documento Interactivo</span>
+              <FilePlus2 size={14} style={{ color: 'var(--accent)' }} />
+              <span>Nuevo PDF en Blanco</span>
             </button>
           </div>
         </section>
@@ -280,13 +223,13 @@ export const HomeHub: React.FC<HomeHubProps> = ({
         </div>
 
         <section className="home-actions-grid">
-          <button type="button" className="action-card" onClick={onOpenPdfDialog}>
+          <button type="button" className="action-card" onClick={onOpenPdfForEditText}>
             <div className="action-icon-box">
               <Pencil size={18} />
             </div>
-            <div className="action-card-title">Editar Texto PDF</div>
+            <div className="action-card-title">Editar y Mover Texto PDF</div>
             <div className="action-card-desc">
-              Modifica textos existentes conservando su color real y fondo original sin encimar renglones.
+              Haz clic para editar o arrastra cualquier texto existente conservando su color y fondo original.
             </div>
           </button>
 
@@ -394,95 +337,12 @@ export const HomeHub: React.FC<HomeHubProps> = ({
             <div className="action-icon-box">
               <Building2 size={18} />
             </div>
-            <div className="action-card-title">Logos ({savedLogosCount}) y Hoja Nueva</div>
+            <div className="action-card-title">Logos Corporativos ({savedLogosCount})</div>
             <div className="action-card-desc">
-              Administra tus logotipos corporativos sin fondo o crea un PDF A4 en blanco.
+              Administra los logotipos y membretes de tu empresa para estamparlos en 1 clic.
             </div>
           </button>
         </section>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -18, marginBottom: 24 }}>
-          <button type="button" className="btn btn-subtle" onClick={onCreateBlankPdf}>
-            <FilePlus2 size={14} />
-            <span>Crear PDF en Blanco A4</span>
-          </button>
-        </div>
-
-        {/* 6 Real Test Documents Showcase */}
-        {onLoadSamplePdf && (
-          <div style={{ marginBottom: 28 }}>
-            <div
-              style={{
-                fontSize: 11.5,
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                color: 'var(--text-muted)',
-                marginBottom: 12,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <span>Laboratorio de Validación: 6 Documentos Reales</span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', textTransform: 'none' }}>
-                Clic para abrir y auditar en vivo
-              </span>
-            </div>
-
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))',
-                gap: 12,
-              }}
-            >
-              {TEST_DOCUMENTS.map((doc) => (
-                <button
-                  key={doc.filename}
-                  type="button"
-                  className="action-card"
-                  style={{ textAlign: 'left', padding: '14px 16px', cursor: 'pointer' }}
-                  onClick={() => onLoadSamplePdf(doc.filename)}
-                  title={`Abrir ${doc.title} para probar edición directa`}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      width: '100%',
-                      marginBottom: 6,
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        padding: '2px 7px',
-                        borderRadius: 4,
-                        background: doc.badgeBg,
-                        color: doc.badgeColor,
-                      }}
-                    >
-                      {doc.badge}
-                    </span>
-                    <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{doc.size}</span>
-                  </div>
-                  <div
-                    className="action-card-title"
-                    style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 4 }}
-                  >
-                    {doc.title}
-                  </div>
-                  <div className="action-card-desc" style={{ fontSize: 11.5, lineHeight: 1.45 }}>
-                    {doc.desc}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Recent & Pinned Documents */}
         <section
@@ -536,14 +396,16 @@ export const HomeHub: React.FC<HomeHubProps> = ({
                 fontSize: 12.5,
               }}
             >
-              Arrastra cualquier archivo PDF aquí o haz clic en{' '}
-              <strong style={{ color: 'var(--text-primary)' }}>Probar Documento Interactivo</strong> para comenzar.
+              Arrastra cualquier archivo PDF o imagen aquí, o haz clic en{' '}
+              <strong style={{ color: 'var(--text-primary)' }}>Abrir archivo PDF…</strong> para comenzar.
             </div>
           ) : (
             <div>
               {sortedRecents.map((item) => (
                 <div
                   key={item.id}
+                  className="recent-file-row"
+                  onClick={() => onOpenRecentFile(item)}
                   style={{
                     padding: '10px 18px',
                     borderBottom: '1px solid var(--border-subtle)',
@@ -551,16 +413,26 @@ export const HomeHub: React.FC<HomeHubProps> = ({
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     fontSize: 12.5,
+                    cursor: 'pointer',
                   }}
+                  title="Haz clic para volver a abrir este documento"
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                     <img
                       src="/brand/pdf-doc-icon.svg"
                       alt="PDF"
                       style={{ width: 26, height: 26, flexShrink: 0 }}
                     />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+                      <span
+                        style={{
+                          fontWeight: 600,
+                          color: 'var(--text-primary)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
                         {item.fileName}
                       </span>
                       <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
@@ -574,15 +446,28 @@ export const HomeHub: React.FC<HomeHubProps> = ({
                       </span>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    className={`btn icon-only ${item.pinned ? 'active' : ''}`}
-                    style={{ width: 28, height: 28 }}
-                    onClick={() => onTogglePinRecent(item.id)}
-                    title={item.pinned ? 'Quitar fijado' : 'Fijar arriba'}
+                  <div
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <Pin size={13} />
-                  </button>
+                    <button
+                      type="button"
+                      className="btn btn-subtle"
+                      style={{ height: 26, fontSize: 11.5, padding: '0 10px' }}
+                      onClick={() => onOpenRecentFile(item)}
+                    >
+                      Abrir
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn icon-only ${item.pinned ? 'active' : ''}`}
+                      style={{ width: 28, height: 28 }}
+                      onClick={() => onTogglePinRecent(item.id)}
+                      title={item.pinned ? 'Quitar fijado' : 'Fijar arriba'}
+                    >
+                      <Pin size={13} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

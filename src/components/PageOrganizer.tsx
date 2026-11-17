@@ -273,6 +273,34 @@ export const PageOrganizer: React.FC<PageOrganizerProps> = ({
                 >
                   <span>Página {idx + 1}</span>
                   <div style={{ display: 'flex', gap: 2 }} onClick={(e) => e.stopPropagation()}>
+                    {tab.pages.length > 1 && idx > 0 && (
+                      <button
+                        type="button"
+                        className="btn icon-only"
+                        style={{ width: 22, height: 22, fontSize: 11, fontWeight: 700 }}
+                        onClick={() => {
+                          onReorderPages(idx, idx - 1);
+                          setSelectedIndices([idx - 1]);
+                        }}
+                        title="Mover página una posición antes"
+                      >
+                        ←
+                      </button>
+                    )}
+                    {tab.pages.length > 1 && idx < tab.pages.length - 1 && (
+                      <button
+                        type="button"
+                        className="btn icon-only"
+                        style={{ width: 22, height: 22, fontSize: 11, fontWeight: 700 }}
+                        onClick={() => {
+                          onReorderPages(idx, idx + 1);
+                          setSelectedIndices([idx + 1]);
+                        }}
+                        title="Mover página una posición después"
+                      >
+                        →
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="btn icon-only"

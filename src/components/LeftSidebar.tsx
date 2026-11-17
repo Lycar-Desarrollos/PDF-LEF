@@ -30,6 +30,7 @@ interface LeftSidebarProps {
   selectedNativeTextId: string | null;
   onChangePanel: (panel: LeftPanelKind) => void;
   onSelectPage: (pageIndex: number) => void;
+  onReorderPages?: (fromIndex: number, toIndex: number) => void;
   onRotatePage: (pageIndex: number) => void;
   onDeletePage: (pageIndex: number) => void;
   onSelectOverlayElement: (id: string, pageIndex: number) => void;
@@ -73,6 +74,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   selectedNativeTextId,
   onChangePanel,
   onSelectPage,
+  onReorderPages,
   onRotatePage,
   onDeletePage,
   onSelectOverlayElement,
@@ -84,6 +86,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchMatchResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [dragThumbFrom, setDragThumbFrom] = useState<number | null>(null);
+  const [dragThumbOver, setDragThumbOver] = useState<number | null>(null);
 
   useEffect(() => {
     if (openPanel === 'outline') {
@@ -180,8 +184,31 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               tab.pages.map((pd, idx) => (
                 <div
                   key={pd.id}
+                  draggable={Boolean(onReorderPages && tab.pages.length > 1)}
                   className={`thumb-item ${idx === tab.currentPageIndex ? 'active' : ''}`}
+                  style={
+                    dragThumbOver === idx
+                      ? { borderColor: 'var(--accent)', boxShadow: '0 0 0 2px var(--accent-soft)' }
+                      : undefined
+                  }
                   onClick={() => onSelectPage(idx)}
+                  onDragStart={() => setDragThumbFrom(idx)}
+                  onDragOver={(e) => {
+                    if (!onReorderPages) return;
+                    e.preventDefault();
+                    setDragThumbOver(idx);
+                  }}
+                  onDragLeave={() => setDragThumbOver(null)}
+                  onDrop={(e) => {
+                    if (!onReorderPages) return;
+                    e.preventDefault();
+                    setDragThumbOver(null);
+                    if (dragThumbFrom !== null && dragThumbFrom !== idx) {
+                      onReorderPages(dragThumbFrom, idx);
+                    }
+                    setDragThumbFrom(null);
+                  }}
+                  title="Clic para ir a esta página · Arrastra para cambiar el orden"
                 >
                   <PageThumbCanvas tab={tab} pageDesc={pd} />
                   <div className="thumb-label">Página {idx + 1}</div>
@@ -189,6 +216,28 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     className="thumb-quick-actions"
                     onClick={(e) => e.stopPropagation()}
                   >
+                    {onReorderPages && tab.pages.length > 1 && idx > 0 && (
+                      <button
+                        type="button"
+                        className="btn icon-only"
+                        style={{ width: 20, height: 22, fontSize: 10.5, fontWeight: 700 }}
+                        onClick={() => onReorderPages(idx, idx - 1)}
+                        title="Subir página"
+                      >
+                        ↑
+                      </button>
+                    )}
+                    {onReorderPages && tab.pages.length > 1 && idx < tab.pages.length - 1 && (
+                      <button
+                        type="button"
+                        className="btn icon-only"
+                        style={{ width: 20, height: 22, fontSize: 10.5, fontWeight: 700 }}
+                        onClick={() => onReorderPages(idx, idx + 1)}
+                        title="Bajar página"
+                      >
+                        ↓
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="btn icon-only"

@@ -37,10 +37,12 @@ interface ObjectInspectorProps {
     pushUndo?: boolean
   ) => void;
   onDuplicateElement: (id: string) => void;
+  onReplicateElementAcrossPages?: (id: string) => void;
   onReorderLayer: (id: string, dir: 'front' | 'back') => void;
   onDeleteElement: (id: string) => void;
   onReplaceImage: (id: string) => void;
   onUpdateNativeText: (item: NativePdfTextItem, pushUndo?: boolean) => void;
+  onDuplicateNativeTextAsOverlay?: (item: NativePdfTextItem) => void;
   onResetNativeText: (id: string) => void;
   onActivatePdfTextEditTool: () => void;
   onTriggerInsertImage: () => void;
@@ -94,10 +96,12 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
   selectedNativeText,
   onUpdateElement,
   onDuplicateElement,
+  onReplicateElementAcrossPages,
   onReorderLayer,
   onDeleteElement,
   onReplaceImage,
   onUpdateNativeText,
+  onDuplicateNativeTextAsOverlay,
   onResetNativeText,
   onActivatePdfTextEditTool,
   onTriggerInsertImage,
@@ -110,8 +114,30 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
       onUpdateNativeText(
         {
           ...selectedNativeText,
-          x: Math.max(0, Math.min(0.95, selectedNativeText.x + dx)),
-          y: Math.max(0, Math.min(0.96, selectedNativeText.y + dy)),
+          x: Math.max(0.01, Math.min(0.97 - Math.min(0.08, selectedNativeText.width), selectedNativeText.x + dx)),
+          y: Math.max(0.008, Math.min(0.985 - selectedNativeText.height, selectedNativeText.y + dy)),
+          modified: true,
+        },
+        true
+      );
+    };
+
+    const alignNativeHoriz = (mode: 'left' | 'center' | 'right' | 'orig') => {
+      const w = Math.min(0.86, selectedNativeText.width);
+      const nextX =
+        mode === 'left'
+          ? 0.06
+          : mode === 'center'
+          ? Math.max(0.02, 0.5 - w / 2)
+          : mode === 'right'
+          ? Math.max(0.04, 0.94 - w)
+          : selectedNativeText.origX;
+      const nextY = mode === 'orig' ? selectedNativeText.origY : selectedNativeText.y;
+      onUpdateNativeText(
+        {
+          ...selectedNativeText,
+          x: nextX,
+          y: nextY,
           modified: true,
         },
         true
@@ -319,7 +345,45 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
         </div>
 
         <div className="inspector-section">
-          <div className="inspector-title">Mover con Precisión</div>
+          <div className="inspector-title">Posición y Alineación Rápida</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 6 }}>
+            <button
+              type="button"
+              className="btn btn-subtle"
+              style={{ fontSize: 10.5, padding: 0 }}
+              onClick={() => alignNativeHoriz('left')}
+              title="Alinear al margen izquierdo"
+            >
+              Izq.
+            </button>
+            <button
+              type="button"
+              className="btn btn-subtle"
+              style={{ fontSize: 10.5, padding: 0 }}
+              onClick={() => alignNativeHoriz('center')}
+              title="Centrar horizontalmente en la hoja"
+            >
+              Centro
+            </button>
+            <button
+              type="button"
+              className="btn btn-subtle"
+              style={{ fontSize: 10.5, padding: 0 }}
+              onClick={() => alignNativeHoriz('right')}
+              title="Alinear al margen derecho"
+            >
+              Der.
+            </button>
+            <button
+              type="button"
+              className="btn btn-subtle"
+              style={{ fontSize: 10.5, padding: 0 }}
+              onClick={() => alignNativeHoriz('orig')}
+              title="Volver a la posición X/Y original"
+            >
+              Orig.
+            </button>
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
             <button type="button" className="btn btn-subtle" onClick={() => nudgeNative(-0.005, 0)}>
               ←
@@ -337,6 +401,17 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
         </div>
 
         <div className="inspector-section" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {onDuplicateNativeTextAsOverlay && (
+            <button
+              type="button"
+              className="btn btn-subtle"
+              style={{ width: '100%' }}
+              onClick={() => onDuplicateNativeTextAsOverlay(selectedNativeText)}
+            >
+              <Copy size={14} />
+              <span>Duplicar como texto libre</span>
+            </button>
+          )}
           <button
             type="button"
             className="btn btn-subtle"
@@ -368,15 +443,23 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
   // 2. Inspector for Selected Added Overlay Object
   if (selectedElement) {
     const el = selectedElement;
+    const moveElTo = (targetX: number, targetY: number) => {
+      const clampedX = Math.max(0, Math.min(1 - el.width, targetX));
+      const clampedY = Math.max(0, Math.min(1 - el.height, targetY));
+      const dx = clampedX - el.x;
+      const dy = clampedY - el.y;
+      const patch: Partial<PdfOverlayElement> = { x: clampedX, y: clampedY };
+      if (el.points) {
+        patch.points = el.points.map((pt) => ({
+          x: Math.max(0, Math.min(1, pt.x + dx)),
+          y: Math.max(0, Math.min(1, pt.y + dy)),
+        }));
+      }
+      onUpdateElement(el.id, patch, true);
+    };
+
     const nudgeEl = (dx: number, dy: number) => {
-      onUpdateElement(
-        el.id,
-        {
-          x: Math.max(0, Math.min(1 - el.width, el.x + dx)),
-          y: Math.max(0, Math.min(1 - el.height, el.y + dy)),
-        },
-        true
-      );
+      moveElTo(el.x + dx, el.y + dy);
     };
 
     return (
@@ -685,6 +768,48 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
           )}
 
           <div className="prop-label" style={{ marginTop: 8, marginBottom: 6 }}>
+            Alineación rápida en hoja
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 8 }}>
+            <button
+              type="button"
+              className="btn btn-subtle"
+              style={{ fontSize: 10.5, padding: 0 }}
+              onClick={() => moveElTo(0.06, el.y)}
+              title="Alinear al margen izquierdo"
+            >
+              Izq.
+            </button>
+            <button
+              type="button"
+              className="btn btn-subtle"
+              style={{ fontSize: 10.5, padding: 0 }}
+              onClick={() => moveElTo(0.5 - el.width / 2, el.y)}
+              title="Centrar horizontalmente en la página"
+            >
+              Centro H
+            </button>
+            <button
+              type="button"
+              className="btn btn-subtle"
+              style={{ fontSize: 10.5, padding: 0 }}
+              onClick={() => moveElTo(el.x, 0.5 - el.height / 2)}
+              title="Centrar verticalmente en la página"
+            >
+              Centro V
+            </button>
+            <button
+              type="button"
+              className="btn btn-subtle"
+              style={{ fontSize: 10.5, padding: 0 }}
+              onClick={() => moveElTo(0.94 - el.width, el.y)}
+              title="Alinear al margen derecho"
+            >
+              Der.
+            </button>
+          </div>
+
+          <div className="prop-label" style={{ marginBottom: 6 }}>
             Ajuste fino de posición
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
@@ -728,8 +853,20 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
             onClick={() => onDuplicateElement(el.id)}
           >
             <Copy size={13.5} />
-            <span>Duplicar objeto</span>
+            <span>Duplicar objeto (Ctrl+D)</span>
           </button>
+          {tab.pages.length > 1 && onReplicateElementAcrossPages && (
+            <button
+              type="button"
+              className="btn btn-subtle"
+              style={{ color: 'var(--accent)', fontWeight: 600 }}
+              onClick={() => onReplicateElementAcrossPages(el.id)}
+              title="Estampa este mismo logo, firma o sello en la misma posición de todas las páginas"
+            >
+              <Copy size={13.5} />
+              <span>Aplicar en las {tab.pages.length} páginas</span>
+            </button>
+          )}
           <button
             type="button"
             className="btn btn-subtle"
@@ -763,7 +900,7 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
           )}
         </div>
         <p style={{ fontSize: 11.5, color: 'var(--text-secondary)', lineHeight: 1.48, margin: '0 0 12px' }}>
-          Selecciona cualquier texto o imagen en la hoja para ajustar su formato, o ejecuta una acción rápida:
+          Selecciona o arrastra cualquier texto o imagen en la hoja, o ejecuta una acción rápida:
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
@@ -840,16 +977,21 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
       </div>
 
       <div className="inspector-section">
-        <div className="inspector-title">Atajos de Precisión</div>
+        <div className="inspector-title">Gestos y Atajos Rápidos</div>
         <div style={{ fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.65 }}>
           <div>
             <Move size={11} style={{ verticalAlign: 'middle', marginRight: 5 }} />
-            Arrastra cualquier objeto o texto para moverlo.
+            Arrastra cualquier texto u objeto para moverlo.
           </div>
-          <div>• Doble clic en un cuadro de texto para editarlo.</div>
-          <div>• Arrastra fotos PNG/JPG directo sobre la hoja.</div>
+          <div>• Doble clic en cualquier texto para editarlo al instante.</div>
           <div>
-            • <span className="kbd-badge">Supr</span> borra el elemento activo.
+            • <span className="kbd-badge">Alt</span> + Arrastrar crea una copia rápida.
+          </div>
+          <div>
+            • <span className="kbd-badge">Shift</span> + Arrastrar mueve en línea recta.
+          </div>
+          <div>
+            • <span className="kbd-badge">Ctrl+C</span> / <span className="kbd-badge">Ctrl+V</span> copia objetos entre páginas.
           </div>
           <div>
             • <span className="kbd-badge">Ctrl+Z</span> deshace cualquier cambio.

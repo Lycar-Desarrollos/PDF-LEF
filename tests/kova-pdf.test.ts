@@ -405,7 +405,7 @@ test('7. Windows Tauri v2 High-DPI config, NSIS, ICO headers & spellCheck={false
   const tauriConf = JSON.parse(readFileSync(join(ROOT, 'src-tauri/tauri.conf.json'), 'utf8'));
   assert.equal(tauriConf.productName, 'Kova PDF');
   assert.equal(tauriConf.mainBinaryName, 'KovaPDF');
-  assert.equal(tauriConf.version, '2.2.1');
+  assert.equal(tauriConf.version, '2.3.0');
   assert.equal(tauriConf.identifier, 'studio.kova.pdf');
   assert.equal(tauriConf.bundle.publisher, 'Kova Studio');
   assert.equal(tauriConf.bundle.fileAssociations[0].name, 'KovaPDF.Document');
@@ -572,20 +572,21 @@ test('10. Global Internet Auto-Updater & Remote Manifest Control (any network wo
   const { CURRENT_APP_VERSION, isNewerVersion, parseSemver } = await import(
     '../src/utils/updater.ts'
   );
-  assert.equal(CURRENT_APP_VERSION, '2.2.1');
-  assert.deepEqual(parseSemver('v2.2.1'), [2, 2, 1]);
-  assert.equal(isNewerVersion('v2.2.1', '2.0.0'), true);
-  assert.equal(isNewerVersion('v2.2.1', '2.2.0'), true);
-  assert.equal(isNewerVersion('v2.2.1', '2.2.1'), false);
-  assert.equal(isNewerVersion('v2.2.0', '2.2.1'), false);
+  assert.equal(CURRENT_APP_VERSION, '2.3.0');
+  assert.deepEqual(parseSemver('v2.3.0'), [2, 3, 0]);
+  assert.equal(isNewerVersion('v2.3.0', '2.0.0'), true);
+  assert.equal(isNewerVersion('v2.3.0', '2.2.1'), true);
+  assert.equal(isNewerVersion('v2.3.0', '2.3.0'), false);
+  assert.equal(isNewerVersion('v2.2.1', '2.3.0'), false);
 
   const manifest = JSON.parse(readFileSync(join(ROOT, 'website/update-manifest.json'), 'utf8'));
   assert.equal(manifest.product, 'Kova PDF');
-  assert.equal(manifest.version, '2.2.1');
-  assert.equal(manifest.mandatory, true);
+  assert.equal(manifest.version, '2.3.0');
+  assert.equal(manifest.minRequiredVersion, '2.2.1');
+  assert.equal(typeof manifest.mandatory, 'boolean');
   assert.equal(typeof manifest.autoInstall, 'boolean');
-  assert.ok(manifest.exeUrl.endsWith('Kova.PDF_2.2.1_x64-setup.exe'));
-  assert.ok(manifest.msiUrl.endsWith('Kova.PDF_2.2.1_x64_en-US.msi'));
+  assert.ok(manifest.exeUrl.endsWith('Kova.PDF_2.3.0_x64-setup.exe'));
+  assert.ok(manifest.msiUrl.endsWith('Kova.PDF_2.3.0_x64_en-US.msi'));
 });
 
 test('11. Inline Bold+Regular separation on #F4F6F9 gray cards, untouched-if-unchanged guarantee & CREATE_NO_WINDOW', async () => {
@@ -718,4 +719,160 @@ test('11. Inline Bold+Regular separation on #F4F6F9 gray cards, untouched-if-unc
   assert.ok(relLabel && relLabel.fontWeight === 'bold', 'Reloaded Modalidad: must remain bold');
   assert.ok(relVal && relVal.fontWeight === 'normal', 'Reloaded edited value must remain normal weight');
 });
+
+test('12. Production UI Cleanliness (zero Laboratory/Demo UI) & 360° Direct Manipulation Vector Export', async () => {
+  // 1. Verify zero traces of Laboratorio / Demo / Test Document UI in HomeHub, App, and Official Website
+  const uiFiles = [
+    join(ROOT, 'src/components/HomeHub.tsx'),
+    join(ROOT, 'src/App.tsx'),
+    join(ROOT, 'website/index.html'),
+    join(ROOT, 'website/app.js'),
+  ];
+  const forbiddenDemoStrings = [
+    /LABORATORIO/i,
+    /TEST_DOCUMENTS/,
+    /Probar Documento Interactivo/i,
+    /Documento Interactivo de Demostración/i,
+    /06_Portafolio_Obra_Proyectos\.pdf/,
+    /#pruebas/,
+  ];
+  for (const file of uiFiles) {
+    const content = readFileSync(file, 'utf8');
+    for (const rx of forbiddenDemoStrings) {
+      assert.equal(
+        rx.test(content),
+        false,
+        `Production UI file ${file} must not contain demo/laboratory pattern ${rx}`
+      );
+    }
+  }
+
+  // 2. Verify HomeHub wires Recent Documents click-to-open & Tauri local disk reader
+  const homeHub = readFileSync(join(ROOT, 'src/components/HomeHub.tsx'), 'utf8');
+  assert.match(homeHub, /onOpenRecentFile/);
+  assert.match(homeHub, /onOpenPdfForEditText/);
+
+  const tauriBridge = readFileSync(join(ROOT, 'src/utils/tauriBridge.ts'), 'utf8');
+  assert.match(tauriBridge, /export async function readPdfFromLocalPath/);
+
+  // 3. Verify 360° directional arrow, translated ink, translated dimension & right-edge native text move export cleanly
+  const portfolioBytes = readFileSync(join(ROOT, 'pruebas/06_Portafolio_Obra_Proyectos.pdf'));
+  const tab = await loadPdfIntoTabDocument('DirectManip.pdf', portfolioBytes, DEFAULT_SETTINGS);
+  const p1Id = tab.pages[0].id;
+  const p2Id = tab.pages[1].id;
+
+  const p1Texts = await extractPageTextsForTab(tab, 0);
+  const targetSpan = p1Texts[0];
+  assert.ok(targetSpan);
+
+  // Move native text near right margin (x = 0.82) to verify right-edge freedom
+  tab.nativeTextEdits[targetSpan.id] = {
+    ...targetSpan,
+    x: 0.82,
+    y: 0.14,
+    modified: true,
+  };
+
+  tab.elements = [
+    // 360° reverse-diagonal arrow (bottom-right -> top-left)
+    {
+      id: 'arrow_360',
+      pageId: p1Id,
+      kind: 'arrow',
+      x: 0.18,
+      y: 0.24,
+      width: 0.64,
+      height: 0.54,
+      rotation: 0,
+      opacity: 1,
+      zIndex: 1,
+      borderColor: '#DC2626',
+      strokeWidth: 2.5,
+      points: [
+        { x: 0.82, y: 0.78 },
+        { x: 0.18, y: 0.24 },
+      ],
+    },
+    // Translated ink stroke
+    {
+      id: 'ink_moved',
+      pageId: p1Id,
+      kind: 'ink',
+      x: 0.3,
+      y: 0.4,
+      width: 0.2,
+      height: 0.1,
+      rotation: 0,
+      opacity: 0.9,
+      zIndex: 2,
+      color: '#1D4ED8',
+      strokeWidth: 2,
+      points: [
+        { x: 0.3, y: 0.4 },
+        { x: 0.4, y: 0.48 },
+        { x: 0.5, y: 0.42 },
+      ],
+    },
+    // Translated architectural dimension line
+    {
+      id: 'dim_moved',
+      pageId: p1Id,
+      kind: 'dimension',
+      x: 0.2,
+      y: 0.65,
+      width: 0.4,
+      height: 0.04,
+      rotation: 0,
+      opacity: 1,
+      zIndex: 3,
+      color: '#0D9488',
+      strokeWidth: 1.5,
+      text: '84.2 mm',
+      points: [
+        { x: 0.2, y: 0.67 },
+        { x: 0.6, y: 0.67 },
+      ],
+    },
+    // Replicated corporate stamp across Page 1 and Page 2 at identical coordinates
+    {
+      id: 'rep_stamp_1',
+      pageId: p1Id,
+      kind: 'stamp',
+      x: 0.68,
+      y: 0.06,
+      width: 0.24,
+      height: 0.065,
+      rotation: 0,
+      opacity: 0.95,
+      zIndex: 4,
+      text: 'VALIDADO',
+      color: '#0D7A5F',
+    },
+    {
+      id: 'rep_stamp_2',
+      pageId: p2Id,
+      kind: 'stamp',
+      x: 0.68,
+      y: 0.06,
+      width: 0.24,
+      height: 0.065,
+      rotation: 0,
+      opacity: 0.95,
+      zIndex: 5,
+      text: 'VALIDADO',
+      color: '#0D7A5F',
+    },
+  ];
+
+  const outBytes = await compileTabToPdfBytes(tab);
+  assert.ok(outBytes.byteLength > 2500);
+  const reloaded = await loadPdfIntoTabDocument('DirectManipOut.pdf', outBytes, DEFAULT_SETTINGS);
+  assert.equal(reloaded.pages.length, 2);
+  const p2Extracted = await extractPageTextsForTab(reloaded, 1);
+  assert.ok(
+    p2Extracted.some((t) => t.text.includes('VALIDADO')),
+    'Multi-page replicated stamp must appear on Page 2'
+  );
+});
+
 
