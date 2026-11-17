@@ -1,6 +1,6 @@
 import { isTauriDesktop } from './tauriBridge';
 
-export const CURRENT_APP_VERSION = '2.1.0';
+export const CURRENT_APP_VERSION = '2.2.0';
 
 export const GLOBAL_MANIFEST_URL =
   'https://lycar-desarrollos.github.io/PDF-LEF/update-manifest.json';
@@ -12,6 +12,7 @@ export interface RemoteUpdateInfo {
   currentVersion: string;
   latestVersion: string;
   mandatory: boolean;
+  autoInstall?: boolean;
   downloadUrl?: string;
   msiUrl?: string;
   releaseUrl?: string;
@@ -42,6 +43,7 @@ interface ManifestPayload {
   version?: string;
   minRequiredVersion?: string;
   mandatory?: boolean;
+  autoInstall?: boolean;
   exeUrl?: string;
   msiUrl?: string;
   releaseUrl?: string;
@@ -133,6 +135,7 @@ export async function checkGlobalAppUpdate(
       currentVersion: `v${localVersion.replace(/^v/i, '')}`,
       latestVersion: `v${bestVersion.replace(/^v/i, '')}`,
       mandatory,
+      autoInstall: Boolean(manifestData?.autoInstall),
       downloadUrl,
       msiUrl,
       releaseUrl: manifestData?.releaseUrl || releaseHtmlUrl,

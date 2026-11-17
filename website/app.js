@@ -13,9 +13,9 @@ const I18N = {
     hero_lead:
       'Edita títulos a color y encabezados sobre fondos oscuros sin superposiciones, convierte documentos a Word editable (.docx) y Excel (.csv), elimina o recorta páginas, comprime archivos y estampa firmas transparentes sin exponer información confidencial en portales externos.',
     hero_btn_exe_main: 'Descargar Kova PDF para Windows',
-    hero_btn_exe_sub: 'Instalador Nativo v2.1 (.exe · 64-bit · Gratis)',
+    hero_btn_exe_sub: 'Instalador Nativo v2.2 (.exe · 64-bit · Gratis)',
     hero_btn_msi: 'Paquete Empresarial (.msi)',
-    spec_1_b: 'v2.1.0 Estable',
+    spec_1_b: 'v2.2.0 Estable',
     spec_2_b: '0 Bytes en Nube',
     spec_2_t: 'Privacidad Total',
     spec_3_b: 'High-DPI Ready',
@@ -60,7 +60,7 @@ const I18N = {
     win_li_4:
       '<b>Despliegue empresarial (.exe y .msi):</b> Compatible con instalación silenciosa por políticas de grupo (GPO / Intune) para equipos corporativos.',
     exp_title: 'Explorador de Windows 11 · Documentos Corporativos',
-    upd_strip_text: '✓ Canal de actualizaciones automáticas v2.0 activo en Configuración',
+    upd_strip_text: '✓ Canal de actualizaciones automáticas v2.2 activo en todos los equipos',
     cmp_eyebrow: 'TRANSPARENCIA TÉCNICA',
     cmp_title: 'Por qué los equipos profesionales migran a Kova PDF.',
     cmp_sub:
@@ -134,8 +134,8 @@ const I18N = {
       'En Configuración encontrarás el módulo de Actualizaciones de Kova PDF, que consulta la última versión oficial publicada y descarga el instalador actualizado en un clic. En redes empresariales también puedes desplegar el paquete .msi mediante Intune o GPO.',
     faq_q4: '¿Se adapta bien a pantallas de laptops con escalado al 125% o 150%?',
     faq_a4:
-      'Sí. La versión 2.0 inicia maximizada automáticamente, ajusta el ancho de sus paneles según la resolución disponible y permite colapsar el inspector derecho para maximizar el área de lectura y edición del documento.',
-    ft_title: 'Instala Kova PDF v2.0 en tu equipo Windows hoy mismo.',
+      'Sí. La versión 2.2 inicia maximizada automáticamente, ajusta el ancho de sus paneles según la resolución disponible y permite colapsar el inspector derecho para maximizar el área de lectura y edición del documento.',
+    ft_title: 'Instala Kova PDF v2.2 en tu equipo Windows hoy mismo.',
     ft_sub:
       'Descarga directa del instalador oficial firmado para Windows 10 y Windows 11 (64-bit). 100% local, privado y sin suscripciones.',
     ft_btn_exe: 'Descargar Kova PDF (.exe)',
@@ -154,9 +154,9 @@ const I18N = {
     hero_lead:
       'Edit colored headings and dark header banners with zero ghosting, convert files to editable Word (.docx) and Excel (.csv), remove or crop pages, compress file size, and place transparent signatures without uploading confidential files to third-party cloud servers.',
     hero_btn_exe_main: 'Download Kova PDF for Windows',
-    hero_btn_exe_sub: 'Native Installer v2.1 (.exe · 64-bit · Free)',
+    hero_btn_exe_sub: 'Native Installer v2.2 (.exe · 64-bit · Free)',
     hero_btn_msi: 'Enterprise Package (.msi)',
-    spec_1_b: 'v2.1.0 Stable',
+    spec_1_b: 'v2.2.0 Stable',
     spec_2_b: '0 Cloud Bytes',
     spec_2_t: 'Total Privacy',
     spec_3_b: 'High-DPI Ready',

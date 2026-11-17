@@ -9,7 +9,11 @@ import {
 import JSZip from 'jszip';
 import type { FontFamilyChoice, PdfTabDocument } from '../types/pdf';
 import { normalizeImageToPngBytes } from './imageUtils';
-import { extractStructuredPageLines, renderPageToCanvas } from './pdfEngine';
+import {
+  extractStructuredPageLines,
+  hasNativeTextMeaningfulDiff,
+  renderPageToCanvas,
+} from './pdfEngine';
 
 function hexToPdfRgb(hex?: string, fallback = '#111318') {
   const raw = (hex && hex.startsWith('#') ? hex : fallback).replace('#', '');
@@ -253,16 +257,21 @@ export async function compileTabToPdfBytes(
     }
 
     // 1. Apply Native Existing-Text Edits / Moves / Deletions on this page!
-    const nativeEdits = Object.values(tab.nativeTextEdits).filter(
-      (nt) => nt.pageId === pd.id && (nt.modified || nt.deleted)
-    );
+    const pageBaselines = tab.extractedPageTexts[pd.id] ?? [];
+    const nativeEdits = Object.values(tab.nativeTextEdits).filter((nt) => {
+      if (nt.pageId !== pd.id) return false;
+      if (nt.deleted) return true;
+      if (!nt.modified) return false;
+      const baseline = pageBaselines.find((b) => b.id === nt.id);
+      return baseline ? hasNativeTextMeaningfulDiff(nt, baseline) : true;
+    });
 
     for (const nt of nativeEdits) {
-      // Cover original text run cleanly with sampled background color (respecting neighbor line clamps)
-      const patchX = Math.max(0, nt.origX * pw - 2);
-      const patchW = Math.min(pw - patchX, nt.origWidth * pw + 4);
-      const patchH = nt.origHeight * ph + 1.8;
-      const patchY = Math.max(0, ph - (nt.origY * ph + nt.origHeight * ph) - 0.9);
+      // Cover original text run cleanly with sampled background color (tight horizontal bounds protect adjacent inline labels)
+      const patchX = Math.max(0, nt.origX * pw - 0.5);
+      const patchW = Math.min(pw - patchX, nt.origWidth * pw + 1.0);
+      const patchH = nt.origHeight * ph + 1.4;
+      const patchY = Math.max(0, ph - (nt.origY * ph + nt.origHeight * ph) - 0.7);
       const patchRgb = hexToPdfRgb(nt.bgPatchColor, '#ffffff');
 
       pdfPage.drawRectangle({
@@ -285,13 +294,13 @@ export async function compileTabToPdfBytes(
             ...lines.map((ln) => chosenFont.widthOfTextAtSize(ln, fSize))
           );
           const totalBlockH = lines.length * fSize * 1.18;
-          const newBoxX = Math.max(0, nt.x * pw - 1.5);
-          const newBoxTopFromBottom = ph - nt.y * ph + 1;
+          const newBoxX = Math.max(0, nt.x * pw - 0.5);
+          const newBoxTopFromBottom = ph - nt.y * ph + 0.8;
           pdfPage.drawRectangle({
             x: newBoxX,
-            y: Math.max(0, newBoxTopFromBottom - totalBlockH - 1),
-            width: Math.min(pw - newBoxX, widestLine + 3.5),
-            height: totalBlockH + 2,
+            y: Math.max(0, newBoxTopFromBottom - totalBlockH - 0.8),
+            width: Math.min(pw - newBoxX, widestLine + 1.6),
+            height: totalBlockH + 1.6,
             color: patchRgb,
           });
         }

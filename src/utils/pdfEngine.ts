@@ -137,30 +137,167 @@ export async function extractNativeEditableTexts(
   const page = await pdf.getPage(pageDesc.sourcePageIndex + 1);
   const totalRotation = (page.rotate + pageDesc.rotation) % 360;
   const viewport = page.getViewport({ scale: 1, rotation: totalRotation });
+  const sampleScale = 1.5;
+  const sampleViewport = page.getViewport({ scale: sampleScale, rotation: totalRotation });
   const textContent = await page.getTextContent();
 
-  // Render 1.0x offscreen bitmap once per page for fast CPU pixel color & glyph-edge scanning
+  // Render 1.5x offscreen bitmap once per page for high-precision background mode & glyph ink scanning
   let cw = 0;
   let ch = 0;
   let pagePixels: Uint8ClampedArray | null = null;
   if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
     const sampleCanvas = document.createElement('canvas');
-    cw = Math.max(1, Math.floor(viewport.width));
-    ch = Math.max(1, Math.floor(viewport.height));
+    cw = Math.max(1, Math.floor(sampleViewport.width));
+    ch = Math.max(1, Math.floor(sampleViewport.height));
     sampleCanvas.width = cw;
     sampleCanvas.height = ch;
     const sCtx = sampleCanvas.getContext('2d', { willReadFrequently: true });
     if (sCtx) {
       sCtx.fillStyle = '#ffffff';
       sCtx.fillRect(0, 0, cw, ch);
-      await page.render({ canvasContext: sCtx, canvas: sampleCanvas, viewport }).promise;
+      await page.render({
+        canvasContext: sCtx,
+        canvas: sampleCanvas,
+        viewport: sampleViewport,
+      }).promise;
       pagePixels = sCtx.getImageData(0, 0, cw, ch).data;
     }
   } else {
     await page.getOperatorList();
   }
 
-  interface RawFragment {
+  const commonObjs = (
+    page as unknown as {
+      commonObjs?: {
+        has: (id: string) => boolean;
+        get: (id: string) => {
+          name?: string;
+          bold?: boolean;
+          black?: boolean;
+          italic?: boolean;
+          fallbackName?: string;
+        };
+      };
+    }
+  ).commonObjs;
+
+  const toHex = (r: number, g: number, b: number) =>
+    `#${[r, g, b]
+      .map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0'))
+      .join('')}`;
+
+  const getPixelAtPt = (ptX: number, ptY: number): [number, number, number] => {
+    if (!pagePixels || cw <= 0 || ch <= 0) return [255, 255, 255];
+    const px = Math.max(0, Math.min(cw - 1, Math.round(ptX * sampleScale)));
+    const py = Math.max(0, Math.min(ch - 1, Math.round(ptY * sampleScale)));
+    const off = (py * cw + px) * 4;
+    return [pagePixels[off], pagePixels[off + 1], pagePixels[off + 2]];
+  };
+
+  const sampleDominantBgAndInk = (
+    leftPt: number,
+    topPt: number,
+    rightPt: number,
+    bottomPt: number
+  ): { bg: [number, number, number]; ink: [number, number, number]; inkBoundsPt?: [number, number, number, number] } => {
+    if (!pagePixels || cw <= 0 || ch <= 0) {
+      return { bg: [255, 255, 255], ink: [20, 22, 26] };
+    }
+
+    // 1. Collect dense perimeter ring samples (28 points) around the text box & find exact dominant mode cluster
+    const ring: Array<[number, number, number]> = [];
+    const xA = leftPt - 1.4;
+    const xB = rightPt + 1.4;
+    const yA = topPt - 1.2;
+    const yB = bottomPt + 1.2;
+
+    for (let i = 0; i <= 8; i++) {
+      const t = i / 8;
+      const sx = xA + (xB - xA) * t;
+      ring.push(getPixelAtPt(sx, yA));
+      ring.push(getPixelAtPt(sx, yB));
+    }
+    for (let j = 1; j <= 4; j++) {
+      const t = j / 5;
+      const sy = yA + (yB - yA) * t;
+      ring.push(getPixelAtPt(xA, sy));
+      ring.push(getPixelAtPt(xB, sy));
+    }
+
+    let bestCluster: Array<[number, number, number]> = [];
+    for (const seed of ring) {
+      const neighbors = ring.filter(
+        (p) => Math.hypot(p[0] - seed[0], p[1] - seed[1], p[2] - seed[2]) <= 9
+      );
+      if (neighbors.length > bestCluster.length) {
+        bestCluster = neighbors;
+      }
+    }
+
+    const bgSource = bestCluster.length > 0 ? bestCluster : ring;
+    const bgR = Math.round(bgSource.reduce((s, p) => s + p[0], 0) / bgSource.length);
+    const bgG = Math.round(bgSource.reduce((s, p) => s + p[1], 0) / bgSource.length);
+    const bgB = Math.round(bgSource.reduce((s, p) => s + p[2], 0) / bgSource.length);
+    const bgLum = 0.299 * bgR + 0.587 * bgG + 0.114 * bgB;
+
+    // 2. Scan interior pixels at 1.5x resolution for high-contrast glyph ink core
+    const px0 = Math.max(0, Math.floor((leftPt - 1.5) * sampleScale));
+    const px1 = Math.min(cw - 1, Math.ceil((rightPt + 2) * sampleScale));
+    const py0 = Math.max(0, Math.floor(topPt * sampleScale));
+    const py1 = Math.min(ch - 1, Math.ceil(bottomPt * sampleScale));
+
+    const inkPixels: Array<{ r: number; g: number; b: number; dist: number }> = [];
+    let minPx = px1;
+    let maxPx = px0;
+    let minPy = py1;
+    let maxPy = py0;
+
+    const stepX = px1 - px0 > 380 ? 2 : 1;
+    for (let py = py0; py <= py1; py++) {
+      const rowOff = py * cw * 4;
+      for (let px = px0; px <= px1; px += stepX) {
+        const off = rowOff + px * 4;
+        const r = pagePixels[off];
+        const g = pagePixels[off + 1];
+        const b = pagePixels[off + 2];
+        const dist = Math.hypot(r - bgR, g - bgG, b - bgB);
+        if (dist > 40) {
+          if (px < minPx) minPx = px;
+          if (px > maxPx) maxPx = px;
+          if (py < minPy) minPy = py;
+          if (py > maxPy) maxPy = py;
+          inkPixels.push({ r, g, b, dist });
+        }
+      }
+    }
+
+    if (inkPixels.length > 0) {
+      inkPixels.sort((a, b) => b.dist - a.dist);
+      const coreCount = Math.max(1, Math.ceil(inkPixels.length * 0.2));
+      const core = inkPixels.slice(0, coreCount);
+      const rs = core.map((c) => c.r).sort((a, b) => a - b);
+      const gs = core.map((c) => c.g).sort((a, b) => a - b);
+      const bs = core.map((c) => c.b).sort((a, b) => a - b);
+      const mid = Math.floor(core.length / 2);
+      return {
+        bg: [bgR, bgG, bgB],
+        ink: [rs[mid], gs[mid], bs[mid]],
+        inkBoundsPt: [
+          minPx / sampleScale,
+          minPy / sampleScale,
+          maxPx / sampleScale,
+          maxPy / sampleScale,
+        ],
+      };
+    }
+
+    return {
+      bg: [bgR, bgG, bgB],
+      ink: bgLum < 110 ? [255, 255, 255] : [20, 22, 26],
+    };
+  };
+
+  interface StyledFragment {
     left: number;
     baselineY: number;
     top: number;
@@ -169,9 +306,14 @@ export async function extractNativeEditableTexts(
     fontSize: number;
     str: string;
     fontName: string;
+    family: FontFamilyChoice;
+    weight: 'normal' | 'bold';
+    style: 'normal' | 'italic';
+    bgRgb: [number, number, number];
+    inkRgb: [number, number, number];
   }
 
-  const fragments: RawFragment[] = [];
+  const fragments: StyledFragment[] = [];
   for (const item of textContent.items) {
     if (!('str' in item)) continue;
     const str = item.str;
@@ -181,10 +323,32 @@ export async function extractNativeEditableTexts(
     const fontHeight = Math.max(6.5, Math.hypot(tx[2], tx[3]));
     const left = tx[4];
     const baselineY = tx[5];
-    const top = baselineY - fontHeight * 0.94;
-    const rawW = item.width * viewport.scale || str.length * fontHeight * 0.53;
-    const width = Math.max(6, rawW + fontHeight * 0.06);
-    const height = fontHeight * 1.24;
+    const top = baselineY - fontHeight * 0.92;
+    const rawW = item.width * viewport.scale || str.length * fontHeight * 0.52;
+    const width = Math.max(5, rawW + fontHeight * 0.04);
+    const height = fontHeight * 1.2;
+    const fName = item.fontName || '';
+
+    const styleMeta = (
+      textContent.styles as Record<string, { fontFamily?: string }> | undefined
+    )?.[fName];
+    const fontObj =
+      commonObjs && fName && commonObjs.has(fName) ? commonObjs.get(fName) : null;
+    const fontInfo = guessFontChoice(`${fontObj?.name || ''} ${fName}`);
+    const familyHint =
+      `${fontObj?.name || ''} ${fName} ${styleMeta?.fontFamily || ''} ${fontObj?.fallbackName || ''}`.toLowerCase();
+    const resolvedFamily: FontFamilyChoice =
+      familyHint.includes('mono') || familyHint.includes('courier')
+        ? 'mono'
+        : familyHint.includes('serif') && !familyHint.includes('sans')
+          ? 'serif'
+          : fontInfo.family;
+    const resolvedWeight: 'normal' | 'bold' =
+      fontObj?.bold || fontObj?.black || fontInfo.weight === 'bold' ? 'bold' : 'normal';
+    const resolvedStyle: 'normal' | 'italic' =
+      fontObj?.italic || fontInfo.style === 'italic' ? 'italic' : 'normal';
+
+    const quickSample = sampleDominantBgAndInk(left, top, left + width, top + height);
 
     fragments.push({
       left,
@@ -194,7 +358,12 @@ export async function extractNativeEditableTexts(
       height,
       fontSize: fontHeight,
       str,
-      fontName: item.fontName || '',
+      fontName: fName,
+      family: resolvedFamily,
+      weight: resolvedWeight,
+      style: resolvedStyle,
+      bgRgb: quickSample.bg,
+      inkRgb: quickSample.ink,
     });
   }
 
@@ -203,15 +372,36 @@ export async function extractNativeEditableTexts(
     Math.abs(a.baselineY - b.baselineY) > 3 ? a.baselineY - b.baselineY : a.left - b.left
   );
 
-  const merged: RawFragment[] = [];
+  // Merge ONLY adjacent fragments on the same baseline that share IDENTICAL weight, style, family, ink color, and background!
+  const merged: StyledFragment[] = [];
   for (const frag of fragments) {
     const prev = merged[merged.length - 1];
-    const maxHorizGap = Math.min(34, Math.max(prev ? prev.fontSize * 2.55 : 0, 14));
+    const maxHorizGap = Math.min(18, Math.max(prev ? prev.fontSize * 1.15 : 0, 7));
+    const sameStyle =
+      prev &&
+      prev.weight === frag.weight &&
+      prev.style === frag.style &&
+      prev.family === frag.family;
+    const sameColors =
+      prev &&
+      Math.hypot(
+        prev.inkRgb[0] - frag.inkRgb[0],
+        prev.inkRgb[1] - frag.inkRgb[1],
+        prev.inkRgb[2] - frag.inkRgb[2]
+      ) <= 36 &&
+      Math.hypot(
+        prev.bgRgb[0] - frag.bgRgb[0],
+        prev.bgRgb[1] - frag.bgRgb[1],
+        prev.bgRgb[2] - frag.bgRgb[2]
+      ) <= 22;
+
     if (
       prev &&
-      Math.abs(prev.baselineY - frag.baselineY) <= Math.max(2.6, prev.fontSize * 0.24) &&
-      Math.abs(prev.fontSize - frag.fontSize) <= 2.2 &&
-      frag.left >= prev.left - 2 &&
+      sameStyle &&
+      sameColors &&
+      Math.abs(prev.baselineY - frag.baselineY) <= Math.max(2.4, prev.fontSize * 0.22) &&
+      Math.abs(prev.fontSize - frag.fontSize) <= 1.8 &&
+      frag.left >= prev.left - 1.5 &&
       frag.left - (prev.left + prev.width) <= maxHorizGap
     ) {
       const gap = frag.left - (prev.left + prev.width);
@@ -229,25 +419,28 @@ export async function extractNativeEditableTexts(
   const vw = Math.max(1, viewport.width);
   const vh = Math.max(1, viewport.height);
 
-  const toHex = (r: number, g: number, b: number) =>
-    `#${[r, g, b].map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('')}`;
-
-  const getPixel = (x: number, y: number): [number, number, number] => {
-    if (!pagePixels || cw <= 0 || ch <= 0) return [255, 255, 255];
-    const px = Math.max(0, Math.min(cw - 1, Math.round(x)));
-    const py = Math.max(0, Math.min(ch - 1, Math.round(y)));
-    const off = (py * cw + px) * 4;
-    return [pagePixels[off], pagePixels[off + 1], pagePixels[off + 2]];
-  };
-
   return merged.map((m, idx) => {
-    // 1. Clamp vertical bounds cleanly against overlapping neighbor lines above/below
-    let minAllowedTop = Math.max(0, m.top - m.fontSize * 0.16);
-    let maxAllowedBottom = Math.min(vh, m.top + m.height + m.fontSize * 0.14);
+    // 1. Clamp BOTH vertical AND same-line horizontal bounds against neighboring spans so adjacent labels (e.g. "Modalidad:") are never clipped
+    let minAllowedTop = Math.max(0, m.top - m.fontSize * 0.14);
+    let maxAllowedBottom = Math.min(vh, m.top + m.height + m.fontSize * 0.12);
+    let minAllowedLeft = Math.max(0, m.left - 1.5);
+    let maxAllowedRight = Math.min(vw, m.left + m.width + 2.2);
 
     for (let j = 0; j < merged.length; j++) {
       if (j === idx) continue;
       const other = merged[j];
+      const sameLine = Math.abs(other.baselineY - m.baselineY) <= m.fontSize * 0.42;
+
+      if (sameLine) {
+        const otherRight = other.left + other.width;
+        if (otherRight <= m.left + 3 && otherRight > m.left - 18) {
+          minAllowedLeft = Math.max(minAllowedLeft, (otherRight + m.left) * 0.5);
+        } else if (other.left >= m.left + m.width - 3 && other.left < m.left + m.width + 18) {
+          maxAllowedRight = Math.min(maxAllowedRight, (m.left + m.width + other.left) * 0.5);
+        }
+        continue;
+      }
+
       const horizOverlap =
         other.left <= m.left + m.width + 6 && other.left + other.width >= m.left - 6;
       if (!horizOverlap) continue;
@@ -267,135 +460,27 @@ export async function extractNativeEditableTexts(
       }
     }
 
-    let boxLeft = Math.max(0, m.left - 1.5);
-    let boxRight = Math.min(vw, m.left + m.width + 2.5);
+    let boxLeft = Math.max(minAllowedLeft, m.left - 1);
+    let boxRight = Math.min(maxAllowedRight, m.left + m.width + 1.8);
     let boxTop = Math.max(minAllowedTop, m.top);
     let boxBottom = Math.min(maxAllowedBottom, m.top + m.height);
 
-    let bgPatchColor = '#ffffff';
-    let textColor = '#14161a';
-
-    if (pagePixels && cw > 0 && ch > 0) {
-      // 2. Sample 16 perimeter points around text box & pick median-luminance RGB for solid background patch
-      const perimSamples: Array<{ r: number; g: number; b: number; lum: number }> = [];
-      const xA = boxLeft - 3;
-      const xB = boxRight + 3;
-      const yA = Math.max(minAllowedTop, boxTop - 2);
-      const yB = Math.min(maxAllowedBottom, boxBottom + 2);
-
-      for (let t = 0; t <= 1; t += 0.25) {
-        const sx = xA + (xB - xA) * t;
-        const [r1, g1, b1] = getPixel(sx, yA);
-        perimSamples.push({ r: r1, g: g1, b: b1, lum: 0.299 * r1 + 0.587 * g1 + 0.114 * b1 });
-        const [r2, g2, b2] = getPixel(sx, yB);
-        perimSamples.push({ r: r2, g: g2, b: b2, lum: 0.299 * r2 + 0.587 * g2 + 0.114 * b2 });
-      }
-      for (const sy of [yA + (yB - yA) * 0.33, yA + (yB - yA) * 0.66]) {
-        const [r1, g1, b1] = getPixel(xA, sy);
-        perimSamples.push({ r: r1, g: g1, b: b1, lum: 0.299 * r1 + 0.587 * g1 + 0.114 * b1 });
-        const [r2, g2, b2] = getPixel(xB, sy);
-        perimSamples.push({ r: r2, g: g2, b: b2, lum: 0.299 * r2 + 0.587 * g2 + 0.114 * b2 });
-      }
-      perimSamples.sort((a, b) => a.lum - b.lum);
-      const medBg = perimSamples[Math.floor(perimSamples.length * 0.6)] || {
-        r: 255,
-        g: 255,
-        b: 255,
-        lum: 255,
-      };
-      bgPatchColor = toHex(medBg.r, medBg.g, medBg.b);
-
-      // 3. Scan interior & 4px margin to capture tall ascenders/descenders & exact ink foreground RGB
-      const scanX0 = Math.max(0, Math.floor(boxLeft - 3));
-      const scanX1 = Math.min(cw - 1, Math.ceil(boxRight + 4));
-      const scanY0 = Math.max(0, Math.floor(minAllowedTop));
-      const scanY1 = Math.min(ch - 1, Math.ceil(maxAllowedBottom));
-
-      const inkPixels: Array<{ r: number; g: number; b: number; dist: number }> = [];
-      let inkMinX = boxRight;
-      let inkMaxX = boxLeft;
-      let inkMinY = boxBottom;
-      let inkMaxY = boxTop;
-
-      const stepX = scanX1 - scanX0 > 260 ? 2 : 1;
-      for (let py = scanY0; py <= scanY1; py++) {
-        const rowOff = py * cw * 4;
-        for (let px = scanX0; px <= scanX1; px += stepX) {
-          const off = rowOff + px * 4;
-          const r = pagePixels[off];
-          const g = pagePixels[off + 1];
-          const b = pagePixels[off + 2];
-          const dist = Math.hypot(r - medBg.r, g - medBg.g, b - medBg.b);
-          if (dist > 44) {
-            if (px < inkMinX) inkMinX = px;
-            if (px > inkMaxX) inkMaxX = px;
-            if (py < inkMinY) inkMinY = py;
-            if (py > inkMaxY) inkMaxY = py;
-            inkPixels.push({ r, g, b, dist });
-          }
-        }
-      }
-
-      if (inkPixels.length > 0) {
-        // Expand box to enclose detected glyph ink (with 1.5px breathing room inside neighbor clamps)
-        boxLeft = Math.min(boxLeft, Math.max(0, inkMinX - 1.5));
-        boxRight = Math.max(boxRight, Math.min(vw, inkMaxX + 2));
-        boxTop = Math.max(minAllowedTop, Math.min(boxTop, inkMinY - 1));
-        boxBottom = Math.min(maxAllowedBottom, Math.max(boxBottom, inkMaxY + 1.5));
-
-        // Core glyph ink color = median RGB of top 18% highest-contrast pixels (avoids AA fringe)
-        inkPixels.sort((a, b) => b.dist - a.dist);
-        const coreCount = Math.max(1, Math.ceil(inkPixels.length * 0.18));
-        const core = inkPixels.slice(0, coreCount);
-        const rs = core.map((c) => c.r).sort((a, b) => a - b);
-        const gs = core.map((c) => c.g).sort((a, b) => a - b);
-        const bs = core.map((c) => c.b).sort((a, b) => a - b);
-        const mid = Math.floor(core.length / 2);
-        textColor = toHex(rs[mid], gs[mid], bs[mid]);
-      } else if (medBg.lum < 110) {
-        textColor = '#ffffff';
-      }
+    const finalSample = sampleDominantBgAndInk(boxLeft, boxTop, boxRight, boxBottom);
+    if (finalSample.inkBoundsPt) {
+      const [ix0, iy0, ix1, iy1] = finalSample.inkBoundsPt;
+      boxLeft = Math.max(minAllowedLeft, Math.min(boxLeft, ix0 - 0.8));
+      boxRight = Math.min(maxAllowedRight, Math.max(boxRight, ix1 + 1.2));
+      boxTop = Math.max(minAllowedTop, Math.min(boxTop, iy0 - 0.8));
+      boxBottom = Math.min(maxAllowedBottom, Math.max(boxBottom, iy1 + 1.0));
     }
+
+    const bgPatchColor = toHex(finalSample.bg[0], finalSample.bg[1], finalSample.bg[2]);
+    const textColor = toHex(finalSample.ink[0], finalSample.ink[1], finalSample.ink[2]);
 
     const normX = Math.max(0, Math.min(0.985, boxLeft / vw));
     const normY = Math.max(0, Math.min(0.985, boxTop / vh));
-    const normW = Math.max(0.018, Math.min(1 - normX, (boxRight - boxLeft) / vw));
-    const normH = Math.max(0.012, Math.min(1 - normY, (boxBottom - boxTop) / vh));
-
-    const styleMeta = (
-      textContent.styles as Record<string, { fontFamily?: string }> | undefined
-    )?.[m.fontName];
-    const commonObjs = (
-      page as unknown as {
-        commonObjs?: {
-          has: (id: string) => boolean;
-          get: (id: string) => {
-            name?: string;
-            bold?: boolean;
-            black?: boolean;
-            italic?: boolean;
-            fallbackName?: string;
-          };
-        };
-      }
-    ).commonObjs;
-    const fontObj =
-      commonObjs && m.fontName && commonObjs.has(m.fontName)
-        ? commonObjs.get(m.fontName)
-        : null;
-
-    const fontInfo = guessFontChoice(`${fontObj?.name || ''} ${m.fontName}`);
-    const familyHint = `${fontObj?.name || ''} ${m.fontName} ${styleMeta?.fontFamily || ''} ${fontObj?.fallbackName || ''}`.toLowerCase();
-    const resolvedFamily =
-      familyHint.includes('mono') || familyHint.includes('courier')
-        ? 'mono'
-        : familyHint.includes('serif') && !familyHint.includes('sans')
-          ? 'serif'
-          : fontInfo.family;
-    const resolvedWeight: 'normal' | 'bold' =
-      fontObj?.bold || fontObj?.black || fontInfo.weight === 'bold' ? 'bold' : 'normal';
-    const resolvedStyle: 'normal' | 'italic' =
-      fontObj?.italic || fontInfo.style === 'italic' ? 'italic' : 'normal';
+    const normW = Math.max(0.012, Math.min(1 - normX, (boxRight - boxLeft) / vw));
+    const normH = Math.max(0.011, Math.min(1 - normY, (boxBottom - boxTop) / vh));
 
     return {
       id: `ntxt_${pageDesc.id}_${idx}`,
@@ -411,15 +496,45 @@ export async function extractNativeEditableTexts(
       originalText: m.str,
       text: m.str,
       fontSizePt: Math.round(m.fontSize * 10) / 10,
-      fontFamily: resolvedFamily,
-      fontWeight: resolvedWeight,
-      fontStyle: resolvedStyle,
+      fontFamily: m.family,
+      fontWeight: m.weight,
+      fontStyle: m.style,
       color: textColor,
       bgPatchColor,
       deleted: false,
       modified: false,
     };
   });
+}
+
+export function hasNativeTextMeaningfulDiff(
+  candidate: NativePdfTextItem,
+  baseline: NativePdfTextItem
+): boolean {
+  if (candidate.deleted) return true;
+  if (candidate.text !== baseline.originalText) return true;
+  if (
+    Math.abs(candidate.x - baseline.origX) > 0.0015 ||
+    Math.abs(candidate.y - baseline.origY) > 0.0015
+  ) {
+    return true;
+  }
+  if (Math.abs(candidate.fontSizePt - baseline.fontSizePt) > 0.08) return true;
+  if (
+    candidate.fontWeight !== baseline.fontWeight ||
+    candidate.fontStyle !== baseline.fontStyle ||
+    candidate.fontFamily !== baseline.fontFamily
+  ) {
+    return true;
+  }
+  if (candidate.color.toLowerCase() !== baseline.color.toLowerCase()) return true;
+  if (
+    (candidate.bgPatchColor || '#ffffff').toLowerCase() !==
+    (baseline.bgPatchColor || '#ffffff').toLowerCase()
+  ) {
+    return true;
+  }
+  return false;
 }
 
 export async function loadPdfIntoTabDocument(

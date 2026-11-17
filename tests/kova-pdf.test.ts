@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { PDFDocument, StandardFonts } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import JSZip from 'jszip';
 
 import {
@@ -10,6 +10,7 @@ import {
   generateShowcaseSamplePdf,
   loadPdfIntoTabDocument,
   extractNativeEditableTexts,
+  hasNativeTextMeaningfulDiff,
   searchInTabDocument,
   extractTabTablesToCsv,
 } from '../src/utils/pdfEngine.ts';
@@ -404,7 +405,7 @@ test('7. Windows Tauri v2 High-DPI config, NSIS, ICO headers & spellCheck={false
   const tauriConf = JSON.parse(readFileSync(join(ROOT, 'src-tauri/tauri.conf.json'), 'utf8'));
   assert.equal(tauriConf.productName, 'Kova PDF');
   assert.equal(tauriConf.mainBinaryName, 'KovaPDF');
-  assert.equal(tauriConf.version, '2.1.0');
+  assert.equal(tauriConf.version, '2.2.0');
   assert.equal(tauriConf.identifier, 'studio.kova.pdf');
   assert.equal(tauriConf.bundle.publisher, 'Kova Studio');
   assert.equal(tauriConf.bundle.fileAssociations[0].name, 'KovaPDF.Document');
@@ -571,17 +572,147 @@ test('10. Global Internet Auto-Updater & Remote Manifest Control (any network wo
   const { CURRENT_APP_VERSION, isNewerVersion, parseSemver } = await import(
     '../src/utils/updater.ts'
   );
-  assert.equal(CURRENT_APP_VERSION, '2.1.0');
-  assert.deepEqual(parseSemver('v2.1.0'), [2, 1, 0]);
-  assert.equal(isNewerVersion('v2.1.0', '2.0.0'), true);
+  assert.equal(CURRENT_APP_VERSION, '2.2.0');
+  assert.deepEqual(parseSemver('v2.2.0'), [2, 2, 0]);
+  assert.equal(isNewerVersion('v2.2.0', '2.0.0'), true);
   assert.equal(isNewerVersion('v2.2.0', '2.1.0'), true);
-  assert.equal(isNewerVersion('v2.1.0', '2.1.0'), false);
-  assert.equal(isNewerVersion('v2.0.0', '2.1.0'), false);
+  assert.equal(isNewerVersion('v2.2.0', '2.2.0'), false);
+  assert.equal(isNewerVersion('v2.1.0', '2.2.0'), false);
 
   const manifest = JSON.parse(readFileSync(join(ROOT, 'website/update-manifest.json'), 'utf8'));
   assert.equal(manifest.product, 'Kova PDF');
-  assert.equal(manifest.version, '2.1.0');
-  assert.equal(typeof manifest.mandatory, 'boolean');
-  assert.ok(manifest.exeUrl.endsWith('.exe'));
-  assert.ok(manifest.msiUrl.endsWith('.msi'));
+  assert.equal(manifest.version, '2.2.0');
+  assert.equal(manifest.mandatory, true);
+  assert.equal(manifest.autoInstall, true);
+  assert.ok(manifest.exeUrl.endsWith('Kova.PDF_2.2.0_x64-setup.exe'));
+  assert.ok(manifest.msiUrl.endsWith('Kova.PDF_2.2.0_x64_en-US.msi'));
 });
+
+test('11. Inline Bold+Regular separation on #F4F6F9 gray cards, untouched-if-unchanged guarantee & CREATE_NO_WINDOW', async () => {
+  // 1. Verify Rust register_default_pdf_app silences all console windows via CREATE_NO_WINDOW
+  const rustLib = readFileSync(join(ROOT, 'src-tauri/src/lib.rs'), 'utf8');
+  assert.match(rustLib, /const CREATE_NO_WINDOW:\s*u32\s*=\s*0x08000000/);
+  const regMatches = rustLib.match(/\.creation_flags\(CREATE_NO_WINDOW\)/g) ?? [];
+  assert.ok(
+    regMatches.length >= 4,
+    `Expected all Command::new spawns in lib.rs to set CREATE_NO_WINDOW, found ${regMatches.length}`
+  );
+  assert.ok(!rustLib.includes('Command::new("cmd")'), 'Must not spawn cmd.exe console host');
+
+  // 2. Build an in-memory PDF replicating the user's gray card screenshot (Modalidad: Bold + Regular value)
+  const doc = await PDFDocument.create();
+  const page = doc.addPage([595.28, 841.89]);
+  const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const fontReg = await doc.embedFont(StandardFonts.Helvetica);
+
+  // Light gray card (#F4F6F9) + blue left accent bar (#1D4ED8)
+  page.drawRectangle({
+    x: 48,
+    y: 660,
+    width: 500,
+    height: 92,
+    color: rgb(0xf4 / 255, 0xf6 / 255, 0xf9 / 255),
+  });
+  page.drawRectangle({
+    x: 48,
+    y: 660,
+    width: 4,
+    height: 92,
+    color: rgb(0x1d / 255, 0x4e / 255, 0xd8 / 255),
+  });
+
+  const rows = [
+    {
+      y: 728,
+      label: 'Modalidad:',
+      value: 'Educacion Dual Media Superior (SEP / SEMS)',
+    },
+    {
+      y: 704,
+      label: 'Duracion estimada:',
+      value: '2 a 4 semestres (segun plan academico)',
+    },
+    {
+      y: 680,
+      label: 'Certificacion oficial:',
+      value: 'Titulo Tecnico + Certificado de Competencia Laboral',
+    },
+  ];
+
+  for (const r of rows) {
+    page.drawText(r.label, {
+      x: 68,
+      y: r.y,
+      size: 10.5,
+      font: fontBold,
+      color: rgb(0x11 / 255, 0x18 / 255, 0x27 / 255),
+    });
+    const labelW = fontBold.widthOfTextAtSize(`${r.label} `, 10.5);
+    page.drawText(r.value, {
+      x: 68 + labelW,
+      y: r.y,
+      size: 10.5,
+      font: fontReg,
+      color: rgb(0x37 / 255, 0x41 / 255, 0x51 / 255),
+    });
+  }
+
+  const cardPdfBytes = await doc.save();
+  const cardTab = await loadPdfIntoTabDocument('Tarjeta_Gris_Dual.pdf', cardPdfBytes, DEFAULT_SETTINGS);
+  const extracted = await extractPageTextsForTab(cardTab, 0);
+
+  const modalidadLabel = extracted.find((i) => i.text.trim() === 'Modalidad:');
+  const modalidadValue = extracted.find((i) => i.text.includes('Educacion Dual Media Superior'));
+  const duracionLabel = extracted.find((i) => i.text.trim() === 'Duracion estimada:');
+  const duracionValue = extracted.find((i) => i.text.includes('2 a 4 semestres'));
+
+  assert.ok(modalidadLabel, 'Bold label "Modalidad:" must be extracted as its own span');
+  assert.ok(modalidadValue, 'Regular value "Educacion Dual..." must be extracted as its own span');
+  assert.notEqual(
+    modalidadLabel.id,
+    modalidadValue.id,
+    'Bold label and Regular value on the same line MUST NOT merge into one span'
+  );
+  assert.equal(modalidadLabel.fontWeight, 'bold', '"Modalidad:" must retain bold weight');
+  assert.equal(modalidadValue.fontWeight, 'normal', '"Educacion Dual..." must retain normal weight');
+  assert.ok(duracionLabel && duracionValue && duracionLabel.id !== duracionValue.id);
+
+  // 3. Verify untouched-if-unchanged guarantee (clicking or reverting text leaves diff === false)
+  assert.equal(
+    hasNativeTextMeaningfulDiff({ ...modalidadValue }, modalidadValue),
+    false,
+    'Clicking without editing must produce zero diff'
+  );
+  const temporarilyTyped = { ...modalidadValue, text: 'Cambio temporal', modified: true };
+  assert.equal(hasNativeTextMeaningfulDiff(temporarilyTyped, modalidadValue), true);
+  const revertedBack = { ...temporarilyTyped, text: modalidadValue.originalText };
+  assert.equal(
+    hasNativeTextMeaningfulDiff(revertedBack, modalidadValue),
+    false,
+    'Reverting edited text back to originalText must reset diff to false'
+  );
+
+  // 4. Edit ONLY modalidadValue while placing an unchanged duracionValue in nativeTextEdits to prove exporter skips unchanged spans
+  cardTab.nativeTextEdits[duracionValue.id] = {
+    ...duracionValue,
+    modified: true, // Even if flagged modified, exporter must skip it because it matches baseline!
+  };
+  cardTab.nativeTextEdits[modalidadValue.id] = {
+    ...modalidadValue,
+    text: 'Educacion Dual Media Superior (SEP / SEMS - Activo)',
+    bgPatchColor: '#F4F6F9',
+    color: '#374151',
+    modified: true,
+  };
+
+  const outBytes = await compileTabToPdfBytes(cardTab);
+  writeFileSync('/tmp/11_Tarjeta_Gris_Modalidad_Audit.pdf', outBytes);
+
+  const reloaded = await loadPdfIntoTabDocument('Tarjeta_Editada.pdf', outBytes, DEFAULT_SETTINGS);
+  const reloadedItems = await extractPageTextsForTab(reloaded, 0);
+  const relLabel = reloadedItems.find((i) => i.text.trim() === 'Modalidad:');
+  const relVal = reloadedItems.find((i) => i.text.includes('SEP / SEMS - Activo'));
+  assert.ok(relLabel && relLabel.fontWeight === 'bold', 'Reloaded Modalidad: must remain bold');
+  assert.ok(relVal && relVal.fontWeight === 'normal', 'Reloaded edited value must remain normal weight');
+});
+

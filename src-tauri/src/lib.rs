@@ -29,7 +29,10 @@ fn get_startup_pdf_path() -> Option<String> {
 fn register_default_pdf_app(_app: tauri::AppHandle) -> Result<String, String> {
     #[cfg(target_os = "windows")]
     {
+        use std::os::windows::process::CommandExt;
         use std::process::Command;
+
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
 
         let exe_path = std::env::current_exe()
             .map_err(|e| format!("No se pudo obtener la ruta del ejecutable: {}", e))?;
@@ -66,18 +69,25 @@ fn register_default_pdf_app(_app: tauri::AppHandle) -> Result<String, String> {
         ];
 
         for args in reg_commands {
-            let _ = Command::new("reg").args(&args).output();
+            let _ = Command::new("reg")
+                .args(&args)
+                .creation_flags(CREATE_NO_WINDOW)
+                .output();
         }
 
-        // Refresh Windows Explorer icon cache immediately
-        let _ = Command::new("ie4uinit.exe").arg("-show").spawn();
-
-        // Open Windows 10/11 Default Apps panel directly so user confirms Kova PDF in 1 click
-        let _ = Command::new("cmd")
-            .args(["/C", "start", "", "ms-settings:defaultapps"])
+        // Refresh Windows Explorer icon cache silently without console window
+        let _ = Command::new("ie4uinit.exe")
+            .arg("-show")
+            .creation_flags(CREATE_NO_WINDOW)
             .spawn();
 
-        return Ok("Icono oficial Kova PDF registrado. Selecciona Kova PDF para archivos .pdf en la ventana de Windows.".to_string());
+        // Open Windows 10/11 Default Apps panel directly via Explorer URI without spawning cmd/terminal
+        let _ = Command::new("explorer.exe")
+            .arg("ms-settings:defaultapps")
+            .creation_flags(CREATE_NO_WINDOW)
+            .spawn();
+
+        return Ok("Icono oficial Kova PDF registrado silenciosamente. Selecciona Kova PDF para archivos .pdf en Configuración de Windows.".to_string());
     }
 
     #[cfg(not(target_os = "windows"))]

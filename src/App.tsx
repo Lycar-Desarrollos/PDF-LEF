@@ -34,6 +34,7 @@ import {
 } from './utils/storage';
 import {
   checkStartupOpenedPdfFromWindows,
+  isTauriDesktop,
   openPdfFilesWithDialog,
   registerDefaultPdfApp,
   savePdfBytesToDisk,
@@ -48,6 +49,7 @@ import {
   createBlankPdfBytes,
   generateShowcaseSamplePdf,
   getPdfJsProxy,
+  hasNativeTextMeaningfulDiff,
   loadPdfIntoTabDocument,
 } from './utils/pdfEngine';
 import {
@@ -70,6 +72,27 @@ import { SignatureModal } from './components/SignatureModal';
 import { ToolsModal } from './components/ToolsModal';
 import { SettingsModal } from './components/SettingsModal';
 import { CommandPalette, type CommandActionItem } from './components/CommandPalette';
+
+function applyNativeTextEdit(t: PdfTabDocument, item: NativePdfTextItem): PdfTabDocument {
+  const baseline = (t.extractedPageTexts?.[item.pageId] || []).find(
+    (orig) => orig.id === item.id
+  );
+  if (baseline && !hasNativeTextMeaningfulDiff(item, baseline)) {
+    const copy = { ...t.nativeTextEdits };
+    delete copy[item.id];
+    const stillModified = Object.keys(copy).length > 0 || t.elements.length > 0;
+    return {
+      ...t,
+      isModified: stillModified,
+      nativeTextEdits: copy,
+    };
+  }
+  return {
+    ...t,
+    isModified: true,
+    nativeTextEdits: { ...t.nativeTextEdits, [item.id]: { ...item, modified: true } },
+  };
+}
 
 function createSnapshot(tab: PdfTabDocument): DocumentHistorySnapshot {
   return {
@@ -146,6 +169,14 @@ export const App: React.FC = () => {
           if (cancelled) return;
           if (info.status === 'available' || info.announcement) {
             setRemoteUpdate(info);
+            if (info.status === 'available' && info.autoInstall && info.downloadUrl && isTauriDesktop()) {
+              setInstallingAutoUpdate(true);
+              triggerOneClickUpdate(info.downloadUrl)
+                .then((res) => notify(res.message))
+                .finally(() => {
+                  if (!cancelled) setInstallingAutoUpdate(false);
+                });
+            }
           }
         })
         .catch(() => {});
@@ -154,7 +185,7 @@ export const App: React.FC = () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [settings.autoCheckUpdates]);
+  }, [settings.autoCheckUpdates, notify]);
 
   const handleGlobalOneClickUpdate = useCallback(
     async (downloadUrl?: string) => {
@@ -1438,20 +1469,17 @@ export const App: React.FC = () => {
                     }))
                   }
                   onUpdateNativeTextItem={(item: NativePdfTextItem, pushUndo = false) =>
-                    mutateActiveTab(
-                      (t) => ({
-                        ...t,
-                        isModified: true,
-                        nativeTextEdits: { ...t.nativeTextEdits, [item.id]: item },
-                      }),
-                      pushUndo
-                    )
+                    mutateActiveTab((t) => applyNativeTextEdit(t, item), pushUndo)
                   }
                   onResetNativeTextItem={(id) => {
                     mutateActiveTab((t) => {
                       const copy = { ...t.nativeTextEdits };
                       delete copy[id];
-                      return { ...t, isModified: true, nativeTextEdits: copy };
+                      return {
+                        ...t,
+                        isModified: Object.keys(copy).length > 0 || t.elements.length > 0,
+                        nativeTextEdits: copy,
+                      };
                     }, true);
                     setSelectedNativeTextId(null);
                   }}
@@ -1540,14 +1568,7 @@ export const App: React.FC = () => {
                     onDeleteElement={handleDeleteOverlayElement}
                     onReplaceImage={handleTriggerReplaceImage}
                     onUpdateNativeText={(item, pushUndo = true) =>
-                      mutateActiveTab(
-                        (t) => ({
-                          ...t,
-                          isModified: true,
-                          nativeTextEdits: { ...t.nativeTextEdits, [item.id]: item },
-                        }),
-                        pushUndo
-                      )
+                      mutateActiveTab((t) => applyNativeTextEdit(t, item), pushUndo)
                     }
                     onResetNativeText={(id) => {
                       mutateActiveTab((t) => {

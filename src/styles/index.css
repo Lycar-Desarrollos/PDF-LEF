@@ -895,10 +895,10 @@ textarea {
   z-index: 40;
 }
 .native-text-box.modified:not(.selected) {
-  border: 1px dashed rgba(37, 99, 235, 0.45);
+  border: 1px dashed transparent;
 }
 .native-text-box.modified:not(.selected):hover {
-  border-color: var(--accent);
+  border-color: rgba(37, 99, 235, 0.55);
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
 .native-text-box.selected {

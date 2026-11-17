@@ -916,10 +916,10 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
               key={`patch_${nt.id}`}
               className="native-text-patch"
               style={{
-                left: `calc(${nt.origX * 100}% - 2px)`,
-                top: `calc(${nt.origY * 100}% - 1px)`,
-                width: `calc(${nt.origWidth * 100}% + 4px)`,
-                height: `calc(${nt.origHeight * 100}% + 2px)`,
+                left: `calc(${nt.origX * 100}% - 0.5px)`,
+                top: `calc(${nt.origY * 100}% - 0.5px)`,
+                width: `calc(${nt.origWidth * 100}% + 1px)`,
+                height: `calc(${nt.origHeight * 100}% + 1px)`,
                 backgroundColor: nt.bgPatchColor || '#ffffff',
               }}
             />
