@@ -55,8 +55,9 @@ import {
   type CompressionLevel,
 } from '../utils/pdfExporter';
 import {
-  downloadBlobInBrowser,
+  copyTextToClipboardSafe,
   openPdfFilesWithDialog,
+  saveExportBlobOrBytes,
   savePdfBytesToDisk,
 } from '../utils/tauriBridge';
 
@@ -471,14 +472,21 @@ export const ToolsModal: React.FC<ToolsModalProps> = ({
     return lines.join('\n');
   };
 
-  const handleDownloadCsv = () => {
+  const handleDownloadCsv = async () => {
     if (!csvPreview || !activeTab) return;
     const bom = '\uFEFF';
     const blob = new Blob([bom + csvPreview], { type: 'text/csv;charset=utf-8;' });
     const base = activeTab.fileName.replace(/\.pdf$/i, '');
-    downloadBlobInBrowser(blob, `${base}_Tablas_Excel.csv`);
-    onNotify(`Archivo Excel CSV exportado (${csvRowCount} filas detectadas).`);
-    onClose();
+    const res = await saveExportBlobOrBytes(
+      blob,
+      `${base}_Tablas_Excel.csv`,
+      'Hoja de Cálculo CSV (Excel)',
+      'csv'
+    );
+    if (res.saved) {
+      onNotify(`Archivo Excel CSV guardado: ${res.fileName} (${csvRowCount} filas).`);
+      onClose();
+    }
   };
 
   const handleAddPdfsToMerge = async () => {
@@ -517,9 +525,16 @@ export const ToolsModal: React.FC<ToolsModalProps> = ({
       const base = activeTab.fileName.replace(/\.pdf$/i, '');
       if (splitMode === 'every-n') {
         const zipBlob = await splitPdfIntoZip(activeTab, Math.max(1, splitEveryN));
-        downloadBlobInBrowser(zipBlob, `${base}_dividido.zip`);
-        onNotify('PDF dividido en archivos individuales dentro del paquete ZIP.');
-        onClose();
+        const res = await saveExportBlobOrBytes(
+          zipBlob,
+          `${base}_dividido.zip`,
+          'Paquete ZIP de PDFs',
+          'zip'
+        );
+        if (res.saved) {
+          onNotify(`Paquete ZIP guardado: ${res.fileName}`);
+          onClose();
+        }
         return;
       }
       const indices = parsePageRangeSpec(rangeSpec, activeTab.pages.length);
@@ -583,15 +598,30 @@ export const ToolsModal: React.FC<ToolsModalProps> = ({
       const base = activeTab.fileName.replace(/\.pdf$/i, '');
       if (wordFormat === 'docx') {
         const docxBlob = await exportTabToDocxBlob(activeTab);
-        downloadBlobInBrowser(docxBlob, `${base}_Editable.docx`);
-        onNotify('Documento Word (.docx) generado con estructura y tablas editables.');
+        const res = await saveExportBlobOrBytes(
+          docxBlob,
+          `${base}_Editable.docx`,
+          'Documento Microsoft Word (.docx)',
+          'docx'
+        );
+        if (res.saved) {
+          onNotify(`Documento Word (.docx) guardado: ${res.fileName}`);
+          onClose();
+        }
       } else {
         const txt = await exportTabToPlainText(activeTab);
         const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
-        downloadBlobInBrowser(blob, `${base}_Texto.txt`);
-        onNotify('Archivo de texto (.txt) exportado correctamente.');
+        const res = await saveExportBlobOrBytes(
+          blob,
+          `${base}_Texto.txt`,
+          'Archivo de Texto (.txt)',
+          'txt'
+        );
+        if (res.saved) {
+          onNotify(`Archivo de texto (.txt) guardado: ${res.fileName}`);
+          onClose();
+        }
       }
-      onClose();
     } finally {
       setBusy(false);
     }
@@ -621,9 +651,16 @@ export const ToolsModal: React.FC<ToolsModalProps> = ({
     try {
       const zipBlob = await exportTabPagesToImagesZip(activeTab, imgDpi, imgFormat);
       const base = activeTab.fileName.replace(/\.pdf$/i, '');
-      downloadBlobInBrowser(zipBlob, `${base}_imagenes_${imgDpi}dpi.zip`);
-      onNotify(`Páginas exportadas en archivo ZIP (${imgDpi} DPI).`);
-      onClose();
+      const res = await saveExportBlobOrBytes(
+        zipBlob,
+        `${base}_imagenes_${imgDpi}dpi.zip`,
+        'Paquete ZIP de Imágenes',
+        'zip'
+      );
+      if (res.saved) {
+        onNotify(`Paquete de imágenes (${imgDpi} DPI) guardado: ${res.fileName}`);
+        onClose();
+      }
     } finally {
       setBusy(false);
     }
@@ -941,8 +978,8 @@ export const ToolsModal: React.FC<ToolsModalProps> = ({
                 <button
                   type="button"
                   className="btn btn-subtle"
-                  onClick={() => {
-                    navigator.clipboard.writeText(buildAccountingStampSummary());
+                  onClick={async () => {
+                    await copyTextToClipboardSafe(buildAccountingStampSummary());
                     onNotify('Cédula contable copiada al portapapeles.');
                   }}
                 >
@@ -1671,11 +1708,14 @@ export const ToolsModal: React.FC<ToolsModalProps> = ({
                           className="btn btn-primary"
                           onClick={async () => {
                             const base = activeTab.fileName.replace(/\.pdf$/i, '');
-                            await savePdfBytesToDisk(
+                            const res = await savePdfBytesToDisk(
                               compResult.bytes,
                               `${base}_comprimido.pdf`
                             );
-                            onClose();
+                            if (res.saved) {
+                              onNotify(`PDF optimizado guardado: ${res.fileName}`);
+                              onClose();
+                            }
                           }}
                         >
                           <Download size={14} />
@@ -2094,8 +2134,8 @@ export const ToolsModal: React.FC<ToolsModalProps> = ({
                       type="button"
                       className="btn btn-subtle"
                       style={{ marginTop: 8 }}
-                      onClick={() => {
-                        navigator.clipboard.writeText(ocrText);
+                      onClick={async () => {
+                        await copyTextToClipboardSafe(ocrText);
                         onNotify('Texto copiado al portapapeles.');
                       }}
                     >

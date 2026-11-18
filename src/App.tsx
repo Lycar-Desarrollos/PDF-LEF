@@ -71,6 +71,7 @@ import { PageOrganizer } from './components/PageOrganizer';
 import { SignatureModal } from './components/SignatureModal';
 import { ToolsModal } from './components/ToolsModal';
 import { SettingsModal } from './components/SettingsModal';
+import { PrintModal } from './components/PrintModal';
 import { CommandPalette, type CommandActionItem } from './components/CommandPalette';
 
 function applyNativeTextEdit(t: PdfTabDocument, item: NativePdfTextItem): PdfTabDocument {
@@ -136,6 +137,7 @@ export const App: React.FC = () => {
 
   // Modals & Global Internet Updater
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
+  const [printModalOpen, setPrintModalOpen] = useState(false);
   const [toolModal, setToolModal] = useState<ToolModalKind>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
@@ -163,17 +165,27 @@ export const App: React.FC = () => {
   }, [settings]);
 
   const hasUnsavedWorkRef = useRef(false);
+  const installingUpdateRef = useRef(false);
+  const lastUpdateCheckMsRef = useRef(0);
+
   useEffect(() => {
     hasUnsavedWorkRef.current = tabs.some((t) => t.isModified);
   }, [tabs]);
 
   useEffect(() => {
+    installingUpdateRef.current = installingAutoUpdate;
+  }, [installingAutoUpdate]);
+
+  useEffect(() => {
     if (!settings.autoCheckUpdates) return;
     let cancelled = false;
-    const timer = setTimeout(() => {
+
+    const checkAndPushApply = () => {
+      if (cancelled || installingUpdateRef.current) return;
+      lastUpdateCheckMsRef.current = Date.now();
       checkGlobalAppUpdate(CURRENT_APP_VERSION)
         .then((info) => {
-          if (cancelled) return;
+          if (cancelled || installingUpdateRef.current) return;
           if (info.status === 'available' || info.announcement) {
             setRemoteUpdate(info);
             const shouldDirectApply =
@@ -183,20 +195,38 @@ export const App: React.FC = () => {
               !hasUnsavedWorkRef.current &&
               Boolean(info.autoInstall || settings.autoInstallUpdates);
             if (shouldDirectApply && info.downloadUrl) {
+              installingUpdateRef.current = true;
               setInstallingAutoUpdate(true);
               triggerOneClickUpdate(info.downloadUrl)
                 .then((res) => notify(res.message))
                 .finally(() => {
+                  installingUpdateRef.current = false;
                   if (!cancelled) setInstallingAutoUpdate(false);
                 });
             }
           }
         })
         .catch(() => {});
-    }, 1200);
+    };
+
+    const initialTimer = setTimeout(checkAndPushApply, 1200);
+    // Live fleet heartbeat every 10 minutes so open PCs receive pushed updates automatically
+    const heartbeatInterval = setInterval(checkAndPushApply, 10 * 60 * 1000);
+
+    const onWindowWakeOrOnline = () => {
+      if (Date.now() - lastUpdateCheckMsRef.current >= 3 * 60 * 1000) {
+        checkAndPushApply();
+      }
+    };
+    window.addEventListener('focus', onWindowWakeOrOnline);
+    window.addEventListener('online', onWindowWakeOrOnline);
+
     return () => {
       cancelled = true;
-      clearTimeout(timer);
+      clearTimeout(initialTimer);
+      clearInterval(heartbeatInterval);
+      window.removeEventListener('focus', onWindowWakeOrOnline);
+      window.removeEventListener('online', onWindowWakeOrOnline);
     };
   }, [settings.autoCheckUpdates, settings.autoInstallUpdates, notify]);
 
@@ -433,39 +463,13 @@ export const App: React.FC = () => {
     }
   }, [activeTab, settings.autoCleanMetadataOnExport, mutateActiveTab, notify]);
 
-  const handlePrintActiveTab = useCallback(async () => {
-    if (!activeTab) return;
-    try {
-      const outBytes = await compileTabToPdfBytes(activeTab);
-      const copy = new Uint8Array(outBytes.byteLength);
-      copy.set(outBytes);
-      const blob = new Blob([copy.buffer], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      const iframe = document.createElement('iframe');
-      iframe.style.position = 'fixed';
-      iframe.style.right = '0';
-      iframe.style.bottom = '0';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      iframe.style.border = '0';
-      iframe.onload = () => {
-        try {
-          iframe.contentWindow?.focus();
-          iframe.contentWindow?.print();
-        } catch {
-          window.print();
-        }
-        setTimeout(() => {
-          URL.revokeObjectURL(url);
-          iframe.remove();
-        }, 60_000);
-      };
-      iframe.src = url;
-      document.body.appendChild(iframe);
-    } catch {
-      window.print();
+  const handlePrintActiveTab = useCallback(() => {
+    if (!activeTab) {
+      notify('Abre un documento PDF primero para imprimir sus hojas.');
+      return;
     }
-  }, [activeTab]);
+    setPrintModalOpen(true);
+  }, [activeTab, notify]);
 
   // Helper to insert any image DataURL onto the active page
   const insertImageDataUrlOnActivePage = useCallback(
@@ -1336,6 +1340,13 @@ export const App: React.FC = () => {
         run: handleSaveExportPdf,
       },
       {
+        id: 'print-pdf',
+        category: 'Archivo',
+        label: 'Imprimir Documento PDF (Hoja actual / Todas / Rango)',
+        shortcut: 'Ctrl+P',
+        run: handlePrintActiveTab,
+      },
+      {
         id: 'toggle-theme',
         category: 'Estilo',
         label: 'Alternar Modo Claro / Modo Oscuro',
@@ -1361,6 +1372,7 @@ export const App: React.FC = () => {
       handleOpenPdfForEditText,
       handleSetDefaultWindowsApp,
       handleSaveExportPdf,
+      handlePrintActiveTab,
       handleUpdateSettings,
     ]
   );
@@ -2091,6 +2103,16 @@ export const App: React.FC = () => {
           }
           onNotify={notify}
           onClose={() => setToolModal(null)}
+        />
+      )}
+
+      {printModalOpen && activeTab && (
+        <PrintModal
+          key={activeTab.id}
+          tab={activeTab}
+          onSavePdfCopy={handleSaveExportPdf}
+          onNotify={notify}
+          onClose={() => setPrintModalOpen(false)}
         />
       )}
 

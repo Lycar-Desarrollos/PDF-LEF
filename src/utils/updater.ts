@@ -1,6 +1,6 @@
 import { isTauriDesktop } from './tauriBridge';
 
-export const CURRENT_APP_VERSION = '2.3.1';
+export const CURRENT_APP_VERSION = '2.3.2';
 
 export const GLOBAL_MANIFEST_URL =
   'https://lycar-desarrollos.github.io/PDF-LEF/update-manifest.json';

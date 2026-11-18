@@ -145,6 +145,84 @@ export function downloadBlobInBrowser(blob: Blob, fileName: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 3000);
 }
 
+export async function saveExportBlobOrBytes(
+  payload: Blob | Uint8Array,
+  suggestedName: string,
+  filterLabel: string,
+  extension: string
+): Promise<{ saved: boolean; filePath?: string; fileName: string }> {
+  const cleanExt = extension.replace(/^\./, '').toLowerCase();
+  const cleanName = suggestedName.toLowerCase().endsWith(`.${cleanExt}`)
+    ? suggestedName
+    : `${suggestedName}.${cleanExt}`;
+
+  if (isTauriDesktop()) {
+    try {
+      const { save } = await import('@tauri-apps/plugin-dialog');
+      const { invoke } = await import('@tauri-apps/api/core');
+      const chosen = await save({
+        defaultPath: cleanName,
+        filters: [{ name: filterLabel, extensions: [cleanExt] }],
+      });
+      if (!chosen) return { saved: false, fileName: cleanName };
+      const targetPath = chosen.toLowerCase().endsWith(`.${cleanExt}`)
+        ? chosen
+        : `${chosen}.${cleanExt}`;
+      const bytes =
+        payload instanceof Uint8Array
+          ? payload
+          : new Uint8Array(await payload.arrayBuffer());
+      await invoke('write_export_bytes', {
+        path: targetPath,
+        bytes: Array.from(bytes),
+      });
+      const finalName = targetPath.split(/[\\/]/).pop() || cleanName;
+      return { saved: true, filePath: targetPath, fileName: finalName };
+    } catch {
+      // Fallback to standard browser download below
+    }
+  }
+
+  const blob =
+    payload instanceof Blob
+      ? payload
+      : (() => {
+          const copy = new Uint8Array(payload.byteLength);
+          copy.set(payload);
+          return new Blob([copy.buffer]);
+        })();
+  downloadBlobInBrowser(blob, cleanName);
+  return { saved: true, fileName: cleanName };
+}
+
+export async function copyTextToClipboardSafe(text: string): Promise<boolean> {
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fallback below
+    }
+  }
+  if (typeof document !== 'undefined') {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
 export async function checkStartupOpenedPdfFromWindows(): Promise<OpenedPdfPayload | null> {
   if (!isTauriDesktop()) return null;
   try {

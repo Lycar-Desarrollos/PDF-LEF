@@ -22,7 +22,7 @@ import type {
   ViewLayout,
 } from '../types/pdf';
 import { DEFAULT_SETTINGS } from '../utils/storage';
-import { downloadBlobInBrowser } from '../utils/tauriBridge';
+import { saveExportBlobOrBytes } from '../utils/tauriBridge';
 import {
   CURRENT_APP_VERSION,
   checkGlobalAppUpdate,
@@ -83,12 +83,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     onChangeSettings({ ...settings, [key]: value });
   };
 
-  const handleExportProfile = () => {
+  const handleExportProfile = async () => {
     const blob = new Blob([JSON.stringify(settings, null, 2)], {
       type: 'application/json',
     });
-    downloadBlobInBrowser(blob, 'Kova-PDF-Configuracion.json');
-    onNotify('Perfil de configuración exportado.');
+    const res = await saveExportBlobOrBytes(
+      blob,
+      'Kova-PDF-Configuracion.json',
+      'Perfil de Configuración Kova PDF',
+      'json'
+    );
+    if (res.saved) {
+      onNotify(`Perfil de configuración guardado: ${res.fileName}`);
+    }
   };
 
   const handleImportProfile = (file: File) => {
@@ -638,42 +645,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                 <div className="setting-card" style={{ marginTop: 12 }}>
                   <div>
-                    <div className="setting-card-title">Actualización directa silenciosa al abrir Kova PDF</div>
+                    <div className="setting-card-title">Actualización directa silenciosa sin asistentes</div>
                     <div className="setting-card-desc">
-                      Aplica nuevas mejoras automáticamente en segundo plano sin abrir asistentes de instalación ni desconfigurar firmas, tema, recientes ni el lector PDF predeterminado.
+                      Aplica mejoras empujadas desde el canal oficial en segundo plano sin abrir instaladores ni desconfigurar firmas, tema, recientes ni el lector PDF predeterminado.
                     </div>
                   </div>
-                  <label className="toggle-switch">
-                    <input
-                      type="checkbox"
-                      checked={settings.autoInstallUpdates !== false}
-                      onChange={(e) => {
-                        onChangeSettings({
-                          ...settings,
-                          autoCheckUpdates: e.target.checked ? true : settings.autoCheckUpdates,
-                          autoInstallUpdates: e.target.checked,
-                        });
-                      }}
-                    />
-                    <span className="toggle-slider" />
-                  </label>
+                  <button
+                    type="button"
+                    className={`switch ${settings.autoInstallUpdates !== false ? 'on' : ''}`}
+                    onClick={() => {
+                      const nextVal = settings.autoInstallUpdates === false;
+                      onChangeSettings({
+                        ...settings,
+                        autoCheckUpdates: nextVal ? true : settings.autoCheckUpdates,
+                        autoInstallUpdates: nextVal,
+                      });
+                    }}
+                  />
                 </div>
 
                 <div className="setting-card" style={{ marginTop: 12 }}>
                   <div>
-                    <div className="setting-card-title">Verificar canal oficial automáticamente</div>
+                    <div className="setting-card-title">Verificar canal oficial automáticamente (En vivo)</div>
                     <div className="setting-card-desc">
-                      Consulta al iniciar (desde cualquier red o país) si existe una actualización o reversión remota publicada.
+                      Detecta actualizaciones o reversiones remotas al abrir y periódicamente mientras Kova PDF permanece abierto.
                     </div>
                   </div>
-                  <label className="toggle-switch">
-                    <input
-                      type="checkbox"
-                      checked={settings.autoCheckUpdates}
-                      onChange={(e) => update('autoCheckUpdates', e.target.checked)}
-                    />
-                    <span className="toggle-slider" />
-                  </label>
+                  <button
+                    type="button"
+                    className={`switch ${settings.autoCheckUpdates ? 'on' : ''}`}
+                    onClick={() => update('autoCheckUpdates', !settings.autoCheckUpdates)}
+                  />
                 </div>
 
                 {updateResult && (

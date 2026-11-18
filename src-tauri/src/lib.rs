@@ -15,6 +15,19 @@ fn write_pdf_bytes(path: String, bytes: Vec<u8>) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn write_export_bytes(path: String, bytes: Vec<u8>) -> Result<(), String> {
+    let lower = path.trim().to_lowercase();
+    let allowed = [
+        ".pdf", ".docx", ".csv", ".zip", ".png", ".jpg", ".jpeg", ".txt", ".json",
+    ];
+    if !allowed.iter().any(|ext| lower.ends_with(ext)) {
+        return Err("Extensión de exportación no permitida por seguridad.".to_string());
+    }
+    fs::write(&path, bytes)
+        .map_err(|e| format!("No se pudo guardar el archivo exportado ({}): {}", path, e))
+}
+
+#[tauri::command]
 fn get_startup_pdf_path() -> Option<String> {
     for arg in std::env::args().skip(1) {
         let cleaned = arg.trim_matches('"').trim_start_matches(r"\\?\").to_string();
@@ -222,11 +235,42 @@ async fn download_and_install_update(
         .await
         .map_err(|e| format!("Fallo interno en tarea de descarga: {}", e))??;
 
-        // 4. Launch Tauri NSIS installer directly with official Passive + Relaunch + Update flags (/P /R /UPDATE)
-        Command::new(&installer_path)
+        // 4. Launch Tauri NSIS installer directly with official Passive + Relaunch + Update flags (/P /R /UPDATE).
+        // If a legacy station installed Kova PDF into C:\Program Files (requiring UAC elevation, Win32 error 740),
+        // seamlessly fall back to elevated ShellExecute via Start-Process -Verb RunAs.
+        let direct_spawn = Command::new(&installer_path)
             .args(["/P", "/R", "/UPDATE"])
-            .spawn()
-            .map_err(|e| format!("No se pudo ejecutar el instalador de actualización: {}", e))?;
+            .spawn();
+
+        if let Err(spawn_err) = direct_spawn {
+            let installer_escaped = installer_path
+                .to_string_lossy()
+                .replace('\'', "''");
+            let ps_elevate = format!(
+                "Start-Process -FilePath '{}' -ArgumentList '/P','/R','/UPDATE' -Verb RunAs",
+                installer_escaped
+            );
+            let elevated_ok = Command::new("powershell.exe")
+                .args([
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-WindowStyle",
+                    "Hidden",
+                    "-Command",
+                    &ps_elevate,
+                ])
+                .creation_flags(CREATE_NO_WINDOW)
+                .status()
+                .map(|s| s.success())
+                .unwrap_or(false);
+
+            if !elevated_ok {
+                return Err(format!(
+                    "No se pudo iniciar la actualización automática: {}",
+                    spawn_err
+                ));
+            }
+        }
 
         let app_handle = app.clone();
         std::thread::spawn(move || {
@@ -255,6 +299,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             read_pdf_bytes,
             write_pdf_bytes,
+            write_export_bytes,
             get_startup_pdf_path,
             register_default_pdf_app,
             open_external_url,

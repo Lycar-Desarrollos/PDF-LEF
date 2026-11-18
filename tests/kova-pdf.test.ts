@@ -405,7 +405,7 @@ test('7. Windows Tauri v2 High-DPI config, NSIS, ICO headers & spellCheck={false
   const tauriConf = JSON.parse(readFileSync(join(ROOT, 'src-tauri/tauri.conf.json'), 'utf8'));
   assert.equal(tauriConf.productName, 'Kova PDF');
   assert.equal(tauriConf.mainBinaryName, 'KovaPDF');
-  assert.equal(tauriConf.version, '2.3.1');
+  assert.equal(tauriConf.version, '2.3.2');
   assert.equal(tauriConf.identifier, 'studio.kova.pdf');
   assert.equal(tauriConf.bundle.publisher, 'Kova Studio');
   assert.equal(tauriConf.bundle.windows.allowDowngrades, true);
@@ -573,22 +573,22 @@ test('10. Global Internet Auto-Updater & Remote Manifest Control (any network wo
   const { CURRENT_APP_VERSION, isNewerVersion, parseSemver } = await import(
     '../src/utils/updater.ts'
   );
-  assert.equal(CURRENT_APP_VERSION, '2.3.1');
-  assert.deepEqual(parseSemver('v2.3.1'), [2, 3, 1]);
-  assert.equal(isNewerVersion('v2.3.1', '2.0.0'), true);
-  assert.equal(isNewerVersion('v2.3.1', '2.3.0'), true);
-  assert.equal(isNewerVersion('v2.3.1', '2.3.1'), false);
-  assert.equal(isNewerVersion('v2.3.0', '2.3.1'), false);
+  assert.equal(CURRENT_APP_VERSION, '2.3.2');
+  assert.deepEqual(parseSemver('v2.3.2'), [2, 3, 2]);
+  assert.equal(isNewerVersion('v2.3.2', '2.0.0'), true);
+  assert.equal(isNewerVersion('v2.3.2', '2.3.1'), true);
+  assert.equal(isNewerVersion('v2.3.2', '2.3.2'), false);
+  assert.equal(isNewerVersion('v2.3.1', '2.3.2'), false);
 
   const manifest = JSON.parse(readFileSync(join(ROOT, 'website/update-manifest.json'), 'utf8'));
   assert.equal(manifest.product, 'Kova PDF');
-  assert.equal(manifest.version, '2.3.1');
+  assert.equal(manifest.version, '2.3.2');
   assert.equal(manifest.minRequiredVersion, '2.2.1');
   assert.equal(typeof manifest.mandatory, 'boolean');
   assert.equal(manifest.autoInstall, true);
   assert.equal(typeof manifest.allowDowngrade, 'boolean');
-  assert.ok(manifest.exeUrl.endsWith('Kova.PDF_2.3.1_x64-setup.exe'));
-  assert.ok(manifest.msiUrl.endsWith('Kova.PDF_2.3.1_x64_en-US.msi'));
+  assert.ok(manifest.exeUrl.endsWith('Kova.PDF_2.3.2_x64-setup.exe'));
+  assert.ok(manifest.msiUrl.endsWith('Kova.PDF_2.3.2_x64_en-US.msi'));
 });
 
 test('11. Inline Bold+Regular separation on #F4F6F9 gray cards, untouched-if-unchanged guarantee & CREATE_NO_WINDOW', async () => {
@@ -965,6 +965,96 @@ test('13. Column wrap customWidth beside images, X-Ray ghosting, Zero-Touch dire
     );
   }
 });
+
+test('14. Clean Sheet Print Engine (zero app UI / zero tauri.localhost), Native Windows Exports & Live Push Heartbeat', async () => {
+  const {
+    resolvePrintPageIndices,
+    buildPrintPageCssRule,
+    loadCompiledPrintProxy,
+    destroyPrintProxy,
+  } = await import('../src/utils/printEngine.ts');
+
+  // 1. Page scope resolution (all, current sheet, custom range)
+  assert.deepEqual(resolvePrintPageIndices(5, 2, 'all'), [0, 1, 2, 3, 4]);
+  assert.deepEqual(resolvePrintPageIndices(5, 2, 'current'), [2]);
+  assert.deepEqual(resolvePrintPageIndices(5, 0, 'custom', '2-4, 5'), [1, 2, 3, 4]);
+  assert.deepEqual(resolvePrintPageIndices(1, 0, 'current'), [0]);
+
+  // 2. @page CSS rule enforces margin: 0mm !important (eliminates browser date & tauri.localhost headers/footers)
+  const fitPortraitCss = buildPrintPageCssRule(612, 792, 'fit');
+  assert.match(fitPortraitCss, /@page\s*\{\s*size:\s*portrait;\s*margin:\s*0mm\s*!important;\s*\}/);
+  const fitLandscapeCss = buildPrintPageCssRule(841.89, 595.28, 'fit');
+  assert.match(fitLandscapeCss, /@page\s*\{\s*size:\s*landscape;\s*margin:\s*0mm\s*!important;\s*\}/);
+  const exactLabelCss = buildPrintPageCssRule(288, 432, 'exact'); // 4x6 in thermal label = 101.60mm x 152.40mm
+  assert.match(exactLabelCss, /101\.60mm 152\.40mm/);
+  assert.match(exactLabelCss, /margin:\s*0mm\s*!important/);
+
+  // 3. Compiled print proxy preserves full-document page numbering & live edits when printing single Page 2
+  const twoPageDoc = await PDFDocument.create();
+  const fnt = await twoPageDoc.embedFont(StandardFonts.Helvetica);
+  const pg1 = twoPageDoc.addPage([612, 792]);
+  pg1.drawText('Cotizacion Hoja Uno Original', { x: 50, y: 700, size: 12, font: fnt });
+  const pg2 = twoPageDoc.addPage([612, 792]);
+  pg2.drawText('Cotizacion Hoja Dos Original', { x: 50, y: 700, size: 12, font: fnt });
+  const twoPageBytes = await twoPageDoc.save();
+
+  const tab = await loadPdfIntoTabDocument('CotizacionPrint.pdf', twoPageBytes, DEFAULT_SETTINGS);
+  tab.headerFooter = {
+    ...tab.headerFooter,
+    enabled: true,
+    footerCenterPattern: 'page-of-total',
+  };
+  const p2Items = await extractPageTextsForTab(tab, 1);
+  tab.extractedPageTexts[tab.pages[1].id] = p2Items;
+  tab.nativeTextEdits[p2Items[0].id] = {
+    ...p2Items[0],
+    text: 'Cotizacion Hoja Dos Auditada Kova',
+    modified: true,
+  };
+
+  const { compiledBytes, pdfProxy } = await loadCompiledPrintProxy(tab);
+  assert.equal(pdfProxy.numPages, 2);
+  const page2Proxy = await pdfProxy.getPage(2);
+  const page2TextContent = await page2Proxy.getTextContent();
+  const joinedP2 = page2TextContent.items
+    .map((it) => ('str' in it ? it.str : ''))
+    .join(' ');
+  assert.match(joinedP2, /Cotizacion Hoja Dos Auditada Kova/);
+  assert.match(joinedP2, /Página 2 de 2/);
+  assert.ok(compiledBytes.byteLength > 500);
+  destroyPrintProxy(pdfProxy);
+
+  // 4. Verify @media print hides #root completely and App.tsx has zero 0x0 iframe print fallback
+  const indexCss = readFileSync(join(ROOT, 'src/styles/index.css'), 'utf8');
+  assert.match(indexCss, /@media print[\s\S]*#root\s*\{\s*display:\s*none\s*!important;\s*\}/);
+  assert.match(indexCss, /#kova-print-spool/);
+  assert.match(indexCss, /\.kova-print-sheet/);
+
+  const appTsx = readFileSync(join(ROOT, 'src/App.tsx'), 'utf8');
+  assert.equal(
+    appTsx.includes('iframe.contentWindow?.print()'),
+    false,
+    'App.tsx must not use the broken 0x0 blob PDF iframe print approach'
+  );
+  assert.match(appTsx, /<PrintModal/);
+  assert.match(appTsx, /setInterval\(checkAndPushApply,\s*10\s*\*\s*60\s*\*\s*1000\)/);
+
+  // 5. Verify native Windows Save Dialog bridge across all tools & zero-UAC currentUser + RunAs fallback
+  const toolsTsx = readFileSync(join(ROOT, 'src/components/ToolsModal.tsx'), 'utf8');
+  const settingsTsx = readFileSync(join(ROOT, 'src/components/SettingsModal.tsx'), 'utf8');
+  assert.equal(toolsTsx.includes('downloadBlobInBrowser'), false);
+  assert.equal(settingsTsx.includes('downloadBlobInBrowser'), false);
+  assert.equal(settingsTsx.includes('toggle-switch'), false);
+
+  const tauriConf = JSON.parse(readFileSync(join(ROOT, 'src-tauri/tauri.conf.json'), 'utf8'));
+  assert.equal(tauriConf.version, '2.3.2');
+  assert.equal(tauriConf.bundle.windows.nsis.installMode, 'currentUser');
+
+  const rustLib = readFileSync(join(ROOT, 'src-tauri/src/lib.rs'), 'utf8');
+  assert.match(rustLib, /fn write_export_bytes/);
+  assert.match(rustLib, /-Verb RunAs/);
+});
+
 
 
 

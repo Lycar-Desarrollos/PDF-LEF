@@ -1571,3 +1571,66 @@ textarea {
   align-items: center;
   gap: 9px;
 }
+
+/* Native Clean Sheet Print Isolation (Zero App UI, Zero Browser Headers/Footers) */
+@media screen {
+  #kova-print-spool {
+    display: none !important;
+  }
+}
+
+@media print {
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  #root {
+    display: none !important;
+  }
+
+  #kova-print-spool {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  .kova-print-sheet {
+    margin: 0 !important;
+    padding: 0 !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #ffffff !important;
+    overflow: hidden !important;
+  }
+
+  .kova-print-sheet:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
+  }
+
+  .kova-print-sheet img {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
+    margin: 0 auto !important;
+  }
+}
