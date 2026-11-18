@@ -44,6 +44,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   confirmCloseUnsaved: true,
   strictOfflineIndicator: true,
   autoCheckUpdates: true,
+  autoInstallUpdates: true,
 };
 
 export function loadSettings(): AppSettings {

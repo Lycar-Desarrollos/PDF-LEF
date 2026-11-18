@@ -68,6 +68,55 @@ function cssFontForChoice(choice?: FontFamilyChoice): string {
   return 'var(--font-sans)';
 }
 
+function canvasFontForChoice(choice?: FontFamilyChoice): string {
+  if (choice === 'serif') return 'Georgia, "Times New Roman", serif';
+  if (choice === 'mono') return '"JetBrains Mono", Consolas, monospace';
+  if (choice === 'script') return 'Georgia, "Times New Roman", serif';
+  return 'Inter, "Segoe UI", system-ui, sans-serif';
+}
+
+let sharedMeasureCtx: CanvasRenderingContext2D | null = null;
+
+function measureTextLayoutPx(
+  text: string,
+  fontPx: number,
+  choice: FontFamilyChoice,
+  weight: 'normal' | 'bold',
+  style: 'normal' | 'italic',
+  maxWidthPx: number
+): { naturalWidthPx: number; rows: number } {
+  const safeMax = Math.max(36, maxWidthPx);
+  const lines = (text || '').replace(/\r\n/g, '\n').split('\n');
+
+  if (typeof document !== 'undefined' && !sharedMeasureCtx) {
+    const c = document.createElement('canvas');
+    sharedMeasureCtx = c.getContext('2d');
+  }
+
+  const measureSeg = (seg: string): number => {
+    if (!seg) return 0;
+    if (sharedMeasureCtx) {
+      const actualStyle = choice === 'script' ? 'italic' : style;
+      sharedMeasureCtx.font = `${actualStyle} ${weight} ${fontPx}px ${canvasFontForChoice(choice)}`;
+      return sharedMeasureCtx.measureText(seg).width;
+    }
+    return seg.length * fontPx * 0.54;
+  };
+
+  let widest = 0;
+  let totalRows = 0;
+  for (const seg of lines) {
+    const w = measureSeg(seg);
+    if (w > widest) widest = w;
+    totalRows += Math.max(1, Math.ceil((w + 4) / Math.max(24, safeMax - 6)));
+  }
+
+  return {
+    naturalWidthPx: Math.min(safeMax, Math.max(42, Math.ceil(widest + 16))),
+    rows: Math.max(1, totalRows),
+  };
+}
+
 type ResizeHandleDir = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
 
 interface InteractivePageCardProps {
@@ -495,6 +544,9 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
         (dir === 'se' || dir === 'nw' || dir === 'ne' || dir === 'sw')
       ) {
         nh = Math.max(0.014, nw / ratio);
+        if (dir.includes('n')) {
+          ny = Math.max(0, oy + oh - nh);
+        }
       }
 
       const patch: Partial<PdfOverlayElement> = { x: nx, y: ny, width: nw, height: nh };
@@ -648,6 +700,44 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
         onSelectNativeText(item.id);
         onSelectElement(null);
       }
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  const startResizeNativeTextWidth = (
+    e: React.MouseEvent,
+    item: NativePdfTextItem,
+    currentWidthPx: number
+  ) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const rect = overlayRef.current?.getBoundingClientRect();
+    if (!rect || rect.width <= 0) return;
+
+    const startClientX = e.clientX;
+    const baseNormW = Math.max(0.05, currentWidthPx / rect.width);
+    let latest = { ...item };
+
+    const onMove = (ev: MouseEvent) => {
+      const dx = (ev.clientX - startClientX) / rect.width;
+      const nextW = Math.max(0.06, Math.min(0.975 - item.x, baseNormW + dx));
+      latest = {
+        ...latest,
+        customWidth: nextW,
+        modified: true,
+      };
+      onUpdateNativeTextItem(latest, false);
+      const wMm = Math.round(nextW * pageDesc.widthPt * 0.3528);
+      setDragHud(`Ancho de columna · ${wMm} mm`);
+    };
+
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      setDragHud(null);
+      onUpdateNativeTextItem(latest, true);
     };
 
     window.addEventListener('mousemove', onMove);
@@ -1184,6 +1274,11 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
       ? 'crosshair'
       : 'default';
 
+  const activeNativeOnPage =
+    isEditableMode && selectedNativeTextId
+      ? mergedNativeItems.find((n) => n.id === selectedNativeTextId && !n.deleted) || null
+      : null;
+
   return (
     <div
       className={`pdf-page-shell paper-${tab.paperFilter}`}
@@ -1195,7 +1290,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
       {/* Interactive Vector & Text Overlay Layer */}
       <div
         ref={overlayRef}
-        className="pdf-overlay-layer"
+        className={`pdf-overlay-layer ${activeNativeOnPage ? 'has-active-native-edit' : ''}`}
         style={{ cursor: cursorStyle }}
         onMouseDown={handleStageMouseDown}
         onDoubleClick={handleStageDoubleClick}
@@ -1215,7 +1310,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
           <div className="snap-guide-h" style={{ top: `${snapH * 100}%` }} />
         )}
 
-        {/* Live Crop Margin Trim Mask Preview */}
+        {/* Live Crop Margin Trim Mask Preview (clipped safely inside its own wrapper) */}
         {pageDesc.crop &&
           (pageDesc.crop.top > 0 ||
             pageDesc.crop.right > 0 ||
@@ -1224,16 +1319,24 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
             <div
               style={{
                 position: 'absolute',
-                top: `${pageDesc.crop.top * 100}%`,
-                right: `${pageDesc.crop.right * 100}%`,
-                bottom: `${pageDesc.crop.bottom * 100}%`,
-                left: `${pageDesc.crop.left * 100}%`,
-                border: '1.5px dashed var(--accent)',
-                boxShadow: '0 0 0 9999px rgba(15, 23, 42, 0.24)',
+                inset: 0,
+                overflow: 'hidden',
                 pointerEvents: 'none',
                 zIndex: 18,
               }}
-            />
+            >
+              <div
+                style={{
+                  position: 'absolute',
+                  top: `${pageDesc.crop.top * 100}%`,
+                  right: `${pageDesc.crop.right * 100}%`,
+                  bottom: `${pageDesc.crop.bottom * 100}%`,
+                  left: `${pageDesc.crop.left * 100}%`,
+                  border: '1.5px dashed var(--accent)',
+                  boxShadow: '0 0 0 9999px rgba(15, 23, 42, 0.24)',
+                }}
+              />
+            </div>
           )}
 
         {/* 1. Original Position Cover Patches for Modified/Moved/Deleted/Active Native PDF Texts */}
@@ -1265,25 +1368,23 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
             const isEditTool = isEditableMode && activeTool === 'edit-pdf-text';
             const scaledFontPx = Math.max(8, nt.fontSizePt * tab.zoom);
             const maxAvailPx = Math.max(48, (0.972 - nt.x) * boxSize.w);
-            const desiredPx = Math.max(
-              nt.text.length * scaledFontPx * 0.56 + 14,
-              nt.width * boxSize.w
+            const targetWrapPx =
+              typeof nt.customWidth === 'number' && nt.customWidth > 0.03
+                ? Math.min(maxAvailPx, Math.max(48, nt.customWidth * boxSize.w))
+                : maxAvailPx;
+            const measured = measureTextLayoutPx(
+              nt.text,
+              scaledFontPx,
+              nt.fontFamily,
+              nt.fontWeight,
+              nt.fontStyle,
+              targetWrapPx
             );
-            const finalWidthPx = Math.min(maxAvailPx, desiredPx);
-            const approxCharsPerLine = Math.max(
-              8,
-              Math.floor(finalWidthPx / Math.max(4.5, scaledFontPx * 0.53))
-            );
-            const visualRows = Math.max(
-              1,
-              nt.text
-                .split('\n')
-                .reduce(
-                  (sum, seg) =>
-                    sum + Math.max(1, Math.ceil(seg.length / approxCharsPerLine)),
-                  0
-                )
-            );
+            const finalWidthPx =
+              typeof nt.customWidth === 'number' && nt.customWidth > 0.03
+                ? targetWrapPx
+                : Math.min(maxAvailPx, Math.max(measured.naturalWidthPx, 48));
+            const visualRows = measured.rows;
 
             // Case A: Unmodified text that is NOT currently selected
             if (!nt.modified && !isSelected) {
@@ -1342,6 +1443,15 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                   >
                     <GripVertical size={11} />
                   </div>
+                )}
+
+                {/* Right Column-Width Resize Handle when Selected */}
+                {isSelected && isEditTool && (
+                  <div
+                    className="native-width-handle"
+                    onMouseDown={(e) => startResizeNativeTextWidth(e, nt, finalWidthPx)}
+                    title="Arrastra el borde derecho para ajustar el ancho de columna del texto"
+                  />
                 )}
 
                 {/* Floating Quick Action Bar when Selected */}
@@ -1416,21 +1526,29 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                     </button>
 
                     <label
-                      title="Color del texto"
-                      style={{
-                        width: 18,
-                        height: 18,
-                        borderRadius: '50%',
-                        backgroundColor: nt.color,
-                        border: '1.5px solid rgba(15,23,42,0.28)',
-                        cursor: 'pointer',
-                        display: 'inline-block',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        margin: '0 2px',
-                        flexShrink: 0,
-                      }}
+                      className="quickbar-color-chip"
+                      title="Color del texto (A)"
                     >
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          lineHeight: 1,
+                        }}
+                      >
+                        <span>A</span>
+                        <span
+                          style={{
+                            width: 12,
+                            height: 3,
+                            borderRadius: 1.5,
+                            backgroundColor: nt.color,
+                            boxShadow: '0 0 0 1px rgba(148,163,184,0.45)',
+                            marginTop: 1,
+                          }}
+                        />
+                      </span>
                       <input
                         type="color"
                         value={nt.color}
@@ -1445,21 +1563,20 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                     </label>
 
                     <label
+                      className="quickbar-color-chip"
                       title="Color del fondo (parche)"
-                      style={{
-                        width: 18,
-                        height: 18,
-                        borderRadius: 4,
-                        backgroundColor: bgSolid,
-                        border: '1.5px dashed rgba(15,23,42,0.38)',
-                        cursor: 'pointer',
-                        display: 'inline-block',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        margin: '0 2px',
-                        flexShrink: 0,
-                      }}
                     >
+                      <span
+                        style={{
+                          width: 11,
+                          height: 11,
+                          borderRadius: 2.5,
+                          backgroundColor: bgSolid,
+                          border: '1px solid rgba(148,163,184,0.75)',
+                          display: 'inline-block',
+                        }}
+                      />
+                      <span style={{ fontSize: 10 }}>Fondo</span>
                       <input
                         type="color"
                         value={bgSolid}
@@ -1573,7 +1690,8 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                       whiteSpace: 'pre-wrap',
                       overflowWrap: 'break-word',
                       display: 'inline-block',
-                      maxWidth: `${maxAvailPx}px`,
+                      maxWidth: `${targetWrapPx}px`,
+                      width: nt.customWidth ? `${targetWrapPx}px` : undefined,
                       lineHeight: 1.18,
                       backgroundColor: bgSolid,
                     }}
@@ -1590,18 +1708,39 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
           const isSelected = isEditableMode && selectedElementId === el.id;
           const isInlineEditing = editingOverlayId === el.id;
           const fontPx = Math.max(8, (el.fontSizePt || 12) * tab.zoom);
+          const ntRight = activeNativeOnPage
+            ? activeNativeOnPage.x +
+              (activeNativeOnPage.customWidth ?? Math.max(activeNativeOnPage.width, 0.25))
+            : 0;
+          const ntBottom = activeNativeOnPage
+            ? activeNativeOnPage.y + Math.max(activeNativeOnPage.height, 0.032)
+            : 0;
+          const overlapsActiveNative =
+            Boolean(activeNativeOnPage) &&
+            !isSelected &&
+            (el.kind === 'image' ||
+              el.kind === 'signature' ||
+              el.kind === 'stamp' ||
+              el.kind === 'rect' ||
+              el.kind === 'redact') &&
+            el.x < ntRight + 0.01 &&
+            el.x + el.width > activeNativeOnPage!.x - 0.01 &&
+            el.y < ntBottom + 0.015 &&
+            el.y + el.height > activeNativeOnPage!.y - 0.015;
 
           return (
             <div
               key={el.id}
-              className={`overlay-item ${isSelected ? 'selected' : ''}`}
+              className={`overlay-item ${isSelected ? 'selected' : ''} ${
+                overlapsActiveNative ? 'xray-ghost' : ''
+              }`}
               style={{
                 left: `${el.x * 100}%`,
                 top: `${el.y * 100}%`,
                 width: `${el.width * 100}%`,
                 height: `${el.height * 100}%`,
                 opacity: el.opacity ?? 1,
-                zIndex: el.zIndex + 10,
+                zIndex: 44 + Math.min(el.zIndex, 20),
                 pointerEvents: isEditableMode ? 'auto' : 'none',
               }}
               onMouseDown={(e) => startMoveOverlay(e, el)}

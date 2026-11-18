@@ -1,6 +1,6 @@
 import { isTauriDesktop } from './tauriBridge';
 
-export const CURRENT_APP_VERSION = '2.3.0';
+export const CURRENT_APP_VERSION = '2.3.1';
 
 export const GLOBAL_MANIFEST_URL =
   'https://lycar-desarrollos.github.io/PDF-LEF/update-manifest.json';
@@ -13,6 +13,7 @@ export interface RemoteUpdateInfo {
   latestVersion: string;
   mandatory: boolean;
   autoInstall?: boolean;
+  isRollback?: boolean;
   downloadUrl?: string;
   msiUrl?: string;
   releaseUrl?: string;
@@ -39,16 +40,110 @@ export function isNewerVersion(remoteTag: string, localVer: string): boolean {
   return false;
 }
 
-interface ManifestPayload {
+export interface ManifestPayload {
   version?: string;
   minRequiredVersion?: string;
   mandatory?: boolean;
   autoInstall?: boolean;
+  allowDowngrade?: boolean;
   exeUrl?: string;
   msiUrl?: string;
   releaseUrl?: string;
   notesEs?: string;
   announcement?: string;
+}
+
+export interface ReleaseSnapshot {
+  tag?: string | null;
+  exeUrl?: string;
+  msiUrl?: string;
+  htmlUrl?: string;
+  body?: string;
+}
+
+export function evaluateUpdateDecision(
+  localVersion: string,
+  manifestData: ManifestPayload | null,
+  release: ReleaseSnapshot | null
+): RemoteUpdateInfo {
+  const cleanLocal = localVersion.replace(/^v/i, '');
+  const releaseTag = release?.tag ? release.tag.replace(/^v/i, '') : null;
+
+  if (!manifestData && !releaseTag) {
+    return {
+      status: 'error',
+      currentVersion: `v${cleanLocal}`,
+      latestVersion: `v${cleanLocal}`,
+      mandatory: false,
+    };
+  }
+
+  const manifestVer = manifestData?.version?.replace(/^v/i, '') || '';
+  const localTuple = parseSemver(cleanLocal).slice(0, 3).join('.');
+  const manifestTuple = manifestVer ? parseSemver(manifestVer).slice(0, 3).join('.') : '';
+
+  // Instant Remote Fleet Rollback: if allowDowngrade is enabled in manifest, pin directly to manifest version
+  if (manifestData?.allowDowngrade && manifestVer && manifestTuple !== localTuple) {
+    return {
+      status: 'available',
+      currentVersion: `v${cleanLocal}`,
+      latestVersion: `v${manifestVer}`,
+      mandatory: Boolean(manifestData.mandatory),
+      autoInstall: Boolean(manifestData.autoInstall ?? true),
+      isRollback: isNewerVersion(cleanLocal, manifestVer),
+      downloadUrl: manifestData.exeUrl || manifestData.releaseUrl,
+      msiUrl: manifestData.msiUrl,
+      releaseUrl: manifestData.releaseUrl,
+      notes: manifestData.notesEs || '',
+      announcement: manifestData.announcement || '',
+    };
+  }
+
+  const useReleaseOverManifest =
+    Boolean(releaseTag) &&
+    !manifestData?.allowDowngrade &&
+    (!manifestVer || isNewerVersion(releaseTag!, manifestVer));
+
+  const bestVersion = (useReleaseOverManifest ? releaseTag : manifestVer) || cleanLocal;
+  const minReq = manifestData?.minRequiredVersion?.replace(/^v/i, '') || '0.0.0';
+  const forcedByMinReq = isNewerVersion(minReq, cleanLocal);
+  const mandatory = Boolean(manifestData?.mandatory || forcedByMinReq);
+
+  const downloadUrl = useReleaseOverManifest
+    ? release?.exeUrl || manifestData?.exeUrl || release?.htmlUrl
+    : manifestData?.exeUrl || release?.exeUrl || manifestData?.releaseUrl || release?.htmlUrl;
+
+  const msiUrl = useReleaseOverManifest
+    ? release?.msiUrl || manifestData?.msiUrl
+    : manifestData?.msiUrl || release?.msiUrl;
+
+  const notes = useReleaseOverManifest
+    ? release?.body || manifestData?.notesEs || ''
+    : manifestData?.notesEs || release?.body || '';
+
+  if (isNewerVersion(bestVersion, cleanLocal)) {
+    return {
+      status: 'available',
+      currentVersion: `v${cleanLocal}`,
+      latestVersion: `v${bestVersion.replace(/^v/i, '')}`,
+      mandatory,
+      autoInstall: Boolean(manifestData?.autoInstall),
+      isRollback: false,
+      downloadUrl,
+      msiUrl,
+      releaseUrl: manifestData?.releaseUrl || release?.htmlUrl,
+      notes,
+      announcement: manifestData?.announcement || '',
+    };
+  }
+
+  return {
+    status: 'latest',
+    currentVersion: `v${cleanLocal}`,
+    latestVersion: `v${bestVersion.replace(/^v/i, '')}`,
+    mandatory: false,
+    announcement: manifestData?.announcement || '',
+  };
 }
 
 export async function checkGlobalAppUpdate(
@@ -61,7 +156,7 @@ export async function checkGlobalAppUpdate(
   let releaseHtmlUrl: string | undefined;
   let releaseBody: string | undefined;
 
-  // 1. Primary Global CDN Manifest (Unlimited rate, instant remote control)
+  // 1. Primary Global CDN Manifest (Unlimited rate, instant remote control & rollback)
   try {
     const res = await fetch(`${GLOBAL_MANIFEST_URL}?t=${Date.now()}`, {
       cache: 'no-store',
@@ -99,58 +194,13 @@ export async function checkGlobalAppUpdate(
     // Ignore if offline or rate-limited when manifest succeeded
   }
 
-  if (!manifestData && !releaseTag) {
-    return {
-      status: 'error',
-      currentVersion: `v${localVersion.replace(/^v/i, '')}`,
-      latestVersion: `v${localVersion.replace(/^v/i, '')}`,
-      mandatory: false,
-    };
-  }
-
-  const manifestVer = manifestData?.version?.replace(/^v/i, '') || '';
-  const useReleaseOverManifest =
-    releaseTag && (!manifestVer || isNewerVersion(releaseTag, manifestVer));
-
-  const bestVersion = (useReleaseOverManifest ? releaseTag : manifestVer) || localVersion;
-  const minReq = manifestData?.minRequiredVersion?.replace(/^v/i, '') || '0.0.0';
-  const forcedByMinReq = isNewerVersion(minReq, localVersion);
-  const mandatory = Boolean(manifestData?.mandatory || forcedByMinReq);
-
-  const downloadUrl = useReleaseOverManifest
-    ? releaseExeUrl || manifestData?.exeUrl || releaseHtmlUrl
-    : manifestData?.exeUrl || releaseExeUrl || manifestData?.releaseUrl || releaseHtmlUrl;
-
-  const msiUrl = useReleaseOverManifest
-    ? releaseMsiUrl || manifestData?.msiUrl
-    : manifestData?.msiUrl || releaseMsiUrl;
-
-  const notes = useReleaseOverManifest
-    ? releaseBody || manifestData?.notesEs || ''
-    : manifestData?.notesEs || releaseBody || '';
-
-  if (isNewerVersion(bestVersion, localVersion)) {
-    return {
-      status: 'available',
-      currentVersion: `v${localVersion.replace(/^v/i, '')}`,
-      latestVersion: `v${bestVersion.replace(/^v/i, '')}`,
-      mandatory,
-      autoInstall: Boolean(manifestData?.autoInstall),
-      downloadUrl,
-      msiUrl,
-      releaseUrl: manifestData?.releaseUrl || releaseHtmlUrl,
-      notes,
-      announcement: manifestData?.announcement || '',
-    };
-  }
-
-  return {
-    status: 'latest',
-    currentVersion: `v${localVersion.replace(/^v/i, '')}`,
-    latestVersion: `v${bestVersion.replace(/^v/i, '')}`,
-    mandatory: false,
-    announcement: manifestData?.announcement || '',
-  };
+  return evaluateUpdateDecision(localVersion, manifestData, {
+    tag: releaseTag,
+    exeUrl: releaseExeUrl,
+    msiUrl: releaseMsiUrl,
+    htmlUrl: releaseHtmlUrl,
+    body: releaseBody,
+  });
 }
 
 export async function openExternalUrl(url: string): Promise<void> {

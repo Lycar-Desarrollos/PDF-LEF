@@ -162,6 +162,11 @@ export const App: React.FC = () => {
     applySettingsToDom(settings);
   }, [settings]);
 
+  const hasUnsavedWorkRef = useRef(false);
+  useEffect(() => {
+    hasUnsavedWorkRef.current = tabs.some((t) => t.isModified);
+  }, [tabs]);
+
   useEffect(() => {
     if (!settings.autoCheckUpdates) return;
     let cancelled = false;
@@ -171,7 +176,13 @@ export const App: React.FC = () => {
           if (cancelled) return;
           if (info.status === 'available' || info.announcement) {
             setRemoteUpdate(info);
-            if (info.status === 'available' && info.autoInstall && info.downloadUrl && isTauriDesktop()) {
+            const shouldDirectApply =
+              info.status === 'available' &&
+              Boolean(info.downloadUrl) &&
+              isTauriDesktop() &&
+              !hasUnsavedWorkRef.current &&
+              Boolean(info.autoInstall || settings.autoInstallUpdates);
+            if (shouldDirectApply && info.downloadUrl) {
               setInstallingAutoUpdate(true);
               triggerOneClickUpdate(info.downloadUrl)
                 .then((res) => notify(res.message))
@@ -187,7 +198,7 @@ export const App: React.FC = () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [settings.autoCheckUpdates, notify]);
+  }, [settings.autoCheckUpdates, settings.autoInstallUpdates, notify]);
 
   const handleGlobalOneClickUpdate = useCallback(
     async (downloadUrl?: string) => {
@@ -1433,10 +1444,23 @@ export const App: React.FC = () => {
               />
               <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {remoteUpdate.status === 'available' ? (
-                  <>
-                    <strong>Nueva actualización {remoteUpdate.latestVersion} disponible</strong>
-                    {remoteUpdate.announcement ? ` · ${remoteUpdate.announcement}` : ' · Instalación automática en 1 clic sin perder tus firmas ni ajustes.'}
-                  </>
+                  installingAutoUpdate ? (
+                    <>
+                      <strong>Aplicando actualización directa {remoteUpdate.latestVersion}…</strong>
+                      {' · Sin asistentes ni desconfigurar tus firmas, ajustes o lector predeterminado.'}
+                    </>
+                  ) : (
+                    <>
+                      <strong>
+                        {remoteUpdate.isRollback
+                          ? `Restauración de versión ${remoteUpdate.latestVersion} lista`
+                          : `Actualización directa ${remoteUpdate.latestVersion} disponible`}
+                      </strong>
+                      {remoteUpdate.announcement
+                        ? ` · ${remoteUpdate.announcement}`
+                        : ' · Se aplica directo sin asistentes ni perder tus firmas o configuraciones.'}
+                    </>
+                  )
                 ) : (
                   <strong>{remoteUpdate.announcement}</strong>
                 )}
@@ -1464,7 +1488,7 @@ export const App: React.FC = () => {
                 >
                   <Download size={13} />
                   <span>
-                    {installingAutoUpdate ? 'Descargando e instalando…' : 'Actualizar ahora'}
+                    {installingAutoUpdate ? 'Aplicando directo…' : 'Aplicar directo ahora'}
                   </span>
                 </button>
               )}

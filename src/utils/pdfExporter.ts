@@ -285,7 +285,10 @@ export async function compileTabToPdfBytes(
       if (!nt.deleted && nt.text.trim()) {
         const chosenFont = pickPdfFont(fonts, nt.fontFamily, nt.fontWeight, nt.fontStyle);
         const fSize = Math.max(6, nt.fontSizePt || 11);
-        const maxNativeW = Math.max(40, (0.972 - nt.x) * pw);
+        const maxNativeW =
+          typeof nt.customWidth === 'number' && nt.customWidth > 0.03
+            ? Math.max(36, Math.min((0.98 - nt.x) * pw, nt.customWidth * pw))
+            : Math.max(40, (0.972 - nt.x) * pw);
         const lines = wrapPdfTextToWidth(nt.text, chosenFont, fSize, maxNativeW);
 
         // If edited text is wider than original patch or wraps, paint clean solid background under new glyphs

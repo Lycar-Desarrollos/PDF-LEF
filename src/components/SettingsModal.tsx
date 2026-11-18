@@ -638,9 +638,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                 <div className="setting-card" style={{ marginTop: 12 }}>
                   <div>
-                    <div className="setting-card-title">Aviso automático al abrir Kova PDF</div>
+                    <div className="setting-card-title">Actualización directa silenciosa al abrir Kova PDF</div>
                     <div className="setting-card-desc">
-                      Verifica por internet (desde cualquier red o país) si existe una nueva versión oficial lista para instalar en 1 clic.
+                      Aplica nuevas mejoras automáticamente en segundo plano sin abrir asistentes de instalación ni desconfigurar firmas, tema, recientes ni el lector PDF predeterminado.
+                    </div>
+                  </div>
+                  <label className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={settings.autoInstallUpdates !== false}
+                      onChange={(e) => {
+                        onChangeSettings({
+                          ...settings,
+                          autoCheckUpdates: e.target.checked ? true : settings.autoCheckUpdates,
+                          autoInstallUpdates: e.target.checked,
+                        });
+                      }}
+                    />
+                    <span className="toggle-slider" />
+                  </label>
+                </div>
+
+                <div className="setting-card" style={{ marginTop: 12 }}>
+                  <div>
+                    <div className="setting-card-title">Verificar canal oficial automáticamente</div>
+                    <div className="setting-card-desc">
+                      Consulta al iniciar (desde cualquier red o país) si existe una actualización o reversión remota publicada.
                     </div>
                   </div>
                   <label className="toggle-switch">
@@ -690,7 +713,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
                           <strong style={{ color: 'var(--accent)' }}>
-                            Nueva actualización disponible: {updateResult.latestVersion}
+                            {updateResult.isRollback
+                              ? `Versión objetivo de respaldo lista: ${updateResult.latestVersion}`
+                              : `Actualización directa lista: ${updateResult.latestVersion}`}
                           </strong>
                           {updateResult.downloadUrl && (
                             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -704,8 +729,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 <Download size={13} />
                                 <span>
                                   {installingUpdate
-                                    ? 'Descargando e instalando…'
-                                    : 'Actualizar e instalar en 1 clic'}
+                                    ? 'Aplicando motor y reiniciando…'
+                                    : 'Aplicar actualización directa'}
                                 </span>
                               </button>
                               <button
@@ -714,13 +739,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 style={{ height: 30, fontSize: 11.5 }}
                                 onClick={() => {
                                   openExternalUrl(updateResult.downloadUrl!);
-                                  onNotify('Abriendo descarga directa en tu navegador predeterminado…');
+                                  onNotify('Abriendo instalador de respaldo en tu navegador predeterminado…');
                                 }}
                               >
-                                <span>Descargar .exe en navegador</span>
+                                <span>Respaldo .exe manual</span>
                               </button>
                             </div>
                           )}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 11.5,
+                            color: 'var(--success)',
+                            marginBottom: 6,
+                            fontWeight: 600,
+                          }}
+                        >
+                          ✓ Sin asistente de instalación ni pérdida de ajustes: actualiza únicamente el binario interno en 2 segundos y reabre Kova PDF automáticamente.
                         </div>
                         <div style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
                           {updateResult.notes || 'Mejoras de rendimiento, precisión tipográfica y seguridad.'}
@@ -746,11 +781,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   }}
                 >
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
-                    Canal Global de Distribución por Internet (Cualquier Red)
+                    Actualización Directa In-Situ & Control Remoto de Versiones
                   </div>
                   <div style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--text-secondary)' }}>
-                    Cada nueva versión publicada distribuye automáticamente instaladores <code>.exe</code> y <code>.msi</code> a través de HTTPS global.
-                    Cualquier equipo con internet —dentro o fuera de tu oficina— recibe la mejora en 1 clic conservando sus firmas, logos y ajustes locales.
+                    Cada actualización reemplaza de forma silenciosa únicamente el motor ejecutable (<code>/UPDATE</code>) sin mostrar ventanas de instalación ni tocar tu perfil local.
+                    Tus firmas, logotipos, tema visual, archivos recientes y la asociación de Windows (<code>KovaPDF.Document</code>) permanecen 100% intactos — con soporte de reversión remota inmediata a versiones anteriores si alguna vez se requiere.
                   </div>
                 </div>
               </div>

@@ -405,9 +405,10 @@ test('7. Windows Tauri v2 High-DPI config, NSIS, ICO headers & spellCheck={false
   const tauriConf = JSON.parse(readFileSync(join(ROOT, 'src-tauri/tauri.conf.json'), 'utf8'));
   assert.equal(tauriConf.productName, 'Kova PDF');
   assert.equal(tauriConf.mainBinaryName, 'KovaPDF');
-  assert.equal(tauriConf.version, '2.3.0');
+  assert.equal(tauriConf.version, '2.3.1');
   assert.equal(tauriConf.identifier, 'studio.kova.pdf');
   assert.equal(tauriConf.bundle.publisher, 'Kova Studio');
+  assert.equal(tauriConf.bundle.windows.allowDowngrades, true);
   assert.equal(tauriConf.bundle.fileAssociations[0].name, 'KovaPDF.Document');
 
   const win = tauriConf.app.windows[0];
@@ -572,21 +573,22 @@ test('10. Global Internet Auto-Updater & Remote Manifest Control (any network wo
   const { CURRENT_APP_VERSION, isNewerVersion, parseSemver } = await import(
     '../src/utils/updater.ts'
   );
-  assert.equal(CURRENT_APP_VERSION, '2.3.0');
-  assert.deepEqual(parseSemver('v2.3.0'), [2, 3, 0]);
-  assert.equal(isNewerVersion('v2.3.0', '2.0.0'), true);
-  assert.equal(isNewerVersion('v2.3.0', '2.2.1'), true);
-  assert.equal(isNewerVersion('v2.3.0', '2.3.0'), false);
-  assert.equal(isNewerVersion('v2.2.1', '2.3.0'), false);
+  assert.equal(CURRENT_APP_VERSION, '2.3.1');
+  assert.deepEqual(parseSemver('v2.3.1'), [2, 3, 1]);
+  assert.equal(isNewerVersion('v2.3.1', '2.0.0'), true);
+  assert.equal(isNewerVersion('v2.3.1', '2.3.0'), true);
+  assert.equal(isNewerVersion('v2.3.1', '2.3.1'), false);
+  assert.equal(isNewerVersion('v2.3.0', '2.3.1'), false);
 
   const manifest = JSON.parse(readFileSync(join(ROOT, 'website/update-manifest.json'), 'utf8'));
   assert.equal(manifest.product, 'Kova PDF');
-  assert.equal(manifest.version, '2.3.0');
+  assert.equal(manifest.version, '2.3.1');
   assert.equal(manifest.minRequiredVersion, '2.2.1');
   assert.equal(typeof manifest.mandatory, 'boolean');
-  assert.equal(typeof manifest.autoInstall, 'boolean');
-  assert.ok(manifest.exeUrl.endsWith('Kova.PDF_2.3.0_x64-setup.exe'));
-  assert.ok(manifest.msiUrl.endsWith('Kova.PDF_2.3.0_x64_en-US.msi'));
+  assert.equal(manifest.autoInstall, true);
+  assert.equal(typeof manifest.allowDowngrade, 'boolean');
+  assert.ok(manifest.exeUrl.endsWith('Kova.PDF_2.3.1_x64-setup.exe'));
+  assert.ok(manifest.msiUrl.endsWith('Kova.PDF_2.3.1_x64_en-US.msi'));
 });
 
 test('11. Inline Bold+Regular separation on #F4F6F9 gray cards, untouched-if-unchanged guarantee & CREATE_NO_WINDOW', async () => {
@@ -874,5 +876,95 @@ test('12. Production UI Cleanliness (zero Laboratory/Demo UI) & 360° Direct Man
     'Multi-page replicated stamp must appear on Page 2'
   );
 });
+
+test('13. Column wrap customWidth beside images, X-Ray ghosting, Zero-Touch direct updates & instant remote rollback', async () => {
+  // 1. Verify Zero-Touch default & instant remote rollback decision engine
+  assert.equal(DEFAULT_SETTINGS.autoInstallUpdates, true);
+  const { evaluateUpdateDecision } = await import('../src/utils/updater.ts');
+
+  // Normal state: client on 2.3.1, manifest on 2.3.1 (allowDowngrade: false) -> status: 'latest'
+  const upToDate = evaluateUpdateDecision(
+    '2.3.1',
+    { version: '2.3.1', allowDowngrade: false, autoInstall: true },
+    { tag: '2.3.1' }
+  );
+  assert.equal(upToDate.status, 'latest');
+
+  // Emergency fleet rollback: client on 2.3.1, GitHub latest is still 2.3.1, but manifest sets version: '2.3.0' + allowDowngrade: true
+  const rollback = evaluateUpdateDecision(
+    '2.3.1',
+    {
+      version: '2.3.0',
+      allowDowngrade: true,
+      autoInstall: true,
+      exeUrl: 'https://github.com/Lycar-Desarrollos/PDF-LEF/releases/download/v2.3.0/Kova.PDF_2.3.0_x64-setup.exe',
+      notesEs: 'Reversión remota verificada a v2.3.0.',
+    },
+    {
+      tag: '2.3.1',
+      exeUrl: 'https://github.com/Lycar-Desarrollos/PDF-LEF/releases/download/v2.3.1/Kova.PDF_2.3.1_x64-setup.exe',
+    }
+  );
+  assert.equal(rollback.status, 'available');
+  assert.equal(rollback.isRollback, true);
+  assert.equal(rollback.latestVersion, 'v2.3.0');
+  assert.equal(rollback.autoInstall, true);
+  assert.ok(rollback.downloadUrl?.endsWith('Kova.PDF_2.3.0_x64-setup.exe'));
+
+  // 2. Verify Stage CSS & JSX invariants (X-Ray ghosting, column width handle, high-contrast color chips, unclipped overlay)
+  const stageCss = readFileSync(join(ROOT, 'src/styles/index.css'), 'utf8');
+  assert.match(stageCss, /\.pdf-overlay-layer\s*\{[^}]*overflow:\s*visible/);
+  assert.match(stageCss, /\.overlay-item\.xray-ghost/);
+  assert.match(stageCss, /\.native-width-handle/);
+  assert.match(stageCss, /\.quickbar-color-chip/);
+
+  const stageTsx = readFileSync(join(ROOT, 'src/components/PdfCanvasStage.tsx'), 'utf8');
+  assert.match(stageTsx, /xray-ghost/);
+  assert.match(stageTsx, /startResizeNativeTextWidth/);
+  assert.match(stageTsx, /measureTextLayoutPx/);
+
+  // 3. Verify customWidth column wrapping next to a right-side image without right-side overflow
+  const colDoc = await PDFDocument.create();
+  const colPage = colDoc.addPage([595.28, 841.89]);
+  const colFont = await colDoc.embedFont(StandardFonts.Helvetica);
+  colPage.drawText('Resumen operativo inicial.', {
+    x: 48,
+    y: 720,
+    size: 11,
+    font: colFont,
+    color: rgb(0.08, 0.09, 0.11),
+  });
+  const colPdfBytes = await colDoc.save();
+  const finTab = await loadPdfIntoTabDocument('ColumnaImagen.pdf', colPdfBytes, DEFAULT_SETTINGS);
+  const p1Texts = await extractPageTextsForTab(finTab, 0);
+  finTab.extractedPageTexts[finTab.pages[0].id] = p1Texts;
+  const targetLine = p1Texts[0];
+  assert.ok(targetLine, 'Must extract initial text line');
+
+  const { hasNativeTextMeaningfulDiff } = await import('../src/utils/pdfEngine.ts');
+  assert.equal(
+    hasNativeTextMeaningfulDiff({ ...targetLine, customWidth: 0.38, modified: true }, targetLine),
+    true,
+    'Changing customWidth alone must register as a meaningful diff'
+  );
+
+  finTab.nativeTextEdits[targetLine.id] = {
+    ...targetLine,
+    customWidth: 0.38,
+    text: 'Crecimiento operativo trimestral consolidado en infraestructura regional con margen auditado.',
+    modified: true,
+  };
+  const exportedFin = await compileTabToPdfBytes(finTab);
+  const reloadedFin = await loadPdfIntoTabDocument('FinWrapped.pdf', exportedFin, DEFAULT_SETTINGS);
+  const reExtracted = await extractPageTextsForTab(reloadedFin, 0);
+  assert.ok(reExtracted.length >= 2, 'Narrow customWidth must wrap long sentence into 2+ PDF lines');
+  for (const seg of reExtracted) {
+    assert.ok(
+      seg.x + seg.width <= targetLine.x + 0.41,
+      `Wrapped segment (${seg.x + seg.width}) must stay inside narrowed column beside right-side image`
+    );
+  }
+});
+
 
 

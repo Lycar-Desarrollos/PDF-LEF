@@ -519,6 +519,13 @@ export function hasNativeTextMeaningfulDiff(
   ) {
     return true;
   }
+  if (
+    Boolean(candidate.customWidth) !== Boolean(baseline.customWidth) ||
+    (candidate.customWidth !== undefined &&
+      Math.abs(candidate.customWidth - (baseline.customWidth ?? baseline.origWidth)) > 0.002)
+  ) {
+    return true;
+  }
   if (Math.abs(candidate.fontSizePt - baseline.fontSizePt) > 0.08) return true;
   if (
     candidate.fontWeight !== baseline.fontWeight ||

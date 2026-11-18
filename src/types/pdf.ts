@@ -53,6 +53,8 @@ export interface NativePdfTextItem {
   y: number;
   width: number;
   height: number;
+  /** Optional user-resized column wrap width (normalized 0..1) */
+  customWidth?: number;
   originalText: string;
   text: string;
   fontSizePt: number;
@@ -279,6 +281,7 @@ export interface AppSettings {
   confirmCloseUnsaved: boolean;
   strictOfflineIndicator: boolean;
   autoCheckUpdates: boolean;
+  autoInstallUpdates: boolean;
 }
 
 export type ToolModalKind =
