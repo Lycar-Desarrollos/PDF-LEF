@@ -9,18 +9,21 @@ import {
   RefreshCw,
   RotateCcw,
   ShieldCheck,
+  Trash2,
   Upload,
   X,
 } from 'lucide-react';
 import type {
   AccentTheme,
   AppSettings,
+  CustomFontEntry,
   FontFamilyChoice,
   PaperFilter,
   ThemePreference,
   UiDensity,
   ViewLayout,
 } from '../types/pdf';
+import { cssFontForChoice } from '../utils/fontRegistry';
 import { DEFAULT_SETTINGS } from '../utils/storage';
 import { saveExportBlobOrBytes } from '../utils/tauriBridge';
 import {
@@ -30,9 +33,16 @@ import {
   triggerOneClickUpdate,
   type RemoteUpdateInfo,
 } from '../utils/updater';
+import { FontPickerControl } from './FontPickerControl';
 
 interface SettingsModalProps {
   settings: AppSettings;
+  customFonts?: CustomFontEntry[];
+  onImportCustomFonts?: (
+    files: FileList,
+    applyChoice?: (choice: FontFamilyChoice) => void
+  ) => void;
+  onDeleteCustomFont?: (idOrChoice: string) => void;
   onChangeSettings: (next: AppSettings) => void;
   onNotify: (msg: string) => void;
   onClose: () => void;
@@ -42,6 +52,9 @@ type SettingsSection = 'appearance' | 'viewer' | 'editor' | 'privacy' | 'shortcu
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
+  customFonts = [],
+  onImportCustomFonts,
+  onDeleteCustomFont,
   onChangeSettings,
   onNotify,
   onClose,
@@ -414,21 +427,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div>
                     <div className="setting-card-title">Fuente y Tamaño para Nuevos Textos</div>
                     <div className="setting-card-desc">
-                      Formato aplicado al agregar cuadros de texto libres sobre la hoja.
+                      Incluye Arial, Calibri, Roboto, Segoe UI, Tahoma, Verdana, Times, Georgia, Consolas y tus fuentes subidas.
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <select
-                      className="prop-select"
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <FontPickerControl
+                      selectWidth={185}
                       value={settings.defaultFontFamily}
-                      onChange={(e) =>
-                        update('defaultFontFamily', e.target.value as FontFamilyChoice)
+                      customFonts={customFonts}
+                      onChange={(next) => update('defaultFontFamily', next)}
+                      onUploadFiles={
+                        onImportCustomFonts
+                          ? (files) =>
+                              onImportCustomFonts(files, (choice) =>
+                                update('defaultFontFamily', choice)
+                              )
+                          : undefined
                       }
-                    >
-                      <option value="sans">Sans Moderna</option>
-                      <option value="serif">Serif Clásica</option>
-                      <option value="mono">Monoespaciada</option>
-                    </select>
+                    />
                     <input
                       type="number"
                       min={8}
@@ -441,6 +457,112 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       }
                     />
                   </div>
+                </div>
+
+                <div
+                  className="setting-card"
+                  style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 12,
+                    }}
+                  >
+                    <div>
+                      <div className="setting-card-title">
+                        Mis Tipografías Propias (.ttf / .otf)
+                      </div>
+                      <div className="setting-card-desc">
+                        Sube tipografías corporativas para editar cotizaciones, contratos o facturas con identidad exacta. Se conservan al actualizar Kova PDF.
+                      </div>
+                    </div>
+                    {onImportCustomFonts && (
+                      <label className="btn btn-primary" style={{ cursor: 'pointer', flexShrink: 0 }}>
+                        <Upload size={14} />
+                        <span>Subir .ttf / .otf</span>
+                        <input
+                          type="file"
+                          accept=".ttf,.otf"
+                          multiple
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files.length > 0) {
+                              onImportCustomFonts(e.target.files);
+                              e.target.value = '';
+                            }
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+
+                  {customFonts.length === 0 ? (
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: 'var(--text-muted)',
+                        padding: '8px 10px',
+                        borderRadius: 8,
+                        background: 'var(--bg-surface-subtle)',
+                        border: '1px dashed var(--border-subtle)',
+                      }}
+                    >
+                      Aún no has cargado fuentes personalizadas. Las fuentes de oficina (Arial, Calibri, Roboto, Segoe UI, Tahoma, Verdana, Times, Georgia y Consolas) ya están activas por defecto.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {customFonts.map((cf) => (
+                        <div
+                          key={cf.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 10,
+                            padding: '7px 10px',
+                            borderRadius: 8,
+                            background: 'var(--bg-surface-subtle)',
+                            border: '1px solid var(--border-subtle)',
+                          }}
+                        >
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 600 }}>{cf.name}</div>
+                            <div
+                              style={{
+                                fontSize: 13,
+                                color: 'var(--text-secondary)',
+                                fontFamily: cssFontForChoice(cf.choice),
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              Cotización #QT9386438 — $45,662.07 MXN
+                            </div>
+                          </div>
+                          {onDeleteCustomFont && (
+                            <button
+                              type="button"
+                              className="btn icon-only"
+                              style={{ color: 'var(--danger)', flexShrink: 0 }}
+                              title={`Eliminar fuente ${cf.name}`}
+                              onClick={() => {
+                                onDeleteCustomFont(cf.id);
+                                if (settings.defaultFontFamily === cf.choice) {
+                                  update('defaultFontFamily', 'arial');
+                                }
+                              }}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="setting-card">

@@ -11,6 +11,8 @@ import type {
   ScaleCalibration,
 } from '../types/pdf';
 
+import { matchPdfFontNameToChoice } from './fontRegistry';
+
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   '../../node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs',
   import.meta.url
@@ -105,20 +107,7 @@ function guessFontChoice(fontName: string): {
   weight: 'normal' | 'bold';
   style: 'normal' | 'italic';
 } {
-  const lower = (fontName || '').toLowerCase();
-  const weight: 'normal' | 'bold' =
-    lower.includes('bold') || lower.includes('black') || lower.includes('demi')
-      ? 'bold'
-      : 'normal';
-  const style: 'normal' | 'italic' =
-    lower.includes('italic') || lower.includes('oblique') ? 'italic' : 'normal';
-  let family: FontFamilyChoice = 'sans';
-  if (lower.includes('times') || lower.includes('georgia') || lower.includes('garamond') || lower.includes('serif')) {
-    family = 'serif';
-  } else if (lower.includes('courier') || lower.includes('mono') || lower.includes('consolas')) {
-    family = 'mono';
-  }
-  return { family, weight, style };
+  return matchPdfFontNameToChoice(fontName);
 }
 
 /**
@@ -334,19 +323,16 @@ export async function extractNativeEditableTexts(
     )?.[fName];
     const fontObj =
       commonObjs && fName && commonObjs.has(fName) ? commonObjs.get(fName) : null;
-    const fontInfo = guessFontChoice(`${fontObj?.name || ''} ${fName}`);
-    const familyHint =
-      `${fontObj?.name || ''} ${fName} ${styleMeta?.fontFamily || ''} ${fontObj?.fallbackName || ''}`.toLowerCase();
+    const primaryFontInfo = guessFontChoice(`${fontObj?.name || ''} ${fName}`);
+    const fullHintInfo = guessFontChoice(
+      `${fontObj?.name || ''} ${fName} ${styleMeta?.fontFamily || ''} ${fontObj?.fallbackName || ''}`
+    );
     const resolvedFamily: FontFamilyChoice =
-      familyHint.includes('mono') || familyHint.includes('courier')
-        ? 'mono'
-        : familyHint.includes('serif') && !familyHint.includes('sans')
-          ? 'serif'
-          : fontInfo.family;
+      primaryFontInfo.family !== 'sans' ? primaryFontInfo.family : fullHintInfo.family;
     const resolvedWeight: 'normal' | 'bold' =
-      fontObj?.bold || fontObj?.black || fontInfo.weight === 'bold' ? 'bold' : 'normal';
+      fontObj?.bold || fontObj?.black || primaryFontInfo.weight === 'bold' ? 'bold' : 'normal';
     const resolvedStyle: 'normal' | 'italic' =
-      fontObj?.italic || fontInfo.style === 'italic' ? 'italic' : 'normal';
+      fontObj?.italic || primaryFontInfo.style === 'italic' ? 'italic' : 'normal';
 
     const quickSample = sampleDominantBgAndInk(left, top, left + width, top + height);
 

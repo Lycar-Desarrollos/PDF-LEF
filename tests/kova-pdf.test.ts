@@ -405,7 +405,7 @@ test('7. Windows Tauri v2 High-DPI config, NSIS, ICO headers & spellCheck={false
   const tauriConf = JSON.parse(readFileSync(join(ROOT, 'src-tauri/tauri.conf.json'), 'utf8'));
   assert.equal(tauriConf.productName, 'Kova PDF');
   assert.equal(tauriConf.mainBinaryName, 'KovaPDF');
-  assert.equal(tauriConf.version, '2.3.2');
+  assert.equal(tauriConf.version, '2.3.3');
   assert.equal(tauriConf.identifier, 'studio.kova.pdf');
   assert.equal(tauriConf.bundle.publisher, 'Kova Studio');
   assert.equal(tauriConf.bundle.windows.allowDowngrades, true);
@@ -573,22 +573,22 @@ test('10. Global Internet Auto-Updater & Remote Manifest Control (any network wo
   const { CURRENT_APP_VERSION, isNewerVersion, parseSemver } = await import(
     '../src/utils/updater.ts'
   );
-  assert.equal(CURRENT_APP_VERSION, '2.3.2');
-  assert.deepEqual(parseSemver('v2.3.2'), [2, 3, 2]);
-  assert.equal(isNewerVersion('v2.3.2', '2.0.0'), true);
-  assert.equal(isNewerVersion('v2.3.2', '2.3.1'), true);
-  assert.equal(isNewerVersion('v2.3.2', '2.3.2'), false);
-  assert.equal(isNewerVersion('v2.3.1', '2.3.2'), false);
+  assert.equal(CURRENT_APP_VERSION, '2.3.3');
+  assert.deepEqual(parseSemver('v2.3.3'), [2, 3, 3]);
+  assert.equal(isNewerVersion('v2.3.3', '2.0.0'), true);
+  assert.equal(isNewerVersion('v2.3.3', '2.3.2'), true);
+  assert.equal(isNewerVersion('v2.3.3', '2.3.3'), false);
+  assert.equal(isNewerVersion('v2.3.2', '2.3.3'), false);
 
   const manifest = JSON.parse(readFileSync(join(ROOT, 'website/update-manifest.json'), 'utf8'));
   assert.equal(manifest.product, 'Kova PDF');
-  assert.equal(manifest.version, '2.3.2');
+  assert.equal(manifest.version, '2.3.3');
   assert.equal(manifest.minRequiredVersion, '2.2.1');
   assert.equal(typeof manifest.mandatory, 'boolean');
   assert.equal(manifest.autoInstall, true);
   assert.equal(typeof manifest.allowDowngrade, 'boolean');
-  assert.ok(manifest.exeUrl.endsWith('Kova.PDF_2.3.2_x64-setup.exe'));
-  assert.ok(manifest.msiUrl.endsWith('Kova.PDF_2.3.2_x64_en-US.msi'));
+  assert.ok(manifest.exeUrl.endsWith('Kova.PDF_2.3.3_x64-setup.exe'));
+  assert.ok(manifest.msiUrl.endsWith('Kova.PDF_2.3.3_x64_en-US.msi'));
 });
 
 test('11. Inline Bold+Regular separation on #F4F6F9 gray cards, untouched-if-unchanged guarantee & CREATE_NO_WINDOW', async () => {
@@ -1047,13 +1047,153 @@ test('14. Clean Sheet Print Engine (zero app UI / zero tauri.localhost), Native 
   assert.equal(settingsTsx.includes('toggle-switch'), false);
 
   const tauriConf = JSON.parse(readFileSync(join(ROOT, 'src-tauri/tauri.conf.json'), 'utf8'));
-  assert.equal(tauriConf.version, '2.3.2');
+  assert.equal(tauriConf.version, '2.3.3');
   assert.equal(tauriConf.bundle.windows.nsis.installMode, 'currentUser');
 
   const rustLib = readFileSync(join(ROOT, 'src-tauri/src/lib.rs'), 'utf8');
   assert.match(rustLib, /fn write_export_bytes/);
   assert.match(rustLib, /-Verb RunAs/);
 });
+
+test('15. v2.3.3 Audit: Office Typography Catalog (Arial, Calibri, Roboto, Segoe, Tahoma, Verdana, Georgia, Consolas) & Custom .ttf/.otf Vector Embedding', async () => {
+  const {
+    BUILTIN_FONT_CATALOG,
+    clearMemoryCustomFontsForTests,
+    importCustomFontFromBytes,
+    isValidFontBinary,
+    matchPdfFontNameToChoice,
+    removeCustomFont,
+  } = await import('../src/utils/fontRegistry.ts');
+
+  clearMemoryCustomFontsForTests();
+
+  // 1. Verify all 13 built-in professional office fonts are registered
+  const ids = BUILTIN_FONT_CATALOG.map((f) => f.id);
+  for (const expected of [
+    'arial',
+    'calibri',
+    'roboto',
+    'segoe',
+    'tahoma',
+    'verdana',
+    'trebuchet',
+    'sans',
+    'serif',
+    'georgia',
+    'consolas',
+    'mono',
+    'script',
+  ] as const) {
+    assert.ok(ids.includes(expected), `BUILTIN_FONT_CATALOG must include ${expected}`);
+  }
+
+  // 2. Verify automatic PDF font name matching for real quotations & invoices
+  assert.deepEqual(matchPdfFontNameToChoice('BCDEEE+Calibri-Bold'), {
+    family: 'calibri',
+    weight: 'bold',
+    style: 'normal',
+  });
+  assert.deepEqual(matchPdfFontNameToChoice('ArialMT'), {
+    family: 'arial',
+    weight: 'normal',
+    style: 'normal',
+  });
+  assert.deepEqual(matchPdfFontNameToChoice('Roboto-Italic'), {
+    family: 'roboto',
+    weight: 'normal',
+    style: 'italic',
+  });
+  assert.deepEqual(matchPdfFontNameToChoice('Tahoma-Bold'), {
+    family: 'tahoma',
+    weight: 'bold',
+    style: 'normal',
+  });
+  assert.deepEqual(matchPdfFontNameToChoice('Consolas'), {
+    family: 'consolas',
+    weight: 'normal',
+    style: 'normal',
+  });
+
+  // 3. Reject invalid font bytes & accept genuine .ttf custom corporate font
+  assert.equal(isValidFontBinary(new Uint8Array([1, 2, 3, 4])), false);
+  const robotoTtfBuf = readFileSync(join(ROOT, 'public/fonts/Roboto-Regular.ttf'));
+  const robotoBytes = new Uint8Array(
+    robotoTtfBuf.buffer,
+    robotoTtfBuf.byteOffset,
+    robotoTtfBuf.byteLength
+  );
+  assert.equal(isValidFontBinary(robotoBytes), true);
+
+  const customEntry = await importCustomFontFromBytes(
+    'AbasteoCorp-Regular.ttf',
+    robotoBytes
+  );
+  assert.ok(customEntry.choice.startsWith('custom:abasteocorp_regular_'));
+  assert.equal(customEntry.name, 'AbasteoCorp Regular');
+
+  // Verify PDF font name auto-matcher picks up uploaded custom corporate font!
+  assert.equal(
+    matchPdfFontNameToChoice('SUBSET+AbasteoCorpRegular').family,
+    customEntry.choice
+  );
+
+  // 4. Compile PDF with BOTH bundled Roboto AND custom uploaded .ttf font, then verify round-trip extraction
+  const blankBytes = await createBlankPdfBytes();
+  const quoteTab = await loadPdfIntoTabDocument('Cotizacion_Test.pdf', blankBytes, DEFAULT_SETTINGS);
+  const pageId = quoteTab.pages[0].id;
+  quoteTab.elements.push(
+    {
+      id: 'txt_roboto',
+      pageId,
+      kind: 'text',
+      x: 0.1,
+      y: 0.12,
+      width: 0.75,
+      height: 0.08,
+      rotation: 0,
+      opacity: 1,
+      zIndex: 1,
+      text: 'Cotización #QT9386438-1 — $45,662.07',
+      fontFamily: 'roboto',
+      fontWeight: 'bold',
+      fontStyle: 'normal',
+      fontSizePt: 14,
+      color: '#111318',
+    },
+    {
+      id: 'txt_custom_ttf',
+      pageId,
+      kind: 'text',
+      x: 0.1,
+      y: 0.25,
+      width: 0.75,
+      height: 0.08,
+      rotation: 0,
+      opacity: 1,
+      zIndex: 2,
+      text: 'Tipografía Corporativa Propia ÁÉÍÓÚÑ',
+      fontFamily: customEntry.choice,
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      fontSizePt: 12,
+      color: '#2563EB',
+    }
+  );
+
+  const compiledPdf = await compileTabToPdfBytes(quoteTab);
+  assert.ok(compiledPdf.byteLength > 10_000, 'Compiled PDF must contain embedded TrueType font streams');
+
+  const reloaded = await loadPdfIntoTabDocument('Cotizacion_Compilada.pdf', compiledPdf, DEFAULT_SETTINGS);
+  const extracted = await extractPageTextsForTab(reloaded, 0);
+  const extractedText = extracted.map((it) => it.text).join(' ');
+  assert.match(extractedText, /QT9386438-1/);
+  assert.match(extractedText, /45,662\.07/);
+  assert.match(extractedText, /Corporativa Propia/);
+
+  const afterRemove = await removeCustomFont(customEntry.choice);
+  assert.equal(afterRemove.length, 0);
+});
+
 
 
 

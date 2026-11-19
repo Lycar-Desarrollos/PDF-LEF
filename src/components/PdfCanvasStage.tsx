@@ -13,6 +13,7 @@ import {
 import type {
   ActiveTool,
   AppSettings,
+  CustomFontEntry,
   FontFamilyChoice,
   NativePdfTextItem,
   PageDescriptor,
@@ -20,6 +21,7 @@ import type {
   PdfTabDocument,
   WorkspaceMode,
 } from '../types/pdf';
+import { canvasFontForChoice, cssFontForChoice } from '../utils/fontRegistry';
 import {
   extractNativeEditableTexts,
   formatEngineeringArea,
@@ -31,6 +33,7 @@ import {
   getImageDimensions,
   removeSignatureBackground,
 } from '../utils/imageUtils';
+import { FontPickerControl } from './FontPickerControl';
 
 interface PdfCanvasStageProps {
   tab: PdfTabDocument;
@@ -38,6 +41,11 @@ interface PdfCanvasStageProps {
   workspaceMode: WorkspaceMode;
   activeTool: ActiveTool;
   settings: AppSettings;
+  customFonts?: CustomFontEntry[];
+  onUploadCustomFontForTarget?: (
+    files: FileList,
+    applyChoice: (choice: FontFamilyChoice) => void
+  ) => void;
   selectedElementId: string | null;
   selectedNativeTextId: string | null;
   onSelectElement: (id: string | null) => void;
@@ -59,20 +67,6 @@ interface PdfCanvasStageProps {
   onSwitchToSelectTool: () => void;
   onActivateEditPdfText?: () => void;
   onChangeZoom?: (zoom: number) => void;
-}
-
-function cssFontForChoice(choice?: FontFamilyChoice): string {
-  if (choice === 'serif') return 'Georgia, "Times New Roman", serif';
-  if (choice === 'mono') return 'var(--font-mono)';
-  if (choice === 'script') return 'var(--font-script)';
-  return 'var(--font-sans)';
-}
-
-function canvasFontForChoice(choice?: FontFamilyChoice): string {
-  if (choice === 'serif') return 'Georgia, "Times New Roman", serif';
-  if (choice === 'mono') return '"JetBrains Mono", Consolas, monospace';
-  if (choice === 'script') return 'Georgia, "Times New Roman", serif';
-  return 'Inter, "Segoe UI", system-ui, sans-serif';
 }
 
 let sharedMeasureCtx: CanvasRenderingContext2D | null = null;
@@ -127,6 +121,11 @@ interface InteractivePageCardProps {
   isEditableMode: boolean;
   activeTool: ActiveTool;
   settings: AppSettings;
+  customFonts?: CustomFontEntry[];
+  onUploadCustomFontForTarget?: (
+    files: FileList,
+    applyChoice: (choice: FontFamilyChoice) => void
+  ) => void;
   selectedElementId: string | null;
   selectedNativeTextId: string | null;
   onSelectElement: (id: string | null) => void;
@@ -156,6 +155,8 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
   isEditableMode,
   activeTool,
   settings,
+  customFonts = [],
+  onUploadCustomFontForTarget,
   selectedElementId,
   selectedNativeTextId,
   onSelectElement,
@@ -1474,6 +1475,30 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
 
                     <div style={{ width: 1, height: 16, background: 'var(--border-subtle)', margin: '0 2px' }} />
 
+                    <FontPickerControl
+                      compact
+                      selectWidth={94}
+                      value={nt.fontFamily}
+                      customFonts={customFonts}
+                      onChange={(nextFamily) =>
+                        onUpdateNativeTextItem(
+                          { ...nt, fontFamily: nextFamily, modified: true },
+                          true
+                        )
+                      }
+                      onUploadFiles={
+                        onUploadCustomFontForTarget
+                          ? (files) =>
+                              onUploadCustomFontForTarget(files, (choice) =>
+                                onUpdateNativeTextItem(
+                                  { ...nt, fontFamily: choice, modified: true },
+                                  true
+                                )
+                              )
+                          : undefined
+                      }
+                    />
+
                     <button
                       type="button"
                       className="btn icon-only"
@@ -1755,6 +1780,25 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                   className="object-quickbar"
                   onMouseDown={(e) => e.stopPropagation()}
                 >
+                  {el.kind === 'text' && (
+                    <FontPickerControl
+                      compact
+                      selectWidth={98}
+                      value={el.fontFamily || 'sans'}
+                      customFonts={customFonts}
+                      onChange={(nextFamily) =>
+                        onUpdateOverlayElement(el.id, { fontFamily: nextFamily }, true)
+                      }
+                      onUploadFiles={
+                        onUploadCustomFontForTarget
+                          ? (files) =>
+                              onUploadCustomFontForTarget(files, (choice) =>
+                                onUpdateOverlayElement(el.id, { fontFamily: choice }, true)
+                              )
+                          : undefined
+                      }
+                    />
+                  )}
                   {el.kind === 'image' && el.dataUrl && (
                     <button
                       type="button"
@@ -2634,6 +2678,8 @@ export const PdfCanvasStage: React.FC<PdfCanvasStageProps> = (props) => {
             isEditableMode={isEditableMode}
             activeTool={props.activeTool}
             settings={props.settings}
+            customFonts={props.customFonts}
+            onUploadCustomFontForTarget={props.onUploadCustomFontForTarget}
             selectedElementId={props.selectedElementId}
             selectedNativeTextId={props.selectedNativeTextId}
             onSelectElement={props.onSelectElement}

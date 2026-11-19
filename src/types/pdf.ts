@@ -26,7 +26,30 @@ export type ActiveTool =
   | 'tick-err'
   | 'tick-warn';
 
-export type FontFamilyChoice = 'sans' | 'serif' | 'mono' | 'script';
+export type BuiltinFontFamily =
+  | 'sans'
+  | 'arial'
+  | 'calibri'
+  | 'roboto'
+  | 'segoe'
+  | 'tahoma'
+  | 'verdana'
+  | 'trebuchet'
+  | 'serif'
+  | 'georgia'
+  | 'mono'
+  | 'consolas'
+  | 'script';
+
+export type FontFamilyChoice = BuiltinFontFamily | `custom:${string}`;
+
+export interface CustomFontEntry {
+  id: string;
+  choice: `custom:${string}`;
+  name: string;
+  fileName: string;
+  cssFamily: string;
+}
 
 export type PaperFilter = 'original' | 'night' | 'sepia' | 'contrast' | 'blueprint';
 

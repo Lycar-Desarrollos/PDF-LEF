@@ -19,6 +19,7 @@ import {
   Wand2,
 } from 'lucide-react';
 import type {
+  CustomFontEntry,
   FontFamilyChoice,
   NativePdfTextItem,
   PdfOverlayElement,
@@ -26,9 +27,15 @@ import type {
   ToolModalKind,
 } from '../types/pdf';
 import { removeSignatureBackground } from '../utils/imageUtils';
+import { FontPickerControl } from './FontPickerControl';
 
 interface ObjectInspectorProps {
   tab: PdfTabDocument;
+  customFonts?: CustomFontEntry[];
+  onUploadCustomFontForTarget?: (
+    files: FileList,
+    applyChoice: (choice: FontFamilyChoice) => void
+  ) => void;
   selectedElement: PdfOverlayElement | null;
   selectedNativeText: NativePdfTextItem | null;
   onUpdateElement: (
@@ -92,6 +99,8 @@ const ELEMENT_KIND_LABELS: Record<PdfOverlayElement['kind'], string> = {
 
 export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
   tab,
+  customFonts = [],
+  onUploadCustomFontForTarget,
   selectedElement,
   selectedNativeText,
   onUpdateElement,
@@ -187,25 +196,36 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
           <div className="inspector-title">Tipografía y Tamaño</div>
           <div className="prop-row">
             <span className="prop-label">Fuente</span>
-            <select
-              className="prop-select"
-              style={{ width: 128 }}
+            <FontPickerControl
+              selectWidth={120}
               value={selectedNativeText.fontFamily}
-              onChange={(e) =>
+              customFonts={customFonts}
+              onChange={(nextFamily) =>
                 onUpdateNativeText(
                   {
                     ...selectedNativeText,
-                    fontFamily: e.target.value as FontFamilyChoice,
+                    fontFamily: nextFamily,
                     modified: true,
                   },
                   true
                 )
               }
-            >
-              <option value="sans">Sans Moderna</option>
-              <option value="serif">Serif Editorial</option>
-              <option value="mono">Monoespaciada</option>
-            </select>
+              onUploadFiles={
+                onUploadCustomFontForTarget
+                  ? (files) =>
+                      onUploadCustomFontForTarget(files, (choice) =>
+                        onUpdateNativeText(
+                          {
+                            ...selectedNativeText,
+                            fontFamily: choice,
+                            modified: true,
+                          },
+                          true
+                        )
+                      )
+                  : undefined
+              }
+            />
           </div>
 
           <div className="prop-row">
@@ -610,23 +630,22 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
             <div className="inspector-title">Formato de Texto</div>
             <div className="prop-row">
               <span className="prop-label">Fuente</span>
-              <select
-                className="prop-select"
-                style={{ width: 128 }}
+              <FontPickerControl
+                selectWidth={120}
                 value={el.fontFamily || 'sans'}
-                onChange={(e) =>
-                  onUpdateElement(
-                    el.id,
-                    { fontFamily: e.target.value as FontFamilyChoice },
-                    true
-                  )
+                customFonts={customFonts}
+                onChange={(nextFamily) =>
+                  onUpdateElement(el.id, { fontFamily: nextFamily }, true)
                 }
-              >
-                <option value="sans">Sans Moderna</option>
-                <option value="serif">Serif Clásica</option>
-                <option value="mono">Monoespaciada</option>
-                <option value="script">Caligráfica</option>
-              </select>
+                onUploadFiles={
+                  onUploadCustomFontForTarget
+                    ? (files) =>
+                        onUploadCustomFontForTarget(files, (choice) =>
+                          onUpdateElement(el.id, { fontFamily: choice }, true)
+                        )
+                    : undefined
+                }
+              />
             </div>
 
             <div className="prop-row">

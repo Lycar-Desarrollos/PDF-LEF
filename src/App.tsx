@@ -3,8 +3,10 @@ import { Download, RefreshCw, ShieldCheck, X } from 'lucide-react';
 import type {
   ActiveTool,
   AppSettings,
+  CustomFontEntry,
   DocumentHistorySnapshot,
   DocumentMetadata,
+  FontFamilyChoice,
   HeaderFooterConfig,
   NativePdfTextItem,
   PageDescriptor,
@@ -19,6 +21,12 @@ import type {
   WatermarkConfig,
   WorkspaceMode,
 } from './types/pdf';
+import {
+  getCustomFontsSnapshot,
+  importCustomFontFile,
+  loadSavedCustomFonts,
+  removeCustomFont,
+} from './utils/fontRegistry';
 import {
   applySettingsToDom,
   clearRecentFiles,
@@ -131,6 +139,9 @@ export const App: React.FC = () => {
     loadSavedSignatures()
   );
   const [savedLogos, setSavedLogos] = useState<SavedLogo[]>(() => loadSavedLogos());
+  const [customFonts, setCustomFonts] = useState<CustomFontEntry[]>(() =>
+    getCustomFontsSnapshot()
+  );
   const [recentFiles, setRecentFiles] = useState<RecentFileEntry[]>(() =>
     loadRecentFiles()
   );
@@ -159,6 +170,51 @@ export const App: React.FC = () => {
       setToasts((prev) => prev.filter((item) => item.id !== id));
     }, 3400);
   }, []);
+
+  useEffect(() => {
+    loadSavedCustomFonts()
+      .then((loaded) => setCustomFonts(loaded))
+      .catch(() => {});
+  }, []);
+
+  const handleImportCustomFonts = useCallback(
+    async (files: FileList, applyChoice?: (choice: FontFamilyChoice) => void) => {
+      let lastAdded: CustomFontEntry | null = null;
+      let importedCount = 0;
+      for (const file of Array.from(files)) {
+        try {
+          const entry = await importCustomFontFile(file);
+          lastAdded = entry;
+          importedCount++;
+        } catch (err) {
+          notify(
+            err instanceof Error
+              ? err.message
+              : `No se pudo cargar la fuente "${file.name}".`
+          );
+        }
+      }
+      if (importedCount > 0 && lastAdded) {
+        setCustomFonts(getCustomFontsSnapshot());
+        applyChoice?.(lastAdded.choice);
+        notify(
+          importedCount === 1
+            ? `Tipografía "${lastAdded.name}" instalada y lista para usar.`
+            : `${importedCount} tipografías instaladas y listas para usar.`
+        );
+      }
+    },
+    [notify]
+  );
+
+  const handleDeleteCustomFont = useCallback(
+    async (idOrChoice: string) => {
+      const next = await removeCustomFont(idOrChoice);
+      setCustomFonts(next);
+      notify('Tipografía personalizada eliminada.');
+    },
+    [notify]
+  );
 
   useEffect(() => {
     applySettingsToDom(settings);
@@ -1767,6 +1823,8 @@ export const App: React.FC = () => {
                   workspaceMode={workspaceMode}
                   activeTool={activeTool}
                   settings={settings}
+                  customFonts={customFonts}
+                  onUploadCustomFontForTarget={handleImportCustomFonts}
                   selectedElementId={selectedElementId}
                   selectedNativeTextId={selectedNativeTextId}
                   onSelectElement={setSelectedElementId}
@@ -1852,6 +1910,8 @@ export const App: React.FC = () => {
                 {workspaceMode === 'edit' && inspectorOpen && (
                   <ObjectInspector
                     tab={activeTab}
+                    customFonts={customFonts}
+                    onUploadCustomFontForTarget={handleImportCustomFonts}
                     selectedElement={selectedElement}
                     selectedNativeText={selectedNativeText}
                     onUpdateElement={(id, patch, pushUndo = true) =>
@@ -2119,6 +2179,9 @@ export const App: React.FC = () => {
       {settingsOpen && (
         <SettingsModal
           settings={settings}
+          customFonts={customFonts}
+          onImportCustomFonts={handleImportCustomFonts}
+          onDeleteCustomFont={handleDeleteCustomFont}
           onChangeSettings={handleUpdateSettings}
           onNotify={notify}
           onClose={() => setSettingsOpen(false)}

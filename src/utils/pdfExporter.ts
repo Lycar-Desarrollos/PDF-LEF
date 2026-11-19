@@ -6,8 +6,13 @@ import {
   type PDFFont,
   type PDFPage,
 } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
 import JSZip from 'jszip';
 import type { FontFamilyChoice, PdfTabDocument } from '../types/pdf';
+import {
+  getFontFallbackCategory,
+  resolveFontBytesForPdfExport,
+} from './fontRegistry';
 import { normalizeImageToPngBytes } from './imageUtils';
 import {
   extractStructuredPageLines,
@@ -60,17 +65,39 @@ function sanitizeWinAnsi(text: string): string {
   return out;
 }
 
+function sanitizeForFont(text: string, supportedCodePoints?: Set<number>): string {
+  if (!text) return '';
+  if (!supportedCodePoints) return sanitizeWinAnsi(text);
+
+  let out = '';
+  for (const ch of text) {
+    const cp = ch.codePointAt(0);
+    if (cp === undefined) continue;
+    if (cp === 9 || cp === 10 || cp === 13 || cp === 32 || supportedCodePoints.has(cp)) {
+      out += ch;
+    } else if ((cp === 0x2018 || cp === 0x2019) && supportedCodePoints.has(0x27)) {
+      out += "'";
+    } else if ((cp === 0x201c || cp === 0x201d) && supportedCodePoints.has(0x22)) {
+      out += '"';
+    } else if (cp === 0x2026 && supportedCodePoints.has(0x2e)) {
+      out += '...';
+    }
+  }
+  return out;
+}
+
 /**
- * Wraps WinAnsi-sanitized text so neither edited native lines nor added text boxes
+ * Wraps sanitized text so neither edited native lines nor added text boxes
  * ever overflow past maxWidthPt on the exported PDF page.
  */
 export function wrapPdfTextToWidth(
   text: string,
   font: PDFFont,
   fontSize: number,
-  maxWidthPt: number
+  maxWidthPt: number,
+  supportedCodePoints?: Set<number>
 ): string[] {
-  const safe = sanitizeWinAnsi(text);
+  const safe = sanitizeForFont(text, supportedCodePoints);
   if (!safe) return [];
   const limit = Math.max(24, maxWidthPt);
   const paragraphs = safe.replace(/\r\n/g, '\n').split('\n');
@@ -182,19 +209,62 @@ function pickPdfFont(
   weight: 'normal' | 'bold' = 'normal',
   style: 'normal' | 'italic' = 'normal'
 ): PDFFont {
+  const category = getFontFallbackCategory(family);
   const group =
-    family === 'serif'
+    category === 'serif'
       ? fonts.serif
-      : family === 'mono'
-      ? fonts.mono
-      : family === 'script'
-      ? fonts.serif
-      : fonts.sans;
-  const actualStyle = family === 'script' ? 'italic' : style;
+      : category === 'mono'
+        ? fonts.mono
+        : category === 'script'
+          ? fonts.serif
+          : fonts.sans;
+  const actualStyle = category === 'script' ? 'italic' : style;
   if (weight === 'bold' && actualStyle === 'italic') return group.boldItalic;
   if (weight === 'bold') return group.bold;
   if (actualStyle === 'italic') return group.italic;
   return group.normal;
+}
+
+interface ResolvedPdfFontBundle {
+  font: PDFFont;
+  simulateBold: boolean;
+  supportedCodePoints?: Set<number>;
+}
+
+async function resolveActivePdfFont(
+  pdfDoc: PDFDocument,
+  standardFonts: EmbeddedStandardFontSet,
+  cache: Map<string, ResolvedPdfFontBundle>,
+  family: FontFamilyChoice = 'sans',
+  weight: 'normal' | 'bold' = 'normal',
+  style: 'normal' | 'italic' = 'normal'
+): Promise<ResolvedPdfFontBundle> {
+  const cacheKey = `${family}|${weight}|${style}`;
+  const existing = cache.get(cacheKey);
+  if (existing) return existing;
+
+  try {
+    const resolvedBytes = await resolveFontBytesForPdfExport(family, weight, style);
+    if (resolvedBytes) {
+      const embedded = await pdfDoc.embedFont(resolvedBytes.bytes);
+      const bundle: ResolvedPdfFontBundle = {
+        font: embedded,
+        simulateBold: resolvedBytes.simulateBold,
+        supportedCodePoints: new Set<number>(embedded.getCharacterSet()),
+      };
+      cache.set(cacheKey, bundle);
+      return bundle;
+    }
+  } catch {
+    // Gracefully fall back to built-in StandardFonts if font binary cannot be embedded
+  }
+
+  const fallback: ResolvedPdfFontBundle = {
+    font: pickPdfFont(standardFonts, family, weight, style),
+    simulateBold: false,
+  };
+  cache.set(cacheKey, fallback);
+  return fallback;
 }
 
 export async function compileTabToPdfBytes(
@@ -202,7 +272,9 @@ export async function compileTabToPdfBytes(
   options?: { cleanMetadata?: boolean }
 ): Promise<Uint8Array> {
   const outDoc = await PDFDocument.create();
+  outDoc.registerFontkit(fontkit);
   const fonts = await embedFontSuite(outDoc);
+  const embeddedFontCache = new Map<string, ResolvedPdfFontBundle>();
 
   // Cache loaded source PDFDocuments
   const loadedSources = new Map<string, PDFDocument>();
@@ -283,13 +355,27 @@ export async function compileTabToPdfBytes(
       });
 
       if (!nt.deleted && nt.text.trim()) {
-        const chosenFont = pickPdfFont(fonts, nt.fontFamily, nt.fontWeight, nt.fontStyle);
+        const resolved = await resolveActivePdfFont(
+          outDoc,
+          fonts,
+          embeddedFontCache,
+          nt.fontFamily,
+          nt.fontWeight,
+          nt.fontStyle
+        );
+        const chosenFont = resolved.font;
         const fSize = Math.max(6, nt.fontSizePt || 11);
         const maxNativeW =
           typeof nt.customWidth === 'number' && nt.customWidth > 0.03
             ? Math.max(36, Math.min((0.98 - nt.x) * pw, nt.customWidth * pw))
             : Math.max(40, (0.972 - nt.x) * pw);
-        const lines = wrapPdfTextToWidth(nt.text, chosenFont, fSize, maxNativeW);
+        const lines = wrapPdfTextToWidth(
+          nt.text,
+          chosenFont,
+          fSize,
+          maxNativeW,
+          resolved.supportedCodePoints
+        );
 
         // If edited text is wider than original patch or wraps, paint clean solid background under new glyphs
         if (lines.length > 0) {
@@ -468,9 +554,23 @@ export async function compileTabToPdfBytes(
             borderOpacity: opacity,
           });
         }
-        const font = pickPdfFont(fonts, el.fontFamily, el.fontWeight, el.fontStyle);
+        const resolved = await resolveActivePdfFont(
+          outDoc,
+          fonts,
+          embeddedFontCache,
+          el.fontFamily,
+          el.fontWeight,
+          el.fontStyle
+        );
+        const font = resolved.font;
         const fSize = Math.max(6, el.fontSizePt || 12);
-        const lines = wrapPdfTextToWidth(el.text || '', font, fSize, Math.max(24, boxW - 8));
+        const lines = wrapPdfTextToWidth(
+          el.text || '',
+          font,
+          fSize,
+          Math.max(24, boxW - 8),
+          resolved.supportedCodePoints
+        );
         let curY = boxY + boxH - fSize - 4;
         for (const line of lines) {
           if (curY < 6) break;

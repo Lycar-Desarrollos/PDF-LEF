@@ -1,6 +1,6 @@
+use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::Path;
-#[cfg(target_os = "windows")]
+use std::path::{Path, PathBuf};
 use tauri::Manager;
 
 #[tauri::command]
@@ -157,7 +157,6 @@ async fn download_and_install_update(
     {
         use std::io::Read;
         use std::os::windows::process::CommandExt;
-        use std::path::PathBuf;
         use std::process::Command;
 
         const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -291,6 +290,194 @@ async fn download_and_install_update(
     }
 }
 
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CustomFontMetaDisk {
+    id: String,
+    name: String,
+    file_name: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct StoredCustomFontPayload {
+    id: String,
+    name: String,
+    file_name: String,
+    bytes: Vec<u8>,
+}
+
+fn is_safe_font_id(id: &str) -> bool {
+    !id.is_empty()
+        && id.len() <= 80
+        && id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+}
+
+fn is_valid_font_magic(bytes: &[u8]) -> bool {
+    if bytes.len() < 512 || bytes.len() > 25_000_000 {
+        return false;
+    }
+    let head = &bytes[0..4];
+    head == [0x00, 0x01, 0x00, 0x00] || head == b"OTTO" || head == b"true" || head == b"typ1"
+}
+
+fn custom_fonts_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let base = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| format!("No se pudo acceder al directorio local de datos: {}", e))?;
+    let dir = base.join("custom_fonts");
+    if !dir.exists() {
+        fs::create_dir_all(&dir)
+            .map_err(|e| format!("No se pudo crear la carpeta de tipografías: {}", e))?;
+    }
+    Ok(dir)
+}
+
+#[tauri::command]
+fn read_system_font_bytes(candidates: Vec<String>) -> Result<Option<Vec<u8>>, String> {
+    let mut search_dirs: Vec<PathBuf> = Vec::new();
+
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(windir) = std::env::var("WINDIR") {
+            search_dirs.push(PathBuf::from(windir).join("Fonts"));
+        } else {
+            search_dirs.push(PathBuf::from(r"C:\Windows\Fonts"));
+        }
+        if let Ok(local_app) = std::env::var("LOCALAPPDATA") {
+            search_dirs.push(
+                PathBuf::from(local_app)
+                    .join("Microsoft")
+                    .join("Windows")
+                    .join("Fonts"),
+            );
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        search_dirs.push(PathBuf::from("/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF"));
+    }
+
+    for raw in candidates {
+        let clean = raw.trim();
+        let lower = clean.to_lowercase();
+        if clean.is_empty()
+            || clean.contains('/')
+            || clean.contains('\\')
+            || clean.contains(':')
+            || clean.contains("..")
+            || !(lower.ends_with(".ttf") || lower.ends_with(".otf"))
+        {
+            continue;
+        }
+
+        for dir in &search_dirs {
+            let candidate_path = dir.join(clean);
+            if candidate_path.exists() {
+                if let Ok(bytes) = fs::read(&candidate_path) {
+                    if is_valid_font_magic(&bytes) {
+                        return Ok(Some(bytes));
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(None)
+}
+
+#[tauri::command]
+fn save_custom_font_file(
+    app: tauri::AppHandle,
+    id: String,
+    name: String,
+    file_name: String,
+    bytes: Vec<u8>,
+) -> Result<(), String> {
+    if !is_safe_font_id(&id) {
+        return Err("Identificador de fuente no válido.".to_string());
+    }
+    if !is_valid_font_magic(&bytes) {
+        return Err("El archivo no es una fuente TrueType (.ttf) u OpenType (.otf) válida.".to_string());
+    }
+
+    let dir = custom_fonts_dir(&app)?;
+    let font_path = dir.join(format!("{}.font", id));
+    let meta_path = dir.join(format!("{}.json", id));
+
+    let meta = CustomFontMetaDisk {
+        id,
+        name: name.trim().chars().take(80).collect(),
+        file_name: file_name.trim().chars().take(120).collect(),
+    };
+    let meta_json = serde_json::to_vec_pretty(&meta)
+        .map_err(|e| format!("No se pudo serializar metadatos de la fuente: {}", e))?;
+
+    fs::write(&font_path, bytes)
+        .map_err(|e| format!("No se pudo guardar el archivo de fuente: {}", e))?;
+    fs::write(&meta_path, meta_json)
+        .map_err(|e| format!("No se pudo guardar el registro de la fuente: {}", e))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+fn list_custom_font_files(app: tauri::AppHandle) -> Result<Vec<StoredCustomFontPayload>, String> {
+    let dir = custom_fonts_dir(&app)?;
+    let entries = match fs::read_dir(&dir) {
+        Ok(rd) => rd,
+        Err(_) => return Ok(Vec::new()),
+    };
+
+    let mut out = Vec::new();
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|s| s.to_str()) != Some("json") {
+            continue;
+        }
+        let Ok(meta_raw) = fs::read(&path) else {
+            continue;
+        };
+        let Ok(meta) = serde_json::from_slice::<CustomFontMetaDisk>(&meta_raw) else {
+            continue;
+        };
+        if !is_safe_font_id(&meta.id) {
+            continue;
+        }
+        let font_path = dir.join(format!("{}.font", meta.id));
+        let Ok(bytes) = fs::read(&font_path) else {
+            continue;
+        };
+        if !is_valid_font_magic(&bytes) {
+            continue;
+        }
+        out.push(StoredCustomFontPayload {
+            id: meta.id,
+            name: meta.name,
+            file_name: meta.file_name,
+            bytes,
+        });
+    }
+
+    out.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+    Ok(out)
+}
+
+#[tauri::command]
+fn delete_custom_font_file(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    if !is_safe_font_id(&id) {
+        return Err("Identificador de fuente no válido.".to_string());
+    }
+    let dir = custom_fonts_dir(&app)?;
+    let _ = fs::remove_file(dir.join(format!("{}.font", id)));
+    let _ = fs::remove_file(dir.join(format!("{}.json", id)));
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -303,7 +490,11 @@ pub fn run() {
             get_startup_pdf_path,
             register_default_pdf_app,
             open_external_url,
-            download_and_install_update
+            download_and_install_update,
+            read_system_font_bytes,
+            save_custom_font_file,
+            list_custom_font_files,
+            delete_custom_font_file
         ])
         .run(tauri::generate_context!())
         .expect("Error al iniciar Kova PDF");
