@@ -293,6 +293,7 @@ export async function extractNativeEditableTexts(
     width: number;
     height: number;
     fontSize: number;
+    angleDeg: number;
     str: string;
     fontName: string;
     family: FontFamilyChoice;
@@ -310,6 +311,8 @@ export async function extractNativeEditableTexts(
 
     const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
     const fontHeight = Math.max(6.5, Math.hypot(tx[2], tx[3]));
+    const rawAngle = (Math.atan2(tx[1], tx[0]) * 180) / Math.PI;
+    const angleDeg = Math.abs(rawAngle) <= 1 ? 0 : Math.round(rawAngle);
     const left = tx[4];
     const baselineY = tx[5];
     const top = baselineY - fontHeight * 0.92;
@@ -343,6 +346,7 @@ export async function extractNativeEditableTexts(
       width,
       height,
       fontSize: fontHeight,
+      angleDeg,
       str,
       fontName: fName,
       family: resolvedFamily,
@@ -358,11 +362,13 @@ export async function extractNativeEditableTexts(
     Math.abs(a.baselineY - b.baselineY) > 3 ? a.baselineY - b.baselineY : a.left - b.left
   );
 
-  // Merge ONLY adjacent fragments on the same baseline that share IDENTICAL weight, style, family, ink color, and background!
+  // Merge ONLY adjacent horizontal fragments on the same baseline that share IDENTICAL weight, style, family, ink color, and background!
   const merged: StyledFragment[] = [];
   for (const frag of fragments) {
     const prev = merged[merged.length - 1];
     const maxHorizGap = Math.min(18, Math.max(prev ? prev.fontSize * 1.15 : 0, 7));
+    const sameHorizontalLine =
+      prev && Math.abs(prev.angleDeg) <= 1 && Math.abs(frag.angleDeg) <= 1;
     const sameStyle =
       prev &&
       prev.weight === frag.weight &&
@@ -383,6 +389,7 @@ export async function extractNativeEditableTexts(
 
     if (
       prev &&
+      sameHorizontalLine &&
       sameStyle &&
       sameColors &&
       Math.abs(prev.baselineY - frag.baselineY) <= Math.max(2.4, prev.fontSize * 0.22) &&
@@ -479,6 +486,7 @@ export async function extractNativeEditableTexts(
       y: normY,
       width: normW,
       height: normH,
+      rotation: m.angleDeg || 0,
       originalText: m.str,
       text: m.str,
       fontSizePt: Math.round(m.fontSize * 10) / 10,
@@ -510,6 +518,9 @@ export function hasNativeTextMeaningfulDiff(
     (candidate.customWidth !== undefined &&
       Math.abs(candidate.customWidth - (baseline.customWidth ?? baseline.origWidth)) > 0.002)
   ) {
+    return true;
+  }
+  if (Math.abs((candidate.rotation || 0) - (baseline.rotation || 0)) > 0.2) {
     return true;
   }
   if (Math.abs(candidate.fontSizePt - baseline.fontSizePt) > 0.08) return true;

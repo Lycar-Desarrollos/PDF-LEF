@@ -405,7 +405,7 @@ test('7. Windows Tauri v2 High-DPI config, NSIS, ICO headers & spellCheck={false
   const tauriConf = JSON.parse(readFileSync(join(ROOT, 'src-tauri/tauri.conf.json'), 'utf8'));
   assert.equal(tauriConf.productName, 'Kova PDF');
   assert.equal(tauriConf.mainBinaryName, 'KovaPDF');
-  assert.equal(tauriConf.version, '2.3.3');
+  assert.equal(tauriConf.version, '2.3.4');
   assert.equal(tauriConf.identifier, 'studio.kova.pdf');
   assert.equal(tauriConf.bundle.publisher, 'Kova Studio');
   assert.equal(tauriConf.bundle.windows.allowDowngrades, true);
@@ -573,22 +573,22 @@ test('10. Global Internet Auto-Updater & Remote Manifest Control (any network wo
   const { CURRENT_APP_VERSION, isNewerVersion, parseSemver } = await import(
     '../src/utils/updater.ts'
   );
-  assert.equal(CURRENT_APP_VERSION, '2.3.3');
-  assert.deepEqual(parseSemver('v2.3.3'), [2, 3, 3]);
-  assert.equal(isNewerVersion('v2.3.3', '2.0.0'), true);
-  assert.equal(isNewerVersion('v2.3.3', '2.3.2'), true);
-  assert.equal(isNewerVersion('v2.3.3', '2.3.3'), false);
-  assert.equal(isNewerVersion('v2.3.2', '2.3.3'), false);
+  assert.equal(CURRENT_APP_VERSION, '2.3.4');
+  assert.deepEqual(parseSemver('v2.3.4'), [2, 3, 4]);
+  assert.equal(isNewerVersion('v2.3.4', '2.0.0'), true);
+  assert.equal(isNewerVersion('v2.3.4', '2.3.3'), true);
+  assert.equal(isNewerVersion('v2.3.4', '2.3.4'), false);
+  assert.equal(isNewerVersion('v2.3.3', '2.3.4'), false);
 
   const manifest = JSON.parse(readFileSync(join(ROOT, 'website/update-manifest.json'), 'utf8'));
   assert.equal(manifest.product, 'Kova PDF');
-  assert.equal(manifest.version, '2.3.3');
+  assert.equal(manifest.version, '2.3.4');
   assert.equal(manifest.minRequiredVersion, '2.2.1');
   assert.equal(typeof manifest.mandatory, 'boolean');
   assert.equal(manifest.autoInstall, true);
   assert.equal(typeof manifest.allowDowngrade, 'boolean');
-  assert.ok(manifest.exeUrl.endsWith('Kova.PDF_2.3.3_x64-setup.exe'));
-  assert.ok(manifest.msiUrl.endsWith('Kova.PDF_2.3.3_x64_en-US.msi'));
+  assert.ok(manifest.exeUrl.endsWith('Kova.PDF_2.3.4_x64-setup.exe'));
+  assert.ok(manifest.msiUrl.endsWith('Kova.PDF_2.3.4_x64_en-US.msi'));
 });
 
 test('11. Inline Bold+Regular separation on #F4F6F9 gray cards, untouched-if-unchanged guarantee & CREATE_NO_WINDOW', async () => {
@@ -1047,7 +1047,7 @@ test('14. Clean Sheet Print Engine (zero app UI / zero tauri.localhost), Native 
   assert.equal(settingsTsx.includes('toggle-switch'), false);
 
   const tauriConf = JSON.parse(readFileSync(join(ROOT, 'src-tauri/tauri.conf.json'), 'utf8'));
-  assert.equal(tauriConf.version, '2.3.3');
+  assert.equal(tauriConf.version, '2.3.4');
   assert.equal(tauriConf.bundle.windows.nsis.installMode, 'currentUser');
 
   const rustLib = readFileSync(join(ROOT, 'src-tauri/src/lib.rs'), 'utf8');
@@ -1193,6 +1193,113 @@ test('15. v2.3.3 Audit: Office Typography Catalog (Arial, Calibri, Roboto, Segoe
   const afterRemove = await removeCustomFont(customEntry.choice);
   assert.equal(afterRemove.length, 0);
 });
+
+test('16. v2.3.4 Audit: 360° Free & Snap Rotation for Native PDF Text, Free Text Boxes & Diagonal Stamps', async () => {
+  const {
+    computeRelativeDragRotationDeg,
+    normalizeAngleDeg,
+    rotatePdfPointAroundCenter,
+  } = await import('../src/utils/rotationMath.ts');
+  const { hasNativeTextMeaningfulDiff } = await import('../src/utils/pdfEngine.ts');
+
+  // 1. Verify angle normalization & smooth zero-jump relative drag math
+  assert.equal(normalizeAngleDeg(270), -90);
+  assert.equal(normalizeAngleDeg(-270), 90);
+  assert.equal(normalizeAngleDeg(360), 0);
+
+  // Dragging bottom knob (100, 150) around center (100, 100) to right (150, 100) => -90° counter-clockwise
+  assert.equal(
+    computeRelativeDragRotationDeg(100, 100, 100, 150, 150, 100, 0, false),
+    -90
+  );
+  // Dragging bottom knob (100, 150) to left (50, 100) => +90° clockwise
+  assert.equal(
+    computeRelativeDragRotationDeg(100, 100, 100, 150, 50, 100, 0, false),
+    90
+  );
+  // Shift-snap to 15° increments (e.g. ~43° snaps to 45°)
+  const rad43 = ((90 + 43) * Math.PI) / 180;
+  assert.equal(
+    computeRelativeDragRotationDeg(
+      100,
+      100,
+      100,
+      150,
+      100 + 50 * Math.cos(rad43),
+      100 + 50 * Math.sin(rad43),
+      0,
+      true
+    ),
+    45
+  );
+
+  // 2. Verify exact PDF center-anchor geometry (+90° clockwise on 100x40 box centered at 300, 400)
+  const anchor90 = rotatePdfPointAroundCenter(250, 380, 300, 400, 90);
+  assert.ok(Math.abs(anchor90.x - 280) < 0.01 && Math.abs(anchor90.y - 450) < 0.01);
+
+  // 3. Verify rotating an existing NativePdfTextItem triggers meaningful diff & exports cleanly
+  const invoiceBytes = readFileSync(join(ROOT, 'pruebas/02_Factura_Fiscal_CFDI.pdf'));
+  const tab = await loadPdfIntoTabDocument('Rotacion_Test.pdf', invoiceBytes, DEFAULT_SETTINGS);
+  const extractedOrig = await extractPageTextsForTab(tab, 0);
+  assert.ok(extractedOrig.length > 0);
+  const baseNt = extractedOrig[0];
+  const rotatedNt = { ...baseNt, rotation: -90, modified: true };
+  assert.equal(hasNativeTextMeaningfulDiff(rotatedNt, baseNt), true);
+
+  tab.nativeTextEdits[baseNt.id] = {
+    ...rotatedNt,
+    text: 'FOLIO-VERTICAL-90',
+    x: 0.06,
+    y: 0.45,
+  };
+  tab.elements.push(
+    {
+      id: 'rot_txt_box',
+      pageId: tab.pages[0].id,
+      kind: 'text',
+      x: 0.72,
+      y: 0.35,
+      width: 0.26,
+      height: 0.06,
+      rotation: 90,
+      opacity: 1,
+      zIndex: 3,
+      text: 'MARGEN-DERECHO-90',
+      fontFamily: 'arial',
+      fontSizePt: 11,
+      fontWeight: 'bold',
+      fontStyle: 'normal',
+      color: '#1D4ED8',
+    },
+    {
+      id: 'rot_stamp',
+      pageId: tab.pages[0].id,
+      kind: 'stamp',
+      x: 0.35,
+      y: 0.55,
+      width: 0.28,
+      height: 0.09,
+      rotation: -25,
+      opacity: 0.92,
+      zIndex: 4,
+      text: 'AUTORIZADO-360',
+      subText: '19 NOV 2026',
+      color: '#0D7A5F',
+    }
+  );
+
+  const outPdf = await compileTabToPdfBytes(tab);
+  const reloaded = await loadPdfIntoTabDocument('Rotacion_Compilado.pdf', outPdf, DEFAULT_SETTINGS);
+  const outItems = await extractPageTextsForTab(reloaded, 0);
+  const folioItem = outItems.find((i) => i.text.includes('FOLIO-VERTICAL-90'));
+  const margenItem = outItems.find((i) => i.text.includes('MARGEN-DERECHO-90'));
+  const stampItem = outItems.find((i) => i.text.includes('AUTORIZADO-360'));
+  assert.ok(folioItem && margenItem && stampItem, 'All rotated items must extract cleanly');
+  assert.equal(folioItem.rotation, -90, 'Vertical -90° native text must round-trip at -90°');
+  assert.equal(margenItem.rotation, 90, 'Vertical +90° free text box must round-trip at +90°');
+  assert.equal(stampItem.rotation, -25, 'Diagonal -25° stamp must round-trip at -25°');
+});
+
 
 
 

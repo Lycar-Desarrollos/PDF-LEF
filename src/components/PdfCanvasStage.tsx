@@ -7,6 +7,7 @@ import {
   GripHorizontal,
   GripVertical,
   RotateCcw,
+  RotateCw,
   Trash2,
   Wand2,
 } from 'lucide-react';
@@ -22,6 +23,10 @@ import type {
   WorkspaceMode,
 } from '../types/pdf';
 import { canvasFontForChoice, cssFontForChoice } from '../utils/fontRegistry';
+import {
+  computeRelativeDragRotationDeg,
+  normalizeAngleDeg,
+} from '../utils/rotationMath';
 import {
   extractNativeEditableTexts,
   formatEngineeringArea,
@@ -745,6 +750,93 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
     window.addEventListener('mouseup', onUp);
   };
 
+  // Interactive 360° Free/Snap Rotation for Overlay Elements (Shift = 15° snap)
+  const startRotateOverlay = (e: React.MouseEvent, el: PdfOverlayElement) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const boxEl = (e.currentTarget as HTMLElement).closest('.overlay-item') as HTMLElement | null;
+    const r = boxEl?.getBoundingClientRect();
+    if (!r) return;
+    const centerX = r.left + r.width / 2;
+    const centerY = r.top + r.height / 2;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const initRot = el.rotation || 0;
+    let latestRot = initRot;
+
+    const onMove = (ev: MouseEvent) => {
+      latestRot = computeRelativeDragRotationDeg(
+        centerX,
+        centerY,
+        startX,
+        startY,
+        ev.clientX,
+        ev.clientY,
+        initRot,
+        ev.shiftKey
+      );
+      onUpdateOverlayElement(el.id, { rotation: latestRot }, false);
+      setDragHud(`Rotación · ${latestRot > 0 ? '+' : ''}${latestRot}°`);
+    };
+
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      setDragHud(null);
+      onUpdateOverlayElement(el.id, { rotation: latestRot }, true);
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  // Interactive 360° Free/Snap Rotation for Native PDF Text Blocks (Shift = 15° snap)
+  const startRotateNativeText = (e: React.MouseEvent, item: NativePdfTextItem) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const boxEl = (e.currentTarget as HTMLElement).closest(
+      '.native-text-box'
+    ) as HTMLElement | null;
+    const r = boxEl?.getBoundingClientRect();
+    if (!r) return;
+    const centerX = r.left + r.width / 2;
+    const centerY = r.top + r.height / 2;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const initRot = item.rotation || 0;
+    let latest = { ...item };
+
+    const onMove = (ev: MouseEvent) => {
+      const nextRot = computeRelativeDragRotationDeg(
+        centerX,
+        centerY,
+        startX,
+        startY,
+        ev.clientX,
+        ev.clientY,
+        initRot,
+        ev.shiftKey
+      );
+      latest = {
+        ...latest,
+        rotation: nextRot,
+        modified: true,
+      };
+      onUpdateNativeTextItem(latest, false);
+      setDragHud(`Rotación · ${nextRot > 0 ? '+' : ''}${nextRot}°`);
+    };
+
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      setDragHud(null);
+      onUpdateNativeTextItem(latest, true);
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
   // Duplicate any Native PDF Text Item as an independent movable Overlay Text Box!
   const duplicateNativeTextAsOverlay = (nt: NativePdfTextItem) => {
     const newId = `txt_clone_${Date.now()}`;
@@ -756,7 +848,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
       y: Math.min(0.94, nt.y + Math.max(0.022, nt.height + 0.006)),
       width: Math.max(0.16, Math.min(0.85, nt.width + 0.03)),
       height: Math.max(0.032, nt.height + 0.012),
-      rotation: 0,
+      rotation: nt.rotation || 0,
       opacity: 1,
       zIndex: tab.elements.length + 2,
       text: nt.text,
@@ -1412,6 +1504,8 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
             const isNearRight = nt.x > 0.54;
             const bgSolid = nt.bgPatchColor || '#ffffff';
 
+            const ntRot = normalizeAngleDeg(nt.rotation || 0);
+
             return (
               <div
                 key={nt.id}
@@ -1422,8 +1516,6 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                   left: `${nt.x * 100}%`,
                   top: `${nt.y * 100}%`,
                   maxWidth: `${Math.max(5, (0.972 - nt.x) * 100)}%`,
-                  minHeight: `${nt.height * 100}%`,
-                  backgroundColor: bgSolid,
                 }}
                 onMouseDown={(e) => {
                   if (!isSelected || e.altKey) {
@@ -1435,27 +1527,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                   onSelectElement(null);
                 }}
               >
-                {/* Left Drag-Grip Handle Pill when Selected */}
-                {isSelected && isEditTool && (
-                  <div
-                    className="native-drag-handle"
-                    onMouseDown={(e) => startMoveNativeText(e, nt)}
-                    title="Arrastra desde aquí para mover el texto (Shift = recto)"
-                  >
-                    <GripVertical size={11} />
-                  </div>
-                )}
-
-                {/* Right Column-Width Resize Handle when Selected */}
-                {isSelected && isEditTool && (
-                  <div
-                    className="native-width-handle"
-                    onMouseDown={(e) => startResizeNativeTextWidth(e, nt, finalWidthPx)}
-                    title="Arrastra el borde derecho para ajustar el ancho de columna del texto"
-                  />
-                )}
-
-                {/* Floating Quick Action Bar when Selected */}
+                {/* Floating Quick Action Bar when Selected (stays upright 0° even when text is rotated!) */}
                 {isSelected && isEditTool && (
                   <div
                     className={`object-quickbar ${isNearTop ? 'placed-bottom' : ''}`}
@@ -1619,6 +1691,25 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
 
                     <button
                       type="button"
+                      className={`btn icon-only ${ntRot !== 0 ? 'active' : ''}`}
+                      style={{ width: 22, height: 22 }}
+                      onClick={() =>
+                        onUpdateNativeTextItem(
+                          {
+                            ...nt,
+                            rotation: normalizeAngleDeg(ntRot + 90),
+                            modified: true,
+                          },
+                          true
+                        )
+                      }
+                      title={`Girar +90° (Actual: ${ntRot}° · También puedes arrastrar el círculo inferior 360°)`}
+                    >
+                      <RotateCw size={11.5} />
+                    </button>
+
+                    <button
+                      type="button"
                       className="btn icon-only"
                       style={{ width: 22, height: 22 }}
                       onClick={() => duplicateNativeTextAsOverlay(nt)}
@@ -1664,66 +1755,110 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                   </div>
                 )}
 
-                {/* If selected in edit mode: Editable Textarea (No Spellcheck Squiggles!) */}
-                {isSelected && isEditTool ? (
-                  <textarea
-                    rows={visualRows}
-                    className="native-text-editor"
-                    autoFocus
-                    spellCheck={false}
-                    autoCorrect="off"
-                    autoCapitalize="off"
-                    value={nt.text}
-                    onFocus={() => {
-                      onSelectNativeText(nt.id);
-                      onSelectElement(null);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Escape') {
-                        onSelectNativeText(null);
+                <div
+                  className="native-rotatable-stage"
+                  style={{
+                    minHeight: `${Math.max(14, nt.height * boxSize.h)}px`,
+                    backgroundColor: bgSolid,
+                    transform: ntRot ? `rotate(${ntRot}deg)` : undefined,
+                    transformOrigin: 'center center',
+                  }}
+                >
+                  {/* Left Drag-Grip Handle Pill when Selected */}
+                  {isSelected && isEditTool && (
+                    <div
+                      className="native-drag-handle"
+                      onMouseDown={(e) => startMoveNativeText(e, nt)}
+                      title="Arrastra desde aquí para mover el texto (Shift = recto)"
+                    >
+                      <GripVertical size={11} />
+                    </div>
+                  )}
+
+                  {/* Right Column-Width Resize Handle when Selected */}
+                  {isSelected && isEditTool && (
+                    <div
+                      className="native-width-handle"
+                      onMouseDown={(e) => startResizeNativeTextWidth(e, nt, finalWidthPx)}
+                      title="Arrastra el borde derecho para ajustar el ancho de columna del texto"
+                    />
+                  )}
+
+                  {/* Bottom-Center 360° Free/Snap Rotation Handle */}
+                  {isSelected && isEditTool && (
+                    <>
+                      <div className="rotate-handle-stem" />
+                      <div
+                        className="rotate-handle-knob"
+                        onMouseDown={(e) => startRotateNativeText(e, nt)}
+                        title="Arrastra en círculo para rotar el texto 360° (Shift = saltos exactos de 15°)"
+                      >
+                        <RotateCw size={11} />
+                      </div>
+                    </>
+                  )}
+
+                  {/* If selected in edit mode: Editable Textarea (No Spellcheck Squiggles!) */}
+                  {isSelected && isEditTool ? (
+                    <textarea
+                      rows={visualRows}
+                      className="native-text-editor"
+                      autoFocus
+                      spellCheck={false}
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      value={nt.text}
+                      onFocus={() => {
+                        onSelectNativeText(nt.id);
+                        onSelectElement(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                          onSelectNativeText(null);
+                        }
+                      }}
+                      onChange={(e) =>
+                        onUpdateNativeTextItem(
+                          {
+                            ...nt,
+                            text: e.target.value,
+                            modified: true,
+                          },
+                          true
+                        )
                       }
-                    }}
-                    onChange={(e) =>
-                      onUpdateNativeTextItem(
-                        {
-                          ...nt,
-                          text: e.target.value,
-                          modified: true,
-                        },
-                        true
-                      )
-                    }
-                    style={{
-                      fontFamily: cssFontForChoice(nt.fontFamily),
-                      fontSize: `${scaledFontPx}px`,
-                      fontWeight: nt.fontWeight,
-                      fontStyle: nt.fontStyle,
-                      color: nt.color,
-                      backgroundColor: bgSolid,
-                      width: `${finalWidthPx}px`,
-                    }}
-                  />
-                ) : (
-                  /* Modified item display when NOT actively selected */
-                  <span
-                    style={{
-                      fontFamily: cssFontForChoice(nt.fontFamily),
-                      fontSize: `${scaledFontPx}px`,
-                      fontWeight: nt.fontWeight,
-                      fontStyle: nt.fontStyle,
-                      color: nt.color,
-                      whiteSpace: 'pre-wrap',
-                      overflowWrap: 'break-word',
-                      display: 'inline-block',
-                      maxWidth: `${targetWrapPx}px`,
-                      width: nt.customWidth ? `${targetWrapPx}px` : undefined,
-                      lineHeight: 1.18,
-                      backgroundColor: bgSolid,
-                    }}
-                  >
-                    {nt.text}
-                  </span>
-                )}
+                      style={{
+                        fontFamily: cssFontForChoice(nt.fontFamily),
+                        fontSize: `${scaledFontPx}px`,
+                        fontWeight: nt.fontWeight,
+                        fontStyle: nt.fontStyle,
+                        color: nt.color,
+                        backgroundColor: bgSolid,
+                        width: `${finalWidthPx}px`,
+                      }}
+                    />
+                  ) : (
+                    /* Modified item display when NOT actively selected */
+                    <span
+                      style={{
+                        fontFamily: cssFontForChoice(nt.fontFamily),
+                        fontSize: `${scaledFontPx}px`,
+                        fontWeight: nt.fontWeight,
+                        fontStyle: nt.fontStyle,
+                        color: nt.color,
+                        whiteSpace: 'pre-wrap',
+                        overflowWrap: 'break-word',
+                        display: 'inline-block',
+                        maxWidth: `${targetWrapPx}px`,
+                        width: nt.customWidth ? `${targetWrapPx}px` : undefined,
+                        lineHeight: 1.18,
+                        backgroundColor: bgSolid,
+                      }}
+                    >
+                      {nt.text}
+                    </span>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -1753,6 +1888,14 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
             el.y < ntBottom + 0.015 &&
             el.y + el.height > activeNativeOnPage!.y - 0.015;
 
+          const isRotatableKind =
+            el.kind === 'text' ||
+            el.kind === 'stamp' ||
+            el.kind === 'image' ||
+            el.kind === 'signature' ||
+            el.kind === 'rect';
+          const elRot = isRotatableKind ? normalizeAngleDeg(el.rotation || 0) : 0;
+
           return (
             <div
               key={el.id}
@@ -1774,7 +1917,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                 if (el.kind === 'text') setEditingOverlayId(el.id);
               }}
             >
-              {/* Floating Quick Actions when Selected */}
+              {/* Floating Quick Actions when Selected (stays upright 0°!) */}
               {isSelected && (
                 <div
                   className="object-quickbar"
@@ -1813,6 +1956,23 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                     >
                       <Wand2 size={12} />
                       <span>Sin fondo</span>
+                    </button>
+                  )}
+                  {isRotatableKind && (
+                    <button
+                      type="button"
+                      className={`btn icon-only ${elRot !== 0 ? 'active' : ''}`}
+                      style={{ width: 24, height: 24 }}
+                      onClick={() =>
+                        onUpdateOverlayElement(
+                          el.id,
+                          { rotation: normalizeAngleDeg(elRot + 90) },
+                          true
+                        )
+                      }
+                      title={`Girar +90° (Actual: ${elRot}° · También puedes arrastrar el círculo inferior 360°)`}
+                    >
+                      <RotateCw size={12.5} />
                     </button>
                   )}
                   <button
@@ -1854,46 +2014,67 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                 </div>
               )}
 
-              {/* 360° Endpoint Handles for Arrows & Dimensions vs 8 Box Resize Handles */}
-              {isSelected &&
-                (el.kind === 'arrow' || el.kind === 'dimension' ? (
-                  <>
-                    {(() => {
-                      const p0 = el.points?.[0] || { x: el.x, y: el.y + el.height };
-                      const p1 = el.points?.[1] || { x: el.x + el.width, y: el.y };
-                      const relX0 = ((p0.x - el.x) / Math.max(0.001, el.width)) * 100;
-                      const relY0 = ((p0.y - el.y) / Math.max(0.001, el.height)) * 100;
-                      const relX1 = ((p1.x - el.x) / Math.max(0.001, el.width)) * 100;
-                      const relY1 = ((p1.y - el.y) / Math.max(0.001, el.height)) * 100;
-                      return (
+              <div
+                className="overlay-rotatable-stage"
+                style={{
+                  transform: elRot ? `rotate(${elRot}deg)` : undefined,
+                  transformOrigin: 'center center',
+                }}
+              >
+                {/* 360° Endpoint Handles for Arrows & Dimensions vs 8 Box Resize Handles */}
+                {isSelected &&
+                  (el.kind === 'arrow' || el.kind === 'dimension' ? (
+                    <>
+                      {(() => {
+                        const p0 = el.points?.[0] || { x: el.x, y: el.y + el.height };
+                        const p1 = el.points?.[1] || { x: el.x + el.width, y: el.y };
+                        const relX0 = ((p0.x - el.x) / Math.max(0.001, el.width)) * 100;
+                        const relY0 = ((p0.y - el.y) / Math.max(0.001, el.height)) * 100;
+                        const relX1 = ((p1.x - el.x) / Math.max(0.001, el.width)) * 100;
+                        const relY1 = ((p1.y - el.y) / Math.max(0.001, el.height)) * 100;
+                        return (
+                          <>
+                            <div
+                              className="endpoint-handle"
+                              style={{ left: `${relX0}%`, top: `${relY0}%` }}
+                              title="Arrastra el origen (Shift = línea recta)"
+                              onMouseDown={(e) => startDragEndpoint(e, el, 0)}
+                            />
+                            <div
+                              className="endpoint-handle"
+                              style={{ left: `${relX1}%`, top: `${relY1}%` }}
+                              title="Arrastra la punta en cualquier dirección 360° (Shift = recto)"
+                              onMouseDown={(e) => startDragEndpoint(e, el, 1)}
+                            />
+                          </>
+                        );
+                      })()}
+                    </>
+                  ) : (
+                    <>
+                      {(['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as ResizeHandleDir[]).map(
+                        (dir) => (
+                          <div
+                            key={dir}
+                            className={`resize-handle ${dir}`}
+                            onMouseDown={(e) => startResizeOverlay(e, el, dir)}
+                          />
+                        )
+                      )}
+                      {isRotatableKind && (
                         <>
+                          <div className="rotate-handle-stem" />
                           <div
-                            className="endpoint-handle"
-                            style={{ left: `${relX0}%`, top: `${relY0}%` }}
-                            title="Arrastra el origen (Shift = línea recta)"
-                            onMouseDown={(e) => startDragEndpoint(e, el, 0)}
-                          />
-                          <div
-                            className="endpoint-handle"
-                            style={{ left: `${relX1}%`, top: `${relY1}%` }}
-                            title="Arrastra la punta en cualquier dirección 360° (Shift = recto)"
-                            onMouseDown={(e) => startDragEndpoint(e, el, 1)}
-                          />
+                            className="rotate-handle-knob"
+                            onMouseDown={(e) => startRotateOverlay(e, el)}
+                            title="Arrastra en círculo para rotar 360° (Shift = saltos exactos de 15°)"
+                          >
+                            <RotateCw size={11} />
+                          </div>
                         </>
-                      );
-                    })()}
-                  </>
-                ) : (
-                  (['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as ResizeHandleDir[]).map(
-                    (dir) => (
-                      <div
-                        key={dir}
-                        className={`resize-handle ${dir}`}
-                        onMouseDown={(e) => startResizeOverlay(e, el, dir)}
-                      />
-                    )
-                  )
-                ))}
+                      )}
+                    </>
+                  ))}
 
               {/* Render Element Visual Content */}
               {el.kind === 'text' &&
@@ -2385,6 +2566,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                   <span>{el.text}</span>
                 </div>
               )}
+              </div>
             </div>
           );
         })}

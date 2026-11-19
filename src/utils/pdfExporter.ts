@@ -19,6 +19,10 @@ import {
   hasNativeTextMeaningfulDiff,
   renderPageToCanvas,
 } from './pdfEngine';
+import {
+  normalizeAngleDeg,
+  rotatePdfPointAroundCenter,
+} from './rotationMath';
 
 function hexToPdfRgb(hex?: string, fallback = '#111318') {
   const raw = (hex && hex.startsWith('#') ? hex : fallback).replace('#', '');
@@ -377,7 +381,13 @@ export async function compileTabToPdfBytes(
           resolved.supportedCodePoints
         );
 
+        const ntRotCw = normalizeAngleDeg(nt.rotation || 0);
+        const ntHasRot = Math.abs(ntRotCw) > 0.1;
+        const ntRotOpt = ntHasRot ? degrees(-ntRotCw) : undefined;
+
         // If edited text is wider than original patch or wraps, paint clean solid background under new glyphs
+        let ncx = nt.x * pw;
+        let ncy = ph - nt.y * ph;
         if (lines.length > 0) {
           const widestLine = Math.max(
             ...lines.map((ln) => chosenFont.widthOfTextAtSize(ln, fSize))
@@ -385,24 +395,37 @@ export async function compileTabToPdfBytes(
           const totalBlockH = lines.length * fSize * 1.18;
           const newBoxX = Math.max(0, nt.x * pw - 0.5);
           const newBoxTopFromBottom = ph - nt.y * ph + 0.8;
+          const newBoxW = Math.min(pw - newBoxX, widestLine + 1.6);
+          const newBoxH = totalBlockH + 1.6;
+          const newBoxY = Math.max(0, newBoxTopFromBottom - totalBlockH - 0.8);
+          ncx = newBoxX + newBoxW / 2;
+          ncy = newBoxY + newBoxH / 2;
+          const pBg = ntHasRot
+            ? rotatePdfPointAroundCenter(newBoxX, newBoxY, ncx, ncy, ntRotCw)
+            : { x: newBoxX, y: newBoxY };
           pdfPage.drawRectangle({
-            x: newBoxX,
-            y: Math.max(0, newBoxTopFromBottom - totalBlockH - 0.8),
-            width: Math.min(pw - newBoxX, widestLine + 1.6),
-            height: totalBlockH + 1.6,
+            x: pBg.x,
+            y: pBg.y,
+            width: newBoxW,
+            height: newBoxH,
             color: patchRgb,
+            rotate: ntRotOpt,
           });
         }
 
         let lineY = ph - nt.y * ph - fSize * 0.88;
         for (const line of lines) {
-          if (lineY < 8) break;
+          if (!ntHasRot && lineY < 8) break;
+          const pLn = ntHasRot
+            ? rotatePdfPointAroundCenter(nt.x * pw, lineY, ncx, ncy, ntRotCw)
+            : { x: nt.x * pw, y: lineY };
           pdfPage.drawText(line, {
-            x: nt.x * pw,
-            y: lineY,
+            x: pLn.x,
+            y: pLn.y,
             size: fSize,
             font: chosenFont,
             color: hexToPdfRgb(nt.color, '#111318'),
+            rotate: ntRotOpt,
           });
           lineY -= fSize * 1.18;
         }
@@ -420,6 +443,13 @@ export async function compileTabToPdfBytes(
       const boxH = el.height * ph;
       const boxY = ph - (el.y * ph + boxH);
       const opacity = el.opacity ?? 1;
+      const rotCw = normalizeAngleDeg(el.rotation || 0);
+      const hasRot = Math.abs(rotCw) > 0.1;
+      const rotOpt = hasRot ? degrees(-rotCw) : undefined;
+      const cx = boxX + boxW / 2;
+      const cy = boxY + boxH / 2;
+      const ptAt = (px: number, py: number) =>
+        hasRot ? rotatePdfPointAroundCenter(px, py, cx, cy, rotCw) : { x: px, y: py };
 
       if (el.kind === 'highlight') {
         pdfPage.drawRectangle({
@@ -456,9 +486,10 @@ export async function compileTabToPdfBytes(
           opacity: 1,
         });
       } else if (el.kind === 'rect') {
+        const pRect = ptAt(boxX, boxY);
         pdfPage.drawRectangle({
-          x: boxX,
-          y: boxY,
+          x: pRect.x,
+          y: pRect.y,
           width: boxW,
           height: boxH,
           borderColor: hexToPdfRgb(el.color, '#2563EB'),
@@ -470,6 +501,7 @@ export async function compileTabToPdfBytes(
           opacity:
             el.backgroundColor && el.backgroundColor !== 'transparent' ? opacity * 0.25 : undefined,
           borderOpacity: opacity,
+          rotate: rotOpt,
         });
       } else if (el.kind === 'ellipse') {
         pdfPage.drawEllipse({
@@ -533,25 +565,28 @@ export async function compileTabToPdfBytes(
           });
         }
       } else if (el.kind === 'text') {
+        const pBox = ptAt(boxX, boxY);
         if (el.backgroundColor && el.backgroundColor !== 'transparent') {
           pdfPage.drawRectangle({
-            x: boxX,
-            y: boxY,
+            x: pBox.x,
+            y: pBox.y,
             width: boxW,
             height: boxH,
             color: hexToPdfRgb(el.backgroundColor, '#ffffff'),
             opacity,
+            rotate: rotOpt,
           });
         }
         if (el.borderColor && el.borderColor !== 'transparent') {
           pdfPage.drawRectangle({
-            x: boxX,
-            y: boxY,
+            x: pBox.x,
+            y: pBox.y,
             width: boxW,
             height: boxH,
             borderColor: hexToPdfRgb(el.borderColor),
             borderWidth: 1,
             borderOpacity: opacity,
+            rotate: rotOpt,
           });
         }
         const resolved = await resolveActivePdfFont(
@@ -573,26 +608,30 @@ export async function compileTabToPdfBytes(
         );
         let curY = boxY + boxH - fSize - 4;
         for (const line of lines) {
-          if (curY < 6) break;
+          if (!hasRot && curY < 6) break;
+          if (curY < boxY - fSize * 0.6) break;
           const lineW = font.widthOfTextAtSize(line, fSize);
           let drawX = boxX + 4;
           if (el.textAlign === 'center') drawX = boxX + (boxW - lineW) / 2;
           else if (el.textAlign === 'right') drawX = boxX + boxW - lineW - 4;
+          const pLine = ptAt(Math.max(0, drawX), curY);
           pdfPage.drawText(line, {
-            x: Math.max(0, drawX),
-            y: curY,
+            x: pLine.x,
+            y: pLine.y,
             size: fSize,
             font,
             color: hexToPdfRgb(el.color, '#111318'),
             opacity,
+            rotate: rotOpt,
           });
           curY -= fSize * 1.24;
         }
       } else if (el.kind === 'stamp') {
         const stampCol = hexToPdfRgb(el.color, '#2563EB');
+        const pBox = ptAt(boxX, boxY);
         pdfPage.drawRectangle({
-          x: boxX,
-          y: boxY,
+          x: pBox.x,
+          y: pBox.y,
           width: boxW,
           height: boxH,
           borderColor: stampCol,
@@ -600,29 +639,37 @@ export async function compileTabToPdfBytes(
           color: stampCol,
           opacity: 0.08 * opacity,
           borderOpacity: opacity,
+          rotate: rotOpt,
         });
         const title = sanitizeWinAnsi(el.text || 'APROBADO');
         const mainSize = Math.max(10, Math.min(22, boxH * 0.42));
         const mainW = fonts.sans.bold.widthOfTextAtSize(title, mainSize);
+        const pTitle = ptAt(
+          boxX + (boxW - mainW) / 2,
+          boxY + (el.subText ? boxH * 0.46 : (boxH - mainSize) / 2 + 2)
+        );
         pdfPage.drawText(title, {
-          x: boxX + (boxW - mainW) / 2,
-          y: boxY + (el.subText ? boxH * 0.46 : (boxH - mainSize) / 2 + 2),
+          x: pTitle.x,
+          y: pTitle.y,
           size: mainSize,
           font: fonts.sans.bold,
           color: stampCol,
           opacity,
+          rotate: rotOpt,
         });
         if (el.subText) {
           const sub = sanitizeWinAnsi(el.subText);
           const subSize = Math.max(7, mainSize * 0.48);
           const subW = fonts.mono.normal.widthOfTextAtSize(sub, subSize);
+          const pSub = ptAt(boxX + (boxW - subW) / 2, boxY + boxH * 0.16);
           pdfPage.drawText(sub, {
-            x: boxX + (boxW - subW) / 2,
-            y: boxY + boxH * 0.16,
+            x: pSub.x,
+            y: pSub.y,
             size: subSize,
             font: fonts.mono.normal,
             color: stampCol,
             opacity: opacity * 0.9,
+            rotate: rotOpt,
           });
         }
       } else if ((el.kind === 'image' || el.kind === 'signature') && el.dataUrl) {
@@ -632,22 +679,26 @@ export async function compileTabToPdfBytes(
           embedded = await outDoc.embedPng(pngBytes);
           imageCache.set(el.dataUrl, embedded);
         }
+        const pImg = ptAt(boxX, boxY);
         pdfPage.drawImage(embedded, {
-          x: boxX,
-          y: boxY,
+          x: pImg.x,
+          y: pImg.y,
           width: boxW,
           height: boxH,
           opacity,
+          rotate: rotOpt,
         });
         if (el.kind === 'signature' && el.subText) {
           const sigNote = sanitizeWinAnsi(el.subText);
+          const pSig = ptAt(boxX, Math.max(4, boxY - 9));
           pdfPage.drawText(sigNote, {
-            x: boxX,
-            y: Math.max(4, boxY - 9),
+            x: pSig.x,
+            y: pSig.y,
             size: 7.5,
             font: fonts.mono.normal,
             color: hexToPdfRgb('#525866'),
             opacity,
+            rotate: rotOpt,
           });
         }
       } else if (el.kind === 'note') {

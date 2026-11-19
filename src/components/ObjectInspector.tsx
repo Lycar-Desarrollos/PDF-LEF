@@ -15,6 +15,7 @@ import {
   PanelRightClose,
   Pencil,
   RotateCcw,
+  RotateCw,
   Trash2,
   Wand2,
 } from 'lucide-react';
@@ -27,6 +28,7 @@ import type {
   ToolModalKind,
 } from '../types/pdf';
 import { removeSignatureBackground } from '../utils/imageUtils';
+import { normalizeAngleDeg } from '../utils/rotationMath';
 import { FontPickerControl } from './FontPickerControl';
 
 interface ObjectInspectorProps {
@@ -249,6 +251,83 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
                 )
               }
             />
+          </div>
+
+          <div className="prop-row">
+            <span className="prop-label">Rotación (°)</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <button
+                type="button"
+                className="btn icon-only"
+                style={{ width: 25, height: 25 }}
+                title="Girar -90° (Vertical hacia arriba)"
+                onClick={() =>
+                  onUpdateNativeText(
+                    {
+                      ...selectedNativeText,
+                      rotation: normalizeAngleDeg((selectedNativeText.rotation || 0) - 90),
+                      modified: true,
+                    },
+                    true
+                  )
+                }
+              >
+                <RotateCcw size={12.5} />
+              </button>
+              <input
+                type="number"
+                min={-180}
+                max={180}
+                step={1}
+                className="prop-input"
+                style={{ width: 58, textAlign: 'center' }}
+                value={normalizeAngleDeg(selectedNativeText.rotation || 0)}
+                onChange={(e) =>
+                  onUpdateNativeText(
+                    {
+                      ...selectedNativeText,
+                      rotation: normalizeAngleDeg(Number(e.target.value) || 0),
+                      modified: true,
+                    },
+                    true
+                  )
+                }
+              />
+              <button
+                type="button"
+                className="btn icon-only"
+                style={{ width: 25, height: 25 }}
+                title="Girar +90° (Vertical hacia abajo)"
+                onClick={() =>
+                  onUpdateNativeText(
+                    {
+                      ...selectedNativeText,
+                      rotation: normalizeAngleDeg((selectedNativeText.rotation || 0) + 90),
+                      modified: true,
+                    },
+                    true
+                  )
+                }
+              >
+                <RotateCw size={12.5} />
+              </button>
+              {Boolean(selectedNativeText.rotation) && (
+                <button
+                  type="button"
+                  className="btn btn-subtle"
+                  style={{ height: 25, padding: '0 6px', fontSize: 10.5 }}
+                  title="Enderezar a 0°"
+                  onClick={() =>
+                    onUpdateNativeText(
+                      { ...selectedNativeText, rotation: 0, modified: true },
+                      true
+                    )
+                  }
+                >
+                  0°
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="prop-row">
@@ -620,6 +699,75 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
                 >
                   Centrar
                 </button>
+              </div>
+            </div>
+          )}
+
+          {(el.kind === 'text' ||
+            el.kind === 'stamp' ||
+            el.kind === 'image' ||
+            el.kind === 'signature' ||
+            el.kind === 'rect') && (
+            <div className="prop-row" style={{ marginTop: 8 }}>
+              <span className="prop-label">Rotación (°)</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                <button
+                  type="button"
+                  className="btn icon-only"
+                  style={{ width: 25, height: 25 }}
+                  title="Girar -90°"
+                  onClick={() =>
+                    onUpdateElement(
+                      el.id,
+                      { rotation: normalizeAngleDeg((el.rotation || 0) - 90) },
+                      true
+                    )
+                  }
+                >
+                  <RotateCcw size={12.5} />
+                </button>
+                <input
+                  type="number"
+                  min={-180}
+                  max={180}
+                  step={1}
+                  className="prop-input"
+                  style={{ width: 58, textAlign: 'center' }}
+                  value={normalizeAngleDeg(el.rotation || 0)}
+                  onChange={(e) =>
+                    onUpdateElement(
+                      el.id,
+                      { rotation: normalizeAngleDeg(Number(e.target.value) || 0) },
+                      true
+                    )
+                  }
+                />
+                <button
+                  type="button"
+                  className="btn icon-only"
+                  style={{ width: 25, height: 25 }}
+                  title="Girar +90°"
+                  onClick={() =>
+                    onUpdateElement(
+                      el.id,
+                      { rotation: normalizeAngleDeg((el.rotation || 0) + 90) },
+                      true
+                    )
+                  }
+                >
+                  <RotateCw size={12.5} />
+                </button>
+                {Boolean(el.rotation) && (
+                  <button
+                    type="button"
+                    className="btn btn-subtle"
+                    style={{ height: 25, padding: '0 6px', fontSize: 10.5 }}
+                    title="Enderezar a 0°"
+                    onClick={() => onUpdateElement(el.id, { rotation: 0 }, true)}
+                  >
+                    0°
+                  </button>
+                )}
               </div>
             </div>
           )}

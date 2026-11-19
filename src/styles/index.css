@@ -924,12 +924,7 @@ textarea {
 
 .native-text-box {
   position: absolute;
-  border-radius: 3px;
   cursor: grab;
-  transition: border-color 100ms ease, box-shadow 100ms ease;
-  display: flex;
-  align-items: center;
-  padding: 0 2px;
   max-width: 96%;
   box-sizing: border-box;
   z-index: 28;
@@ -937,22 +932,35 @@ textarea {
 .native-text-box:active:not(.selected) {
   cursor: grabbing;
 }
-.native-text-box.modified:not(.selected) {
-  border: 1px dashed transparent;
-}
-.native-text-box.modified:not(.selected):hover {
-  border-color: rgba(37, 99, 235, 0.65);
-  box-shadow: 0 0 0 2px var(--accent-soft);
-}
 .native-text-box.selected {
-  border: 1.5px solid var(--accent);
-  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.16), 0 0 0 3px var(--accent-soft);
   z-index: 92 !important;
   cursor: default;
 }
 .native-text-box.readonly-modified {
-  border-color: transparent;
   pointer-events: none;
+}
+.native-rotatable-stage {
+  position: relative;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  padding: 0 2px;
+  box-sizing: border-box;
+  transition: border-color 100ms ease, box-shadow 100ms ease;
+}
+.native-text-box.modified:not(.selected) .native-rotatable-stage {
+  border: 1px dashed transparent;
+}
+.native-text-box.modified:not(.selected):hover .native-rotatable-stage {
+  border-color: rgba(37, 99, 235, 0.65);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.native-text-box.selected .native-rotatable-stage {
+  border: 1.5px solid var(--accent);
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.16), 0 0 0 3px var(--accent-soft);
+}
+.native-text-box.readonly-modified .native-rotatable-stage {
+  border-color: transparent;
 }
 .native-drag-handle {
   position: absolute;
@@ -1009,7 +1017,7 @@ textarea {
   box-sizing: border-box;
 }
 
-/* Movable & Resizable Overlay Elements */
+/* Movable, Resizable & 360° Rotatable Overlay Elements */
 .overlay-item {
   position: absolute;
   cursor: grab;
@@ -1019,16 +1027,63 @@ textarea {
 .overlay-item:active {
   cursor: grabbing;
 }
-.overlay-item:hover:not(.selected) {
+.overlay-item.selected {
+  z-index: 86 !important;
+}
+.overlay-rotatable-stage {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+.overlay-item:hover:not(.selected) .overlay-rotatable-stage {
   outline: 1.5px dashed var(--accent-border);
 }
-.overlay-item.selected {
+.overlay-item.selected .overlay-rotatable-stage {
   outline: 1.5px solid var(--accent);
-  z-index: 86 !important;
 }
 .overlay-item.xray-ghost {
   opacity: 0.22 !important;
   pointer-events: none !important;
+}
+
+/* 360° Interactive Rotation Handle (Bottom-Center Stem + Knob) */
+.rotate-handle-stem {
+  position: absolute;
+  bottom: -14px;
+  left: 50%;
+  width: 1.5px;
+  height: 14px;
+  transform: translateX(-50%);
+  background: var(--accent);
+  pointer-events: none;
+  z-index: 93;
+}
+.rotate-handle-knob {
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1.8px solid var(--accent);
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.24);
+  z-index: 95;
+  transition: background-color 100ms ease, color 100ms ease, transform 100ms ease;
+}
+.rotate-handle-knob:hover {
+  background: var(--accent);
+  color: #ffffff;
+  transform: translateX(-50%) scale(1.12);
+}
+.rotate-handle-knob:active {
+  cursor: grabbing;
 }
 
 /* High-contrast quickbar color chips (visible in both Dark and Light themes) */

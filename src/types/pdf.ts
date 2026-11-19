@@ -78,6 +78,8 @@ export interface NativePdfTextItem {
   height: number;
   /** Optional user-resized column wrap width (normalized 0..1) */
   customWidth?: number;
+  /** Optional clockwise rotation angle in degrees (-180..180] */
+  rotation?: number;
   originalText: string;
   text: string;
   fontSizePt: number;
