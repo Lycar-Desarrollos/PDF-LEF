@@ -78,7 +78,9 @@ export interface NativePdfTextItem {
   height: number;
   /** Optional user-resized column wrap width (normalized 0..1) */
   customWidth?: number;
-  /** Optional clockwise rotation angle in degrees (-180..180] */
+  /** Original clockwise rotation angle in source PDF (-180..180], used by erasure patch */
+  origRotation?: number;
+  /** Current clockwise rotation angle in degrees (-180..180] */
   rotation?: number;
   originalText: string;
   text: string;
@@ -87,7 +89,10 @@ export interface NativePdfTextItem {
   fontWeight: 'normal' | 'bold';
   fontStyle: 'normal' | 'italic';
   color: string;
+  /** Sampled background color of original position (erases original PDF glyphs cleanly) */
   bgPatchColor: string;
+  /** Optional fill behind new/edited text ('transparent' by default so rotated/moved text has zero box halo) */
+  textFillColor?: string;
   deleted: boolean;
   modified: boolean;
 }

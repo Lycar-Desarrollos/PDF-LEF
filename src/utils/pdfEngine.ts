@@ -183,6 +183,25 @@ export async function extractNativeEditableTexts(
     return [pagePixels[off], pagePixels[off + 1], pagePixels[off + 2]];
   };
 
+  const findDominantRgbCluster = (samples: Array<[number, number, number]>): [number, number, number] => {
+    if (samples.length === 0) return [255, 255, 255];
+    let bestCluster: Array<[number, number, number]> = [];
+    for (const seed of samples) {
+      const neighbors = samples.filter(
+        (p) => Math.hypot(p[0] - seed[0], p[1] - seed[1], p[2] - seed[2]) <= 10
+      );
+      if (neighbors.length > bestCluster.length) {
+        bestCluster = neighbors;
+      }
+    }
+    const bgSource = bestCluster.length > 0 ? bestCluster : samples;
+    return [
+      Math.round(bgSource.reduce((s, p) => s + p[0], 0) / bgSource.length),
+      Math.round(bgSource.reduce((s, p) => s + p[1], 0) / bgSource.length),
+      Math.round(bgSource.reduce((s, p) => s + p[2], 0) / bgSource.length),
+    ];
+  };
+
   const sampleDominantBgAndInk = (
     leftPt: number,
     topPt: number,
@@ -193,40 +212,29 @@ export async function extractNativeEditableTexts(
       return { bg: [255, 255, 255], ink: [20, 22, 26] };
     }
 
-    // 1. Collect dense perimeter ring samples (28 points) around the text box & find exact dominant mode cluster
+    // 1. Collect dual concentric perimeter ring samples (inner + outer) so large glyph anti-aliasing never pollutes background color
     const ring: Array<[number, number, number]> = [];
-    const xA = leftPt - 1.4;
-    const xB = rightPt + 1.4;
-    const yA = topPt - 1.2;
-    const yB = bottomPt + 1.2;
+    for (const pad of [1.5, 3.2]) {
+      const xA = leftPt - pad;
+      const xB = rightPt + pad;
+      const yA = topPt - pad * 0.9;
+      const yB = bottomPt + pad * 0.9;
 
-    for (let i = 0; i <= 8; i++) {
-      const t = i / 8;
-      const sx = xA + (xB - xA) * t;
-      ring.push(getPixelAtPt(sx, yA));
-      ring.push(getPixelAtPt(sx, yB));
-    }
-    for (let j = 1; j <= 4; j++) {
-      const t = j / 5;
-      const sy = yA + (yB - yA) * t;
-      ring.push(getPixelAtPt(xA, sy));
-      ring.push(getPixelAtPt(xB, sy));
-    }
-
-    let bestCluster: Array<[number, number, number]> = [];
-    for (const seed of ring) {
-      const neighbors = ring.filter(
-        (p) => Math.hypot(p[0] - seed[0], p[1] - seed[1], p[2] - seed[2]) <= 9
-      );
-      if (neighbors.length > bestCluster.length) {
-        bestCluster = neighbors;
+      for (let i = 0; i <= 8; i++) {
+        const t = i / 8;
+        const sx = xA + (xB - xA) * t;
+        ring.push(getPixelAtPt(sx, yA));
+        ring.push(getPixelAtPt(sx, yB));
+      }
+      for (let j = 1; j <= 3; j++) {
+        const t = j / 4;
+        const sy = yA + (yB - yA) * t;
+        ring.push(getPixelAtPt(xA, sy));
+        ring.push(getPixelAtPt(xB, sy));
       }
     }
 
-    const bgSource = bestCluster.length > 0 ? bestCluster : ring;
-    const bgR = Math.round(bgSource.reduce((s, p) => s + p[0], 0) / bgSource.length);
-    const bgG = Math.round(bgSource.reduce((s, p) => s + p[1], 0) / bgSource.length);
-    const bgB = Math.round(bgSource.reduce((s, p) => s + p[2], 0) / bgSource.length);
+    const [bgR, bgG, bgB] = findDominantRgbCluster(ring);
     const bgLum = 0.299 * bgR + 0.587 * bgG + 0.114 * bgB;
 
     // 2. Scan interior pixels at 1.5x resolution for high-contrast glyph ink core
@@ -250,7 +258,7 @@ export async function extractNativeEditableTexts(
         const g = pagePixels[off + 1];
         const b = pagePixels[off + 2];
         const dist = Math.hypot(r - bgR, g - bgG, b - bgB);
-        if (dist > 40) {
+        if (dist > 36) {
           if (px < minPx) minPx = px;
           if (px > maxPx) maxPx = px;
           if (py < minPy) minPy = py;
@@ -282,7 +290,75 @@ export async function extractNativeEditableTexts(
 
     return {
       bg: [bgR, bgG, bgB],
-      ink: bgLum < 110 ? [255, 255, 255] : [20, 22, 26],
+      ink: bgLum < 125 ? [255, 255, 255] : [20, 22, 26],
+    };
+  };
+
+  const sampleRotatedBgAndInk = (
+    startX: number,
+    baseY: number,
+    lenPt: number,
+    ascPt: number,
+    descPt: number,
+    angleDeg: number
+  ): { bg: [number, number, number]; ink: [number, number, number] } => {
+    if (!pagePixels || cw <= 0 || ch <= 0) {
+      return { bg: [255, 255, 255], ink: [20, 22, 26] };
+    }
+    const rad = (angleDeg * Math.PI) / 180;
+    const cosA = Math.cos(rad);
+    const sinA = Math.sin(rad);
+    const toWorld = (u: number, vUp: number): [number, number] => [
+      startX + u * cosA + vUp * sinA,
+      baseY + u * sinA - vUp * cosA,
+    ];
+
+    const ring: Array<[number, number, number]> = [];
+    for (const pad of [2.2, 4.2]) {
+      for (let i = 0; i <= 12; i++) {
+        const u = (i / 12) * lenPt;
+        const [tx1, ty1] = toWorld(u, ascPt + pad);
+        const [tx2, ty2] = toWorld(u, -(descPt + pad));
+        ring.push(getPixelAtPt(tx1, ty1));
+        ring.push(getPixelAtPt(tx2, ty2));
+      }
+      const [lx, ly] = toWorld(-pad, (ascPt - descPt) * 0.5);
+      const [rx, ry] = toWorld(lenPt + pad, (ascPt - descPt) * 0.5);
+      ring.push(getPixelAtPt(lx, ly));
+      ring.push(getPixelAtPt(rx, ry));
+    }
+
+    const [bgR, bgG, bgB] = findDominantRgbCluster(ring);
+    const bgLum = 0.299 * bgR + 0.587 * bgG + 0.114 * bgB;
+
+    const inkPixels: Array<{ r: number; g: number; b: number; dist: number }> = [];
+    const uSteps = Math.max(16, Math.min(90, Math.round(lenPt)));
+    for (let iu = 0; iu <= uSteps; iu++) {
+      const u = (iu / uSteps) * lenPt;
+      for (let iv = -3; iv <= 9; iv++) {
+        const vUp = (iv / 9) * ascPt;
+        const [wx, wy] = toWorld(u, vUp);
+        const [r, g, b] = getPixelAtPt(wx, wy);
+        const dist = Math.hypot(r - bgR, g - bgG, b - bgB);
+        if (dist > 34) {
+          inkPixels.push({ r, g, b, dist });
+        }
+      }
+    }
+
+    if (inkPixels.length > 0) {
+      inkPixels.sort((a, b) => b.dist - a.dist);
+      const core = inkPixels.slice(0, Math.max(1, Math.ceil(inkPixels.length * 0.22)));
+      const rs = core.map((c) => c.r).sort((a, b) => a - b);
+      const gs = core.map((c) => c.g).sort((a, b) => a - b);
+      const bs = core.map((c) => c.b).sort((a, b) => a - b);
+      const mid = Math.floor(core.length / 2);
+      return { bg: [bgR, bgG, bgB], ink: [rs[mid], gs[mid], bs[mid]] };
+    }
+
+    return {
+      bg: [bgR, bgG, bgB],
+      ink: bgLum < 125 ? [255, 255, 255] : [20, 22, 26],
     };
   };
 
@@ -337,7 +413,17 @@ export async function extractNativeEditableTexts(
     const resolvedStyle: 'normal' | 'italic' =
       fontObj?.italic || primaryFontInfo.style === 'italic' ? 'italic' : 'normal';
 
-    const quickSample = sampleDominantBgAndInk(left, top, left + width, top + height);
+    const quickSample =
+      Math.abs(angleDeg) > 1
+        ? sampleRotatedBgAndInk(
+            left,
+            baselineY,
+            width,
+            fontHeight * 0.92,
+            fontHeight * 0.28,
+            angleDeg
+          )
+        : sampleDominantBgAndInk(left, top, left + width, top + height);
 
     fragments.push({
       left,
@@ -413,6 +499,61 @@ export async function extractNativeEditableTexts(
   const vh = Math.max(1, viewport.height);
 
   return merged.map((m, idx) => {
+    // Special branch for diagonal / vertical rotated source text (watermarks, side folios, CAD labels)
+    if (Math.abs(m.angleDeg) > 1) {
+      const asc = m.fontSize * 0.94;
+      const desc = m.fontSize * 0.3;
+      const stripH = asc + desc;
+      const stripW = m.width + 2.8;
+      const rad = (m.angleDeg * Math.PI) / 180;
+      const cosA = Math.cos(rad);
+      const sinA = Math.sin(rad);
+      const cx = m.left + m.width * 0.5 * cosA + (asc - desc) * 0.5 * sinA;
+      const cy = m.baselineY + m.width * 0.5 * sinA - (asc - desc) * 0.5 * cosA;
+
+      const rotSample = sampleRotatedBgAndInk(
+        m.left,
+        m.baselineY,
+        m.width,
+        asc,
+        desc,
+        m.angleDeg
+      );
+      const bgPatchColor = toHex(rotSample.bg[0], rotSample.bg[1], rotSample.bg[2]);
+      const textColor = toHex(rotSample.ink[0], rotSample.ink[1], rotSample.ink[2]);
+
+      const normW = Math.max(0.012, stripW / vw);
+      const normH = Math.max(0.011, stripH / vh);
+      const normX = cx / vw - normW / 2;
+      const normY = cy / vh - normH / 2;
+
+      return {
+        id: `ntxt_${pageDesc.id}_${idx}`,
+        pageId: pageDesc.id,
+        origX: normX,
+        origY: normY,
+        origWidth: normW,
+        origHeight: normH,
+        origRotation: m.angleDeg,
+        x: normX,
+        y: normY,
+        width: normW,
+        height: normH,
+        rotation: m.angleDeg,
+        originalText: m.str,
+        text: m.str,
+        fontSizePt: Math.round(m.fontSize * 10) / 10,
+        fontFamily: m.family,
+        fontWeight: m.weight,
+        fontStyle: m.style,
+        color: textColor,
+        bgPatchColor,
+        textFillColor: 'transparent',
+        deleted: false,
+        modified: false,
+      };
+    }
+
     // 1. Clamp BOTH vertical AND same-line horizontal bounds against neighboring spans so adjacent labels (e.g. "Modalidad:") are never clipped
     let minAllowedTop = Math.max(0, m.top - m.fontSize * 0.14);
     let maxAllowedBottom = Math.min(vh, m.top + m.height + m.fontSize * 0.12);
@@ -422,6 +563,7 @@ export async function extractNativeEditableTexts(
     for (let j = 0; j < merged.length; j++) {
       if (j === idx) continue;
       const other = merged[j];
+      if (Math.abs(other.angleDeg) > 1) continue;
       const sameLine = Math.abs(other.baselineY - m.baselineY) <= m.fontSize * 0.42;
 
       if (sameLine) {
@@ -482,11 +624,12 @@ export async function extractNativeEditableTexts(
       origY: normY,
       origWidth: normW,
       origHeight: normH,
+      origRotation: 0,
       x: normX,
       y: normY,
       width: normW,
       height: normH,
-      rotation: m.angleDeg || 0,
+      rotation: 0,
       originalText: m.str,
       text: m.str,
       fontSizePt: Math.round(m.fontSize * 10) / 10,
@@ -495,6 +638,7 @@ export async function extractNativeEditableTexts(
       fontStyle: m.style,
       color: textColor,
       bgPatchColor,
+      textFillColor: 'transparent',
       deleted: false,
       modified: false,
     };
@@ -535,6 +679,12 @@ export function hasNativeTextMeaningfulDiff(
   if (
     (candidate.bgPatchColor || '#ffffff').toLowerCase() !==
     (baseline.bgPatchColor || '#ffffff').toLowerCase()
+  ) {
+    return true;
+  }
+  if (
+    (candidate.textFillColor || 'transparent').toLowerCase() !==
+    (baseline.textFillColor || 'transparent').toLowerCase()
   ) {
     return true;
   }

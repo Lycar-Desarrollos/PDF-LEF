@@ -1675,18 +1675,23 @@ export const App: React.FC = () => {
                   )
                 }
                 onRotatePages={(indices, delta) =>
-                  mutateActiveTab(
-                    (t) => ({
+                  mutateActiveTab((t) => {
+                    const nextCache = { ...t.extractedPageTexts };
+                    indices.forEach((idx) => {
+                      const pid = t.pages[idx]?.id;
+                      if (pid) delete nextCache[pid];
+                    });
+                    return {
                       ...t,
                       isModified: true,
+                      extractedPageTexts: nextCache,
                       pages: t.pages.map((p, i) =>
                         indices.includes(i)
                           ? { ...p, rotation: (((p.rotation + delta) % 360) + 360) % 360 }
                           : p
                       ),
-                    }),
-                    true
-                  )
+                    };
+                  }, true)
                 }
                 onDuplicatePages={(indices) =>
                   mutateActiveTab((t) => {
@@ -1770,16 +1775,19 @@ export const App: React.FC = () => {
                     }, true)
                   }
                   onRotatePage={(idx) =>
-                    mutateActiveTab(
-                      (t) => ({
+                    mutateActiveTab((t) => {
+                      const nextCache = { ...t.extractedPageTexts };
+                      const pid = t.pages[idx]?.id;
+                      if (pid) delete nextCache[pid];
+                      return {
                         ...t,
                         isModified: true,
+                        extractedPageTexts: nextCache,
                         pages: t.pages.map((p, i) =>
                           i === idx ? { ...p, rotation: (p.rotation + 90) % 360 } : p
                         ),
-                      }),
-                      true
-                    )
+                      };
+                    }, true)
                   }
                   onDeletePage={(idx) =>
                     mutateActiveTab((t) => {

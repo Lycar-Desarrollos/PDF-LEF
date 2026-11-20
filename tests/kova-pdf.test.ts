@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, StandardFonts, degrees, rgb } from 'pdf-lib';
 import JSZip from 'jszip';
 
 import {
@@ -405,7 +405,7 @@ test('7. Windows Tauri v2 High-DPI config, NSIS, ICO headers & spellCheck={false
   const tauriConf = JSON.parse(readFileSync(join(ROOT, 'src-tauri/tauri.conf.json'), 'utf8'));
   assert.equal(tauriConf.productName, 'Kova PDF');
   assert.equal(tauriConf.mainBinaryName, 'KovaPDF');
-  assert.equal(tauriConf.version, '2.3.4');
+  assert.equal(tauriConf.version, '2.3.5');
   assert.equal(tauriConf.identifier, 'studio.kova.pdf');
   assert.equal(tauriConf.bundle.publisher, 'Kova Studio');
   assert.equal(tauriConf.bundle.windows.allowDowngrades, true);
@@ -573,22 +573,22 @@ test('10. Global Internet Auto-Updater & Remote Manifest Control (any network wo
   const { CURRENT_APP_VERSION, isNewerVersion, parseSemver } = await import(
     '../src/utils/updater.ts'
   );
-  assert.equal(CURRENT_APP_VERSION, '2.3.4');
-  assert.deepEqual(parseSemver('v2.3.4'), [2, 3, 4]);
-  assert.equal(isNewerVersion('v2.3.4', '2.0.0'), true);
-  assert.equal(isNewerVersion('v2.3.4', '2.3.3'), true);
-  assert.equal(isNewerVersion('v2.3.4', '2.3.4'), false);
-  assert.equal(isNewerVersion('v2.3.3', '2.3.4'), false);
+  assert.equal(CURRENT_APP_VERSION, '2.3.5');
+  assert.deepEqual(parseSemver('v2.3.5'), [2, 3, 5]);
+  assert.equal(isNewerVersion('v2.3.5', '2.0.0'), true);
+  assert.equal(isNewerVersion('v2.3.5', '2.3.4'), true);
+  assert.equal(isNewerVersion('v2.3.5', '2.3.5'), false);
+  assert.equal(isNewerVersion('v2.3.4', '2.3.5'), false);
 
   const manifest = JSON.parse(readFileSync(join(ROOT, 'website/update-manifest.json'), 'utf8'));
   assert.equal(manifest.product, 'Kova PDF');
-  assert.equal(manifest.version, '2.3.4');
+  assert.equal(manifest.version, '2.3.5');
   assert.equal(manifest.minRequiredVersion, '2.2.1');
   assert.equal(typeof manifest.mandatory, 'boolean');
   assert.equal(manifest.autoInstall, true);
   assert.equal(typeof manifest.allowDowngrade, 'boolean');
-  assert.ok(manifest.exeUrl.endsWith('Kova.PDF_2.3.4_x64-setup.exe'));
-  assert.ok(manifest.msiUrl.endsWith('Kova.PDF_2.3.4_x64_en-US.msi'));
+  assert.ok(manifest.exeUrl.endsWith('Kova.PDF_2.3.5_x64-setup.exe'));
+  assert.ok(manifest.msiUrl.endsWith('Kova.PDF_2.3.5_x64_en-US.msi'));
 });
 
 test('11. Inline Bold+Regular separation on #F4F6F9 gray cards, untouched-if-unchanged guarantee & CREATE_NO_WINDOW', async () => {
@@ -1047,7 +1047,7 @@ test('14. Clean Sheet Print Engine (zero app UI / zero tauri.localhost), Native 
   assert.equal(settingsTsx.includes('toggle-switch'), false);
 
   const tauriConf = JSON.parse(readFileSync(join(ROOT, 'src-tauri/tauri.conf.json'), 'utf8'));
-  assert.equal(tauriConf.version, '2.3.4');
+  assert.equal(tauriConf.version, '2.3.5');
   assert.equal(tauriConf.bundle.windows.nsis.installMode, 'currentUser');
 
   const rustLib = readFileSync(join(ROOT, 'src-tauri/src/lib.rs'), 'utf8');
@@ -1299,6 +1299,71 @@ test('16. v2.3.4 Audit: 360° Free & Snap Rotation for Native PDF Text, Free Tex
   assert.equal(margenItem.rotation, 90, 'Vertical +90° free text box must round-trip at +90°');
   assert.equal(stampItem.rotation, -25, 'Diagonal -25° stamp must round-trip at -25°');
 });
+
+test('17. v2.3.5 Audit: Gray #999999 Diagonal DOCUMENTO DE PRUEBA Erasure (origRotation), Transparent Text Fill & Self-Audit Safeguards', async () => {
+  // 1. Build exact reproduction PDF from user screenshot: #999999 gray sheet + white diagonal "DOCUMENTO DE PRUEBA" (+55° clockwise)
+  const doc = await PDFDocument.create();
+  const page = doc.addPage([595.28, 841.89]);
+  const boldFont = await doc.embedFont(StandardFonts.HelveticaBold);
+
+  page.drawRectangle({
+    x: 28,
+    y: 28,
+    width: 539.28,
+    height: 785.89,
+    color: rgb(0.6, 0.6, 0.6), // #999999
+  });
+  page.drawText('DOCUMENTO DE PRUEBA', {
+    x: 135,
+    y: 660,
+    size: 32,
+    font: boldFont,
+    color: rgb(1, 1, 1), // #FFFFFF
+    rotate: degrees(-55), // +55° clockwise in screen space
+  });
+
+  const grayPdfBytes = await doc.save();
+  const grayTab = await loadPdfIntoTabDocument('Prueba_Gris_Diagonal.pdf', grayPdfBytes, DEFAULT_SETTINGS);
+  const items = await extractPageTextsForTab(grayTab, 0);
+  const diagItem = items.find((i) => i.text.includes('DOCUMENTO DE PRUEBA'));
+  assert.ok(diagItem, 'Diagonal watermark text on gray sheet must be extracted');
+  assert.equal(diagItem.origRotation, 55, 'origRotation must capture +55° source diagonal angle');
+  assert.equal(diagItem.rotation, 55, 'Initial rotation must match +55° source diagonal angle');
+  assert.equal(
+    diagItem.textFillColor,
+    'transparent',
+    'textFillColor must default to transparent so zero white halo appears behind rotated letters'
+  );
+
+  // 2. Edit & rotate to -35° over the #999999 gray card with transparent textFillColor, compile & verify clean round-trip
+  grayTab.nativeTextEdits[diagItem.id] = {
+    ...diagItem,
+    text: 'DOCUMENTO VALIDADO',
+    rotation: -35,
+    bgPatchColor: '#999999',
+    textFillColor: 'transparent',
+    modified: true,
+  };
+
+  const compiledGray = await compileTabToPdfBytes(grayTab);
+  const reloadedGray = await loadPdfIntoTabDocument('Prueba_Gris_Validado.pdf', compiledGray, DEFAULT_SETTINGS);
+  const reItems = await extractPageTextsForTab(reloadedGray, 0);
+  const validado = reItems.find((i) => i.text.includes('DOCUMENTO VALIDADO'));
+  assert.ok(validado, 'Edited diagonal text on gray sheet must compile and reload cleanly');
+  assert.equal(validado.rotation, -35, 'New -35° angle must round-trip cleanly');
+
+  // 3. Static audit of self-audit UX safeguards in PdfCanvasStage.tsx & SignatureModal.tsx
+  const stageCode = readFileSync(join(ROOT, 'src/components/PdfCanvasStage.tsx'), 'utf8');
+  assert.equal(
+    stageCode.includes('rgba(255,255,255,0.92)'),
+    false,
+    'Inline text editing must not force an opaque white background that hides white text on gray/dark pages'
+  );
+  const sigCode = readFileSync(join(ROOT, 'src/components/SignatureModal.tsx'), 'utf8');
+  assert.match(sigCode, /Segoe Script/, 'Typed signatures must use offline Windows cursive font stack');
+  assert.match(sigCode, /measureText\(cleanName\)/, 'Typed signatures must auto-fit long full names');
+});
+
 
 
 

@@ -110,16 +110,24 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
       return padRef.current.toDataURL('image/png');
     }
     if (tabMode === 'type') {
-      if (!typedText.trim()) return null;
+      const cleanName = typedText.trim();
+      if (!cleanName) return null;
       const c = document.createElement('canvas');
-      c.width = 620;
+      c.width = 680;
       c.height = 190;
       const ctx = c.getContext('2d');
       if (!ctx) return null;
+      const cursiveStack = "'Segoe Script', 'Lucida Handwriting', 'Brush Script MT', Georgia, cursive";
+      let px = 64;
+      while (px > 22) {
+        ctx.font = `700 ${px}px ${cursiveStack}`;
+        if (ctx.measureText(cleanName).width <= c.width - 52) break;
+        px -= 3;
+      }
       ctx.fillStyle = inkColor;
-      ctx.font = "700 68px 'Dancing Script', 'Caveat', Georgia, serif";
       ctx.textBaseline = 'middle';
-      ctx.fillText(typedText.trim(), 28, 98);
+      ctx.textAlign = 'center';
+      ctx.fillText(cleanName, c.width / 2, 98);
       return c.toDataURL('image/png');
     }
     return uploadPreview;

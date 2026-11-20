@@ -14,6 +14,7 @@ import {
   Move,
   PanelRightClose,
   Pencil,
+  Pipette,
   RotateCcw,
   RotateCw,
   Trash2,
@@ -27,6 +28,7 @@ import type {
   PdfTabDocument,
   ToolModalKind,
 } from '../types/pdf';
+import { isEyeDropperSupported, pickScreenColorHex } from '../utils/colorPicker';
 import { removeSignatureBackground } from '../utils/imageUtils';
 import { normalizeAngleDeg } from '../utils/rotationMath';
 import { FontPickerControl } from './FontPickerControl';
@@ -72,8 +74,8 @@ const SWATCH_COLORS = [
 
 const PATCH_BG_SWATCHES = [
   '#FFFFFF',
-  '#F8FAFC',
   '#F1F5F9',
+  '#999999',
   '#4A4A4A',
   '#1E293B',
   '#0F172A',
@@ -376,7 +378,29 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
         </div>
 
         <div className="inspector-section">
-          <div className="inspector-title">Color del Texto</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <div className="inspector-title" style={{ marginBottom: 0 }}>Color del Texto</div>
+            {isEyeDropperSupported() && (
+              <button
+                type="button"
+                className="btn btn-subtle"
+                style={{ height: 22, padding: '0 6px', fontSize: 10.5 }}
+                title="Copiar color exacto desde cualquier punto de la pantalla"
+                onClick={async () => {
+                  const picked = await pickScreenColorHex();
+                  if (picked) {
+                    onUpdateNativeText(
+                      { ...selectedNativeText, color: picked, modified: true },
+                      true
+                    );
+                  }
+                }}
+              >
+                <Pipette size={11.5} />
+                <span>Gotero</span>
+              </button>
+            )}
+          </div>
           <div className="color-swatches">
             {SWATCH_COLORS.map((col) => (
               <button
@@ -409,8 +433,91 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
             />
           </div>
 
-          <div className="inspector-title" style={{ marginTop: 12 }}>
-            Color de Fondo (Parche)
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 6 }}>
+            <div className="inspector-title" style={{ marginBottom: 0 }}>
+              Fondo detrás del Texto
+            </div>
+            <button
+              type="button"
+              className={`btn ${
+                !selectedNativeText.textFillColor ||
+                selectedNativeText.textFillColor === 'transparent'
+                  ? 'btn-primary'
+                  : 'btn-subtle'
+              }`}
+              style={{ height: 22, padding: '0 7px', fontSize: 10.5 }}
+              onClick={() =>
+                onUpdateNativeText(
+                  { ...selectedNativeText, textFillColor: 'transparent', modified: true },
+                  true
+                )
+              }
+            >
+              Transparente
+            </button>
+          </div>
+          <div className="color-swatches">
+            {PATCH_BG_SWATCHES.map((col) => (
+              <button
+                key={`fill_${col}`}
+                type="button"
+                className={`swatch-btn ${
+                  (selectedNativeText.textFillColor || '').toLowerCase() ===
+                  col.toLowerCase()
+                    ? 'active'
+                    : ''
+                }`}
+                style={{ backgroundColor: col }}
+                onClick={() =>
+                  onUpdateNativeText(
+                    { ...selectedNativeText, textFillColor: col, modified: true },
+                    true
+                  )
+                }
+              />
+            ))}
+            <input
+              type="color"
+              value={
+                selectedNativeText.textFillColor &&
+                selectedNativeText.textFillColor !== 'transparent'
+                  ? selectedNativeText.textFillColor
+                  : currentPatchBg
+              }
+              onChange={(e) =>
+                onUpdateNativeText(
+                  { ...selectedNativeText, textFillColor: e.target.value, modified: true },
+                  true
+                )
+              }
+              style={{ width: 24, height: 24, border: 'none', padding: 0, cursor: 'pointer' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 6 }}>
+            <div className="inspector-title" style={{ marginBottom: 0 }}>
+              Borrador de Posición Original
+            </div>
+            {isEyeDropperSupported() && (
+              <button
+                type="button"
+                className="btn btn-subtle"
+                style={{ height: 22, padding: '0 6px', fontSize: 10.5 }}
+                title="Igualar borrador con el color exacto del fondo de la hoja"
+                onClick={async () => {
+                  const picked = await pickScreenColorHex();
+                  if (picked) {
+                    onUpdateNativeText(
+                      { ...selectedNativeText, bgPatchColor: picked, modified: true },
+                      true
+                    );
+                  }
+                }}
+              >
+                <Pipette size={11.5} />
+                <span>Igualar</span>
+              </button>
+            )}
           </div>
           <div className="color-swatches">
             {PATCH_BG_SWATCHES.map((col) => (
@@ -877,7 +984,26 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
 
         {el.kind !== 'image' && el.kind !== 'signature' && el.kind !== 'redact' && (
           <div className="inspector-section">
-            <div className="inspector-title">Color Principal</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <div className="inspector-title" style={{ marginBottom: 0 }}>Color Principal</div>
+              {isEyeDropperSupported() && (
+                <button
+                  type="button"
+                  className="btn btn-subtle"
+                  style={{ height: 22, padding: '0 6px', fontSize: 10.5 }}
+                  title="Copiar color exacto desde la pantalla"
+                  onClick={async () => {
+                    const picked = await pickScreenColorHex();
+                    if (picked) {
+                      onUpdateElement(el.id, { color: picked }, true);
+                    }
+                  }}
+                >
+                  <Pipette size={11.5} />
+                  <span>Gotero</span>
+                </button>
+              )}
+            </div>
             <div className="color-swatches">
               {SWATCH_COLORS.map((col) => (
                 <button
@@ -897,6 +1023,59 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
                 style={{ width: 24, height: 24, border: 'none', padding: 0, cursor: 'pointer' }}
               />
             </div>
+
+            {el.kind === 'text' && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 6 }}>
+                  <div className="inspector-title" style={{ marginBottom: 0 }}>
+                    Fondo de Caja
+                  </div>
+                  <button
+                    type="button"
+                    className={`btn ${
+                      !el.backgroundColor || el.backgroundColor === 'transparent'
+                        ? 'btn-primary'
+                        : 'btn-subtle'
+                    }`}
+                    style={{ height: 22, padding: '0 7px', fontSize: 10.5 }}
+                    onClick={() =>
+                      onUpdateElement(el.id, { backgroundColor: 'transparent' }, true)
+                    }
+                  >
+                    Transparente
+                  </button>
+                </div>
+                <div className="color-swatches">
+                  {PATCH_BG_SWATCHES.map((col) => (
+                    <button
+                      key={`elbg_${col}`}
+                      type="button"
+                      className={`swatch-btn ${
+                        (el.backgroundColor || '').toLowerCase() === col.toLowerCase()
+                          ? 'active'
+                          : ''
+                      }`}
+                      style={{ backgroundColor: col }}
+                      onClick={() =>
+                        onUpdateElement(el.id, { backgroundColor: col }, true)
+                      }
+                    />
+                  ))}
+                  <input
+                    type="color"
+                    value={
+                      el.backgroundColor && el.backgroundColor !== 'transparent'
+                        ? el.backgroundColor
+                        : '#ffffff'
+                    }
+                    onChange={(e) =>
+                      onUpdateElement(el.id, { backgroundColor: e.target.value }, true)
+                    }
+                    style={{ width: 24, height: 24, border: 'none', padding: 0, cursor: 'pointer' }}
+                  />
+                </div>
+              </>
+            )}
           </div>
         )}
 

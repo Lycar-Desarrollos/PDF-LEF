@@ -6,10 +6,12 @@ import {
   Copy,
   GripHorizontal,
   GripVertical,
+  Pipette,
   RotateCcw,
   RotateCw,
   Trash2,
   Wand2,
+  X,
 } from 'lucide-react';
 import type {
   ActiveTool,
@@ -22,6 +24,11 @@ import type {
   PdfTabDocument,
   WorkspaceMode,
 } from '../types/pdf';
+import {
+  isEyeDropperSupported,
+  pickScreenColorHex,
+  sampleCanvasColorAtNorm,
+} from '../utils/colorPicker';
 import { canvasFontForChoice, cssFontForChoice } from '../utils/fontRegistry';
 import {
   computeRelativeDragRotationDeg,
@@ -908,6 +915,16 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
 
     if (activeTool === 'add-text') {
       const newId = `el_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      const bgSample = sampleCanvasColorAtNorm(canvasRef.current, nx, ny);
+      const isDefaultDarkInk =
+        settings.defaultTextColor.toLowerCase() === '#111318' ||
+        settings.defaultTextColor.toLowerCase() === '#000000' ||
+        settings.defaultTextColor.toLowerCase() === '#0f172a';
+      const smartInkColor =
+        bgSample && bgSample.luminance < 118 && isDefaultDarkInk
+          ? '#FFFFFF'
+          : settings.defaultTextColor;
+
       const newEl: PdfOverlayElement = {
         id: newId,
         pageId: pageDesc.id,
@@ -925,7 +942,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
         fontWeight: 'normal',
         fontStyle: 'normal',
         textAlign: 'left',
-        color: settings.defaultTextColor,
+        color: smartInkColor,
         backgroundColor: 'transparent',
       };
       onAddOverlayElement(newEl);
@@ -1439,19 +1456,24 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
               nt.pageId === pageDesc.id &&
               (nt.modified || nt.deleted || selectedNativeTextId === nt.id)
           )
-          .map((nt) => (
-            <div
-              key={`patch_${nt.id}`}
-              className="native-text-patch"
-              style={{
-                left: `calc(${nt.origX * 100}% - 0.5px)`,
-                top: `calc(${nt.origY * 100}% - 0.5px)`,
-                width: `calc(${nt.origWidth * 100}% + 1px)`,
-                height: `calc(${nt.origHeight * 100}% + 1px)`,
-                backgroundColor: nt.bgPatchColor || '#ffffff',
-              }}
-            />
-          ))}
+          .map((nt) => {
+            const origRot = normalizeAngleDeg(nt.origRotation || 0);
+            return (
+              <div
+                key={`patch_${nt.id}`}
+                className="native-text-patch"
+                style={{
+                  left: `calc(${nt.origX * 100}% - 1px)`,
+                  top: `calc(${nt.origY * 100}% - 1px)`,
+                  width: `calc(${nt.origWidth * 100}% + 2px)`,
+                  height: `calc(${nt.origHeight * 100}% + 2px)`,
+                  backgroundColor: nt.bgPatchColor || '#ffffff',
+                  transform: origRot ? `rotate(${origRot}deg)` : undefined,
+                  transformOrigin: 'center center',
+                }}
+              />
+            );
+          })}
 
         {/* 2. Editable & Movable Native PDF Text Blocks */}
         {mergedNativeItems
@@ -1460,10 +1482,12 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
             const isSelected = selectedNativeTextId === nt.id;
             const isEditTool = isEditableMode && activeTool === 'edit-pdf-text';
             const scaledFontPx = Math.max(8, nt.fontSizePt * tab.zoom);
-            const maxAvailPx = Math.max(48, (0.972 - nt.x) * boxSize.w);
+            const maxAvailPx = nt.origRotation
+              ? Math.max(96, Math.max(nt.width * boxSize.w + 48, boxSize.w * 0.85))
+              : Math.max(48, (0.972 - Math.max(0, nt.x)) * boxSize.w);
             const targetWrapPx =
               typeof nt.customWidth === 'number' && nt.customWidth > 0.03
-                ? Math.min(maxAvailPx, Math.max(48, nt.customWidth * boxSize.w))
+                ? Math.min(boxSize.w * 0.96, Math.max(48, nt.customWidth * boxSize.w))
                 : maxAvailPx;
             const measured = measureTextLayoutPx(
               nt.text,
@@ -1478,6 +1502,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                 ? targetWrapPx
                 : Math.min(maxAvailPx, Math.max(measured.naturalWidthPx, 48));
             const visualRows = measured.rows;
+            const ntRot = normalizeAngleDeg(nt.rotation || 0);
 
             // Case A: Unmodified text that is NOT currently selected
             if (!nt.modified && !isSelected) {
@@ -1492,6 +1517,8 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                     top: `${nt.y * 100}%`,
                     width: `${nt.width * 100}%`,
                     height: `${nt.height * 100}%`,
+                    transform: ntRot ? `rotate(${ntRot}deg)` : undefined,
+                    transformOrigin: 'center center',
                   }}
                   title="Clic para editar texto · Arrastra para moverlo"
                   onMouseDown={(e) => startMoveNativeText(e, nt, true)}
@@ -1502,22 +1529,33 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
             // Case B: Actively selected for editing OR Modified text item
             const isNearTop = nt.y < 0.095;
             const isNearRight = nt.x > 0.54;
-            const bgSolid = nt.bgPatchColor || '#ffffff';
-
-            const ntRot = normalizeAngleDeg(nt.rotation || 0);
+            const hasTextFill = Boolean(
+              nt.textFillColor && nt.textFillColor !== 'transparent'
+            );
+            const activeTextBg = hasTextFill ? nt.textFillColor! : 'transparent';
 
             return (
               <div
                 key={nt.id}
                 className={`native-text-box ${nt.modified ? 'modified' : ''} ${
                   isSelected ? 'selected' : ''
-                } ${!isEditTool && !isSelected ? 'readonly-modified' : ''}`}
+                } ${!isEditableMode ? 'readonly-modified' : ''}`}
                 style={{
                   left: `${nt.x * 100}%`,
                   top: `${nt.y * 100}%`,
-                  maxWidth: `${Math.max(5, (0.972 - nt.x) * 100)}%`,
+                  maxWidth: nt.origRotation
+                    ? undefined
+                    : `${Math.max(5, (0.972 - Math.max(0, nt.x)) * 100)}%`,
                 }}
                 onMouseDown={(e) => {
+                  if (!isEditableMode) return;
+                  if (!isEditTool) {
+                    e.stopPropagation();
+                    onActivateEditPdfText?.();
+                    onSelectElement(null);
+                    onSelectNativeText(nt.id);
+                    return;
+                  }
                   if (!isSelected || e.altKey) {
                     startMoveNativeText(e, nt, !isSelected);
                     return;
@@ -1659,33 +1697,72 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                       />
                     </label>
 
+                    {isEyeDropperSupported() && (
+                      <button
+                        type="button"
+                        className="btn icon-only"
+                        style={{ width: 22, height: 22 }}
+                        title="Cuentagotas: copiar cualquier color exacto de la hoja para la letra"
+                        onClick={async () => {
+                          const picked = await pickScreenColorHex();
+                          if (picked) {
+                            onUpdateNativeTextItem(
+                              { ...nt, color: picked, modified: true },
+                              true
+                            );
+                          }
+                        }}
+                      >
+                        <Pipette size={11.5} />
+                      </button>
+                    )}
+
                     <label
                       className="quickbar-color-chip"
-                      title="Color del fondo (parche)"
+                      title="Color de caja detrás del texto (Transparente por defecto)"
                     >
                       <span
                         style={{
                           width: 11,
                           height: 11,
                           borderRadius: 2.5,
-                          backgroundColor: bgSolid,
+                          background: hasTextFill
+                            ? activeTextBg
+                            : 'repeating-conic-gradient(#cbd5e1 0% 25%, #ffffff 0% 50%) 50% / 6px 6px',
                           border: '1px solid rgba(148,163,184,0.75)',
                           display: 'inline-block',
                         }}
                       />
-                      <span style={{ fontSize: 10 }}>Fondo</span>
+                      <span style={{ fontSize: 10 }}>Caja</span>
                       <input
                         type="color"
-                        value={bgSolid}
+                        value={hasTextFill ? activeTextBg : nt.bgPatchColor || '#ffffff'}
                         onChange={(e) =>
                           onUpdateNativeTextItem(
-                            { ...nt, bgPatchColor: e.target.value, modified: true },
+                            { ...nt, textFillColor: e.target.value, modified: true },
                             true
                           )
                         }
                         style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer' }}
                       />
                     </label>
+
+                    {hasTextFill && (
+                      <button
+                        type="button"
+                        className="btn icon-only"
+                        style={{ width: 20, height: 22 }}
+                        title="Quitar fondo de caja (dejar solo las letras transparentes)"
+                        onClick={() =>
+                          onUpdateNativeTextItem(
+                            { ...nt, textFillColor: 'transparent', modified: true },
+                            true
+                          )
+                        }
+                      >
+                        <X size={11} />
+                      </button>
+                    )}
 
                     <div style={{ width: 1, height: 16, background: 'var(--border-subtle)', margin: '0 2px' }} />
 
@@ -1759,7 +1836,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                   className="native-rotatable-stage"
                   style={{
                     minHeight: `${Math.max(14, nt.height * boxSize.h)}px`,
-                    backgroundColor: bgSolid,
+                    backgroundColor: activeTextBg,
                     transform: ntRot ? `rotate(${ntRot}deg)` : undefined,
                     transformOrigin: 'center center',
                   }}
@@ -1833,7 +1910,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                         fontWeight: nt.fontWeight,
                         fontStyle: nt.fontStyle,
                         color: nt.color,
-                        backgroundColor: bgSolid,
+                        backgroundColor: activeTextBg,
                         width: `${finalWidthPx}px`,
                       }}
                     />
@@ -1852,7 +1929,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                         maxWidth: `${targetWrapPx}px`,
                         width: nt.customWidth ? `${targetWrapPx}px` : undefined,
                         lineHeight: 1.18,
-                        backgroundColor: bgSolid,
+                        backgroundColor: activeTextBg,
                       }}
                     >
                       {nt.text}
@@ -1924,23 +2001,192 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                   onMouseDown={(e) => e.stopPropagation()}
                 >
                   {el.kind === 'text' && (
-                    <FontPickerControl
-                      compact
-                      selectWidth={98}
-                      value={el.fontFamily || 'sans'}
-                      customFonts={customFonts}
-                      onChange={(nextFamily) =>
-                        onUpdateOverlayElement(el.id, { fontFamily: nextFamily }, true)
-                      }
-                      onUploadFiles={
-                        onUploadCustomFontForTarget
-                          ? (files) =>
-                              onUploadCustomFontForTarget(files, (choice) =>
-                                onUpdateOverlayElement(el.id, { fontFamily: choice }, true)
-                              )
-                          : undefined
-                      }
-                    />
+                    <>
+                      <FontPickerControl
+                        compact
+                        selectWidth={94}
+                        value={el.fontFamily || 'sans'}
+                        customFonts={customFonts}
+                        onChange={(nextFamily) =>
+                          onUpdateOverlayElement(el.id, { fontFamily: nextFamily }, true)
+                        }
+                        onUploadFiles={
+                          onUploadCustomFontForTarget
+                            ? (files) =>
+                                onUploadCustomFontForTarget(files, (choice) =>
+                                  onUpdateOverlayElement(el.id, { fontFamily: choice }, true)
+                                )
+                            : undefined
+                        }
+                      />
+                      <button
+                        type="button"
+                        className="btn icon-only"
+                        style={{ width: 22, height: 22, fontSize: 10, fontWeight: 700 }}
+                        title="Reducir tamaño de letra (A-)"
+                        onClick={() =>
+                          onUpdateOverlayElement(
+                            el.id,
+                            { fontSizePt: Math.max(6, (el.fontSizePt || 12) - 1) },
+                            true
+                          )
+                        }
+                      >
+                        A-
+                      </button>
+                      <span
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: 600,
+                          padding: '0 2px',
+                          color: 'var(--text-muted)',
+                        }}
+                      >
+                        {el.fontSizePt || 12}pt
+                      </span>
+                      <button
+                        type="button"
+                        className="btn icon-only"
+                        style={{ width: 22, height: 22, fontSize: 10, fontWeight: 700 }}
+                        title="Aumentar tamaño de letra (A+)"
+                        onClick={() => {
+                          const nextPt = Math.min(96, (el.fontSizePt || 12) + 1);
+                          const nextPx = Math.max(8, nextPt * tab.zoom);
+                          const m = measureTextLayoutPx(
+                            el.text || ' ',
+                            nextPx,
+                            el.fontFamily || 'sans',
+                            el.fontWeight || 'normal',
+                            el.fontStyle || 'normal',
+                            Math.max(36, el.width * boxSize.w - 10)
+                          );
+                          const needH = (m.rows * nextPx * 1.28 + 10) / Math.max(1, boxSize.h);
+                          onUpdateOverlayElement(
+                            el.id,
+                            {
+                              fontSizePt: nextPt,
+                              height: Math.max(el.height, Math.min(0.95, needH)),
+                            },
+                            true
+                          );
+                        }}
+                      >
+                        A+
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn icon-only ${el.fontWeight === 'bold' ? 'active' : ''}`}
+                        style={{ width: 22, height: 22 }}
+                        title="Alternar negrita"
+                        onClick={() =>
+                          onUpdateOverlayElement(
+                            el.id,
+                            { fontWeight: el.fontWeight === 'bold' ? 'normal' : 'bold' },
+                            true
+                          )
+                        }
+                      >
+                        <Bold size={11.5} />
+                      </button>
+                      <label className="quickbar-color-chip" title="Color del texto (A)">
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            lineHeight: 1,
+                          }}
+                        >
+                          <span>A</span>
+                          <span
+                            style={{
+                              width: 12,
+                              height: 3,
+                              borderRadius: 1.5,
+                              backgroundColor: el.color || '#111318',
+                              boxShadow: '0 0 0 1px rgba(148,163,184,0.45)',
+                              marginTop: 1,
+                            }}
+                          />
+                        </span>
+                        <input
+                          type="color"
+                          value={el.color || '#111318'}
+                          onChange={(e) =>
+                            onUpdateOverlayElement(el.id, { color: e.target.value }, true)
+                          }
+                          style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer' }}
+                        />
+                      </label>
+                      {isEyeDropperSupported() && (
+                        <button
+                          type="button"
+                          className="btn icon-only"
+                          style={{ width: 22, height: 22 }}
+                          title="Cuentagotas: copiar color exacto de la hoja"
+                          onClick={async () => {
+                            const picked = await pickScreenColorHex();
+                            if (picked) {
+                              onUpdateOverlayElement(el.id, { color: picked }, true);
+                            }
+                          }}
+                        >
+                          <Pipette size={11.5} />
+                        </button>
+                      )}
+                      <label
+                        className="quickbar-color-chip"
+                        title="Color de fondo de caja (Transparente por defecto)"
+                      >
+                        <span
+                          style={{
+                            width: 11,
+                            height: 11,
+                            borderRadius: 2.5,
+                            background:
+                              el.backgroundColor && el.backgroundColor !== 'transparent'
+                                ? el.backgroundColor
+                                : 'repeating-conic-gradient(#cbd5e1 0% 25%, #ffffff 0% 50%) 50% / 6px 6px',
+                            border: '1px solid rgba(148,163,184,0.75)',
+                            display: 'inline-block',
+                          }}
+                        />
+                        <span style={{ fontSize: 10 }}>Caja</span>
+                        <input
+                          type="color"
+                          value={
+                            el.backgroundColor && el.backgroundColor !== 'transparent'
+                              ? el.backgroundColor
+                              : '#ffffff'
+                          }
+                          onChange={(e) =>
+                            onUpdateOverlayElement(
+                              el.id,
+                              { backgroundColor: e.target.value },
+                              true
+                            )
+                          }
+                          style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer' }}
+                        />
+                      </label>
+                      {el.backgroundColor && el.backgroundColor !== 'transparent' && (
+                        <button
+                          type="button"
+                          className="btn icon-only"
+                          style={{ width: 20, height: 22 }}
+                          title="Dejar caja transparente (sin fondo)"
+                          onClick={() =>
+                            onUpdateOverlayElement(
+                              el.id,
+                              { backgroundColor: 'transparent' },
+                              true
+                            )
+                          }
+                        >
+                          <X size={11} />
+                        </button>
+                      )}
+                    </>
                   )}
                   {el.kind === 'image' && el.dataUrl && (
                     <button
@@ -2084,9 +2330,39 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                     spellCheck={false}
                     autoCorrect="off"
                     value={el.text || ''}
-                    onChange={(e) =>
-                      onUpdateOverlayElement(el.id, { text: e.target.value }, true)
-                    }
+                    onFocus={(ev) => {
+                      if (ev.currentTarget.value === 'Escribe tu texto aquí') {
+                        ev.currentTarget.select();
+                      }
+                    }}
+                    onKeyDown={(ev) => {
+                      if (ev.key === 'Escape') {
+                        setEditingOverlayId(null);
+                      }
+                    }}
+                    onChange={(e) => {
+                      const nextText = e.target.value;
+                      const m = measureTextLayoutPx(
+                        nextText || ' ',
+                        fontPx,
+                        el.fontFamily || 'sans',
+                        el.fontWeight || 'normal',
+                        el.fontStyle || 'normal',
+                        Math.max(36, el.width * boxSize.w - 10)
+                      );
+                      const needH = (m.rows * fontPx * 1.28 + 10) / Math.max(1, boxSize.h);
+                      onUpdateOverlayElement(
+                        el.id,
+                        {
+                          text: nextText,
+                          height:
+                            needH > el.height + 0.004
+                              ? Math.min(0.95, needH)
+                              : el.height,
+                        },
+                        true
+                      );
+                    }}
                     onBlur={() => setEditingOverlayId(null)}
                     onMouseDown={(e) => e.stopPropagation()}
                     style={{
@@ -2099,7 +2375,7 @@ const InteractivePageCard: React.FC<InteractivePageCardProps> = ({
                       background:
                         el.backgroundColor && el.backgroundColor !== 'transparent'
                           ? el.backgroundColor
-                          : 'rgba(255,255,255,0.92)',
+                          : 'transparent',
                       fontFamily: cssFontForChoice(el.fontFamily),
                       fontSize: `${fontPx}px`,
                       fontWeight: el.fontWeight || 'normal',

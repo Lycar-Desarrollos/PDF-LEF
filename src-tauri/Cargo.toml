@@ -1,6 +1,6 @@
 [package]
 name = "kova-pdf"
-version = "2.3.4"
+version = "2.3.5"
 description = "Kova PDF — Estudio PDF Nativo 100% Local para Windows"
 authors = ["Kova Studio"]
 license = "MIT"

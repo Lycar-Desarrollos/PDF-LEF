@@ -343,19 +343,35 @@ export async function compileTabToPdfBytes(
     });
 
     for (const nt of nativeEdits) {
-      // Cover original text run cleanly with sampled background color (tight horizontal bounds protect adjacent inline labels)
-      const patchX = Math.max(0, nt.origX * pw - 0.5);
-      const patchW = Math.min(pw - patchX, nt.origWidth * pw + 1.0);
-      const patchH = nt.origHeight * ph + 1.4;
-      const patchY = Math.max(0, ph - (nt.origY * ph + nt.origHeight * ph) - 0.7);
+      // 1. Cover original text run cleanly at its original position AND original rotation angle
+      const origRotCw = normalizeAngleDeg(nt.origRotation || 0);
+      const origHasRot = Math.abs(origRotCw) > 0.1;
+      const rawPatchX = nt.origX * pw - (origHasRot ? 1.0 : 0.5);
+      const patchX = origHasRot ? rawPatchX : Math.max(0, rawPatchX);
+      const patchW = origHasRot
+        ? nt.origWidth * pw + 2.0
+        : Math.min(pw - patchX, nt.origWidth * pw + 1.0);
+      const patchH = nt.origHeight * ph + (origHasRot ? 2.0 : 1.4);
+      const rawPatchY = ph - (nt.origY * ph + nt.origHeight * ph) - (origHasRot ? 1.0 : 0.7);
+      const patchY = origHasRot ? rawPatchY : Math.max(0, rawPatchY);
       const patchRgb = hexToPdfRgb(nt.bgPatchColor, '#ffffff');
+      const pOrig = origHasRot
+        ? rotatePdfPointAroundCenter(
+            patchX,
+            patchY,
+            patchX + patchW / 2,
+            patchY + patchH / 2,
+            origRotCw
+          )
+        : { x: patchX, y: patchY };
 
       pdfPage.drawRectangle({
-        x: patchX,
-        y: patchY,
+        x: pOrig.x,
+        y: pOrig.y,
         width: patchW,
         height: patchH,
         color: patchRgb,
+        rotate: origHasRot ? degrees(-origRotCw) : undefined,
       });
 
       if (!nt.deleted && nt.text.trim()) {
@@ -371,8 +387,10 @@ export async function compileTabToPdfBytes(
         const fSize = Math.max(6, nt.fontSizePt || 11);
         const maxNativeW =
           typeof nt.customWidth === 'number' && nt.customWidth > 0.03
-            ? Math.max(36, Math.min((0.98 - nt.x) * pw, nt.customWidth * pw))
-            : Math.max(40, (0.972 - nt.x) * pw);
+            ? Math.max(36, Math.min(pw * 0.96, nt.customWidth * pw))
+            : nt.origRotation
+              ? Math.max(40, Math.max(nt.width * pw + 40, pw * 0.85))
+              : Math.max(40, (0.972 - Math.max(0, nt.x)) * pw);
         const lines = wrapPdfTextToWidth(
           nt.text,
           chosenFont,
@@ -384,33 +402,38 @@ export async function compileTabToPdfBytes(
         const ntRotCw = normalizeAngleDeg(nt.rotation || 0);
         const ntHasRot = Math.abs(ntRotCw) > 0.1;
         const ntRotOpt = ntHasRot ? degrees(-ntRotCw) : undefined;
+        const hasExplicitFill = Boolean(
+          nt.textFillColor && nt.textFillColor !== 'transparent'
+        );
 
-        // If edited text is wider than original patch or wraps, paint clean solid background under new glyphs
-        let ncx = nt.x * pw;
-        let ncy = ph - nt.y * ph;
+        let ncx = (nt.x + nt.width / 2) * pw;
+        let ncy = ph - (nt.y + nt.height / 2) * ph;
         if (lines.length > 0) {
           const widestLine = Math.max(
             ...lines.map((ln) => chosenFont.widthOfTextAtSize(ln, fSize))
           );
-          const totalBlockH = lines.length * fSize * 1.18;
-          const newBoxX = Math.max(0, nt.x * pw - 0.5);
+          const totalBlockH = Math.max(nt.height * ph, lines.length * fSize * 1.18);
+          const newBoxX = nt.x * pw - 0.5;
           const newBoxTopFromBottom = ph - nt.y * ph + 0.8;
-          const newBoxW = Math.min(pw - newBoxX, widestLine + 1.6);
+          const newBoxW = widestLine + 1.6;
           const newBoxH = totalBlockH + 1.6;
-          const newBoxY = Math.max(0, newBoxTopFromBottom - totalBlockH - 0.8);
+          const newBoxY = newBoxTopFromBottom - totalBlockH - 0.8;
           ncx = newBoxX + newBoxW / 2;
           ncy = newBoxY + newBoxH / 2;
-          const pBg = ntHasRot
-            ? rotatePdfPointAroundCenter(newBoxX, newBoxY, ncx, ncy, ntRotCw)
-            : { x: newBoxX, y: newBoxY };
-          pdfPage.drawRectangle({
-            x: pBg.x,
-            y: pBg.y,
-            width: newBoxW,
-            height: newBoxH,
-            color: patchRgb,
-            rotate: ntRotOpt,
-          });
+
+          if (hasExplicitFill) {
+            const pBg = ntHasRot
+              ? rotatePdfPointAroundCenter(newBoxX, newBoxY, ncx, ncy, ntRotCw)
+              : { x: newBoxX, y: newBoxY };
+            pdfPage.drawRectangle({
+              x: pBg.x,
+              y: pBg.y,
+              width: newBoxW,
+              height: newBoxH,
+              color: hexToPdfRgb(nt.textFillColor, '#ffffff'),
+              rotate: ntRotOpt,
+            });
+          }
         }
 
         let lineY = ph - nt.y * ph - fSize * 0.88;
